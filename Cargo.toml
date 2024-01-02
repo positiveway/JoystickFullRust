@@ -7,7 +7,7 @@ edition = "2021"
 
 [dependencies]
 color-eyre = "0.6.2"
-static_init="1.0.3"
+lazy_static="1.4.0"
 validator="0.16.1"
 gilrs = "0.10.4"
 mouse-keyboard-input = { git = "https://github.com/positiveway/mouse-keyboard-input", branch = "main" }

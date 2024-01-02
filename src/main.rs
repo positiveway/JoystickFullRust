@@ -10,15 +10,18 @@ use color_eyre::eyre::{Result};
 use gilrs::{Event, EventType::*, Gilrs};
 use crate::deadzones::print_deadzones;
 use crate::match_event::print_event;
-use crate::process_event::process_event;
+use crate::process_event::{ControllerState, process_event};
+
 
 fn read_send_events(gilrs: &mut Gilrs) -> Result<()> {
     print_deadzones(gilrs, 0)?;
 
+    let mut controller_state = ControllerState::default();
+
     loop {
         // Examine new events
         while let Some(Event { id, event, time }) = gilrs.next_event() {
-            process_event(&event)?;
+            process_event(&event, &controller_state)?;
             println!("{}", print_event(&event)?);
 
             if event == Disconnected {
