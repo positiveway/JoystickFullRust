@@ -66,6 +66,25 @@ pub enum AxisName {
     Unknown,
 }
 
+#[derive(Display, Eq, Hash, PartialEq, Default, Copy, Clone, Debug, Serialize, Deserialize)]
+#[strum(serialize_all = "snake_case")]
+pub enum EventName {
+    AxisChanged,
+    ButtonReleased,
+    ButtonPressed,
+    ButtonChanged,
+    //
+    #[default]
+    Unknown,
+}
+
+#[derive(Serialize, Deserialize, Default, Clone, Debug)]
+pub struct TransformedEvent {
+    pub event_name: EventName,
+    pub axis: AxisName,
+    pub value: f32,
+    pub button: ButtonName,
+}
 
 pub fn match_button(code: u16) -> Result<ButtonName> {
     let res = match code {
@@ -123,6 +142,42 @@ pub fn match_axis(code: u16) -> Result<AxisName> {
     Ok(res)
 }
 
+pub fn match_event(event: &EventType) -> Result<TransformedEvent> {
+    Ok(match event {
+        AxisChanged(axis, value, code) => {
+            let code_as_num = print_code(code)?;
+
+            TransformedEvent {
+                event_name: EventName::AxisChanged,
+                axis: match_axis(code_as_num)?,
+                value: *value,
+                button: Default::default(),
+            }
+        }
+        ButtonChanged(button, value, code) => {
+            let code_as_num = print_code(code)?;
+            TransformedEvent {
+                event_name: match *value {
+                    0f32 => EventName::ButtonReleased,
+                    1f32 => EventName::ButtonPressed,
+                    _ => EventName::ButtonChanged,
+                },
+                axis: Default::default(),
+                value: *value,
+                button: match_button(code_as_num)?,
+            }
+        }
+        _ => {
+            TransformedEvent {
+                event_name: EventName::Unknown,
+                axis: Default::default(),
+                value: 0.0,
+                button: Default::default(),
+            }
+        }
+    })
+}
+
 pub fn print_button(button: &Button) -> &str {
     match button {
         Button::South => "South",
@@ -171,7 +226,7 @@ fn print_code(code: &Code) -> Result<u16> {
     exec_or_eyre!(str::parse::<u16>(&caps[1]))
 }
 
-pub fn print_event(event: &EventType) -> Result<(&str, String, &str, String, u16)> {
+pub fn print_event(event: &EventType) -> Result<String> {
     let mut button_or_axis = "";
     let mut res_value: f32 = 0.0;
     let mut event_type = "";
@@ -226,5 +281,5 @@ pub fn print_event(event: &EventType) -> Result<(&str, String, &str, String, u16
     if res_value.len() > MAX_LENGTH {
         res_value = res_value[..MAX_LENGTH].parse()?
     }
-    Ok((button_or_axis, res_value, event_type, code_as_str, code_as_num))
+    Ok(format!("{event_type}; BtnOrAxis: {button_or_axis}; Value: {res_value}; Code: {code_as_str}; Num: {code_as_num}"))
 }

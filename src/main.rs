@@ -1,14 +1,16 @@
 mod deadzones;
-mod match_events;
+mod match_event;
 mod shared;
 mod config;
+mod process_event;
 
 use std::thread::sleep;
 use std::time::Duration;
 use color_eyre::eyre::{Result};
 use gilrs::{Event, EventType::*, Gilrs};
 use crate::deadzones::print_deadzones;
-use crate::match_events::print_event;
+use crate::match_event::print_event;
+use crate::process_event::process_event;
 
 fn read_send_events(gilrs: &mut Gilrs) -> Result<()> {
     print_deadzones(gilrs, 0)?;
@@ -16,10 +18,8 @@ fn read_send_events(gilrs: &mut Gilrs) -> Result<()> {
     loop {
         // Examine new events
         while let Some(Event { id, event, time }) = gilrs.next_event() {
-            let (button_or_axis, res_value, event_type, code_as_str, code_as_num) = print_event(&event)?;
-
-            let event_as_str = format!("{event_type}; BtnOrAxis: {button_or_axis}; Value: {res_value}; Code: {code_as_str}; Num: {code_as_num}");
-            println!("{}", &event_as_str);
+            process_event(&event)?;
+            println!("{}", print_event(&event)?);
 
             if event == Disconnected {
                 println!("Gamepad disconnected");
