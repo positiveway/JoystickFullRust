@@ -1,6 +1,7 @@
 mod deadzones;
 mod match_events;
 mod shared;
+mod config;
 
 use std::thread::sleep;
 use std::time::Duration;

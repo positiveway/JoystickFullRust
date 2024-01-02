@@ -1,4 +1,51 @@
 use gilrs::{Axis, Button, Event, EventType::*, EventType};
+use serde::{Deserialize, Serialize};
+use strum_macros::Display;
+
+#[derive(Display, Eq, Hash, PartialEq, Copy, Clone, Debug, Serialize, Deserialize)]
+#[strum(serialize_all = "snake_case")]
+pub enum ButtonName {
+    BtnUpSideLeft,
+    BtnDownSideLeft,
+    BtnLeftSideLeft,
+    BtnRightSideLeft,
+    // 
+    BtnUpSideRight,
+    BtnDownSideRight,
+    BtnLeftSideRight,
+    BtnRightSideRight,
+    // 
+    WingLeft,
+    WingRight,
+    // 
+    LowerTriggerSideLeft,
+    UpperTriggerSideLeft,
+    LowerTriggerSideRight,
+    UpperTriggerSideRight,
+    // 
+    PadWholeSideLeft,
+    PadWholeSideRight,
+    //
+    PadUpSideLeft,
+    PadDownSideLeft,
+    PadLeftSideLeft,
+    PadRightSideLeft,
+    // 
+    PadUpSideRight,
+    PadDownSideRight,
+    PadLeftSideRight,
+    PadRightSideRight,
+    //
+    ExtraBtnSideLeft,
+    ExtraBtnSideRight,
+    CentralBtn,
+}
+
+// Button::South => ButtonName::BtnDownSideRight,
+// Button::East => ButtonName::BtnRightSideRight,
+// Button::North => ButtonName::BtnUpSideRight,
+// Button::West => ButtonName::BtnLeftSideRight,
+
 
 pub fn match_button(button: &Button) -> &str {
     match button {
