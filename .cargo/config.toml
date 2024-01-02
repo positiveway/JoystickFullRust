@@ -1,5 +1,7 @@
 [build]
-rustflags = ["-Z", "polonius", "-Z", "next-solver=coherence", "-C", "target-cpu=native"]
+rustflags = ["-C", "target-cpu=native"]
+#"-Z", "polonius",
+#"-Z", "next-solver=coherence",
 #rustflags = ["-Zpolonius", "-Znext-solver=coherence", "-Ctarget-cpu=native"]
 
 [profile.release]
@@ -7,3 +9,10 @@ codegen-units = 1
 lto = "fat"
 opt-level = 3
 incremental = false
+
+#color-eyre Backtrace
+[profile.dev.package.backtrace]
+opt-level = 3
+
+[env]
+RUST_LIB_BACKTRACE="full"

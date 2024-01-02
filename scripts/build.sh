@@ -1,6 +1,7 @@
 build_clean=true
 use_polonius=true
 new_trait_solver=true
+use_another_linker=false #can make things slower
 
 # exit when any command fails
 set -e
@@ -19,8 +20,7 @@ rm -rf ./target
 cargo clean
 fi
 
-#build_flags="-C target-cpu=native"
-build_flags=""
+build_flags="-C target-cpu=native"
 
 if $use_polonius
 then
@@ -34,22 +34,28 @@ then
   build_flags="-Z next-solver=coherence $build_flags"
 fi
 
+if $use_another_linker
+then
+  build_flags="-C linker=clang-16 $build_flags"
+fi
+
 rustup install $rust_version
 rustup update
 
 echo $build_flags
-export RUSTFLAGS="$build_flags"
 
 # release build
-cargo +$rust_version rustc --release
-#cargo +$rust_version rustc --release -- $build_flags
+cargo +$rust_version rustc --release -- $build_flags
 
 # polonius debug build
 #cargo +nightly rustc -- -Z polonius
 
 # polonius release build
-#CARGO_BUILD_RUSTFLAGS="-Z polonius" cargo build --release
 #cargo +nightly rustc --release -- -Z polonius
+
+#These apply it for all dependencies
+#export RUSTFLAGS="$build_flags"
+#CARGO_BUILD_RUSTFLAGS="-Z polonius" cargo build --release
 
 cd ./scripts
 chmod +x ./run.sh
