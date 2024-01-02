@@ -5,11 +5,10 @@ mod config;
 
 use std::thread::sleep;
 use std::time::Duration;
-use color_eyre::eyre::{Result, eyre};
+use color_eyre::eyre::{Result};
 use gilrs::{Event, EventType::*, Gilrs};
 use crate::deadzones::print_deadzones;
-use crate::shared::*;
-use crate::match_events::match_event;
+use crate::match_events::print_event;
 
 fn read_send_events(gilrs: &mut Gilrs) -> Result<()> {
     print_deadzones(gilrs, 0)?;
@@ -17,9 +16,9 @@ fn read_send_events(gilrs: &mut Gilrs) -> Result<()> {
     loop {
         // Examine new events
         while let Some(Event { id, event, time }) = gilrs.next_event() {
-            let (button_or_axis, res_value, event_type, code) = match_event(&event);
+            let (button_or_axis, res_value, event_type, code_as_str, code_as_num) = print_event(&event)?;
 
-            let event_as_str = format!("Event type: {event_type}; BtnOrAxis: {button_or_axis}; Value: {res_value}; Code: {code}");
+            let event_as_str = format!("{event_type}; BtnOrAxis: {button_or_axis}; Value: {res_value}; Code: {code_as_str}; Num: {code_as_num}");
             println!("{}", &event_as_str);
 
             if event == Disconnected {
