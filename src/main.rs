@@ -1,15 +1,17 @@
 mod deadzones;
 mod match_events;
+mod shared;
 
 use std::thread::sleep;
 use std::time::Duration;
-use color_eyre::eyre::Result;
+use color_eyre::eyre::{Result, eyre};
 use gilrs::{Event, EventType::*, Gilrs};
-use crate::deadzones::*;
+use crate::deadzones::print_deadzones;
+use crate::shared::*;
 use crate::match_events::match_event;
 
-fn read_send_events(gilrs: &mut Gilrs) {
-    print_deadzones(gilrs, 0);
+fn read_send_events(gilrs: &mut Gilrs) -> Result<()> {
+    print_deadzones(gilrs, 0)?;
 
     loop {
         // Examine new events
@@ -21,19 +23,24 @@ fn read_send_events(gilrs: &mut Gilrs) {
 
             if event == Disconnected {
                 println!("Gamepad disconnected");
-                return;
+                return Ok(());
             }
         }
         sleep(Duration::from_millis(4)); //4 = USB min latency
     }
 }
 
-fn init_controller(){
-    let mut gilrs = Gilrs::new().unwrap();
+
+fn init_gilrs() -> Result<Gilrs> {
+    exec_or_eyre!(Gilrs::new())
+}
+
+fn init_controller() -> Result<()> {
+    let mut gilrs = init_gilrs()?;
 
     let mut is_wait_msg_printed = false;
     loop {
-        gilrs = Gilrs::new().unwrap();
+        gilrs = init_gilrs()?;
         let mut gamepads_counter = 0;
         for (id, gamepad) in gilrs.gamepads() {
             gamepads_counter += 1;
@@ -49,7 +56,7 @@ fn init_controller(){
             println!("Only one gamepad is supported. Disconnect other gamepads");
         } else {
             is_wait_msg_printed = false;
-            read_send_events(&mut gilrs)
+            read_send_events(&mut gilrs)?;
         }
         sleep(Duration::from_millis(5000));
     }
@@ -58,6 +65,5 @@ fn init_controller(){
 fn main() -> Result<()> {
     color_eyre::install()?;
 
-    init_controller();
-    Ok(())
+    init_controller()
 }
