@@ -1,0 +1,9 @@
+[build]
+rustflags = ["-Z", "polonius", "-Z", "next-solver=coherence", "-C", "target-cpu=native"]
+#rustflags = ["-Zpolonius", "-Znext-solver=coherence", "-Ctarget-cpu=native"]
+
+[profile.release]
+codegen-units = 1
+lto = "fat"
+opt-level = 3
+incremental = false
