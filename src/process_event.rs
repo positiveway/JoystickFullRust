@@ -10,7 +10,7 @@ pub struct ControllerState {
     pub pressed_buttons: HashMap<ButtonName, bool>,
 }
 
-enum TransformationStatus{
+enum TransformationStatus {
     Unchanged,
     Modified(TransformedEvent),
     Discarded,
@@ -18,14 +18,14 @@ enum TransformationStatus{
 
 pub fn process_event(event: &EventType, controller_state: &ControllerState) -> Result<()> {
     let event = match_event(event)?;
-    if let Some(mut event) = event{
+    if let Some(mut event) = event {
         match transform_triggers(&event) {
             TransformationStatus::Unchanged => {}
             TransformationStatus::Modified(transformed_event) => {
                 event = transformed_event;
             }
             TransformationStatus::Discarded => {
-                return Ok(())
+                return Ok(());
             }
         };
     }
@@ -33,17 +33,17 @@ pub fn process_event(event: &EventType, controller_state: &ControllerState) -> R
     Ok(())
 }
 
-pub fn transform_left_pad(){
-
-}
+pub fn transform_left_pad() {}
 
 pub fn transform_triggers(event: &TransformedEvent) -> TransformationStatus {
-    if vec![ButtonName::LowerTriggerAsBtn_SideL, ButtonName::LowerTriggerAsBtn_SideR].contains(&event.button) {
-        return TransformationStatus::Discarded
-    };
-    if vec![ButtonName::LowerTrigger_SideL, ButtonName::LowerTrigger_SideR].contains(&event.button) {
-        if event.event_type == EventTypeName::ButtonChanged {
-            return TransformationStatus::Modified(
+    match event.button {
+        ButtonName::LowerTriggerAsBtn_SideL | ButtonName::LowerTriggerAsBtn_SideR => {
+            TransformationStatus::Discarded
+        }
+        ButtonName::LowerTrigger_SideL | ButtonName::LowerTrigger_SideR => {
+            // this includes all buttons events so values 1.0 and 0.0 are handled
+            // EventTypeName::ButtonReleased | EventTypeName::ButtonPressed | EventTypeName::ButtonChanged => {
+            TransformationStatus::Modified(
                 if event.value > GLOBAL_CONFIGS.triggers_threshold_f32 {
                     TransformedEvent {
                         event_type: EventTypeName::ButtonPressed,
@@ -59,8 +59,8 @@ pub fn transform_triggers(event: &TransformedEvent) -> TransformationStatus {
                         button: event.button,
                     }
                 }
-            );
+            )
         }
-    };
-    TransformationStatus::Unchanged
+        _ => TransformationStatus::Unchanged
+    }
 }
