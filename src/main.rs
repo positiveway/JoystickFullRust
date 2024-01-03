@@ -1,13 +1,14 @@
 mod deadzones;
 mod match_event;
 mod shared;
-mod config;
+mod configs;
 mod process_event;
 
 use std::thread::sleep;
 use std::time::Duration;
 use color_eyre::eyre::{Result};
 use gilrs::{Event, EventType::*, Gilrs};
+use crate::configs::{Configs};
 use crate::deadzones::print_deadzones;
 use crate::match_event::print_event;
 use crate::process_event::{ControllerState, process_event};
@@ -38,7 +39,15 @@ fn init_gilrs() -> Result<Gilrs> {
     exec_or_eyre!(Gilrs::new())
 }
 
+fn check_configs() -> Result<()>{
+    let configs = Configs::load()?;
+    println!("Layout: {}", configs.buttons_layout);
+    Ok(())
+}
+
 fn init_controller() -> Result<()> {
+    check_configs()?;
+
     let mut gilrs = init_gilrs()?;
 
     let mut is_wait_msg_printed = false;
