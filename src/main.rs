@@ -40,7 +40,7 @@ fn init_gilrs() -> Result<Gilrs> {
 }
 
 fn check_configs() -> Result<()>{
-    let configs = Configs::load()?;
+    let configs = Configs::load_raw()?;
     println!("Layout: {}", configs.buttons_layout);
     Ok(())
 }

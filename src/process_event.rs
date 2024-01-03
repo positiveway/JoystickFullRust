@@ -12,38 +12,39 @@ pub struct ControllerState {
 
 enum TransformationStatus{
     Unchanged,
-    Modified,
+    Modified(TransformedEvent),
     Discarded,
 }
 
 pub fn process_event(event: &EventType, controller_state: &ControllerState) -> Result<()> {
     let event = match_event(event)?;
     if let Some(mut event) = event{
-        if let (status, transformed_event) = transform_triggers(&event){
-            match status {
-                TransformationStatus::Unchanged => {}
-                TransformationStatus::Modified => {
-                    event = transformed_event.ok_or_eyre("Triggers transform error")?;
-                }
-                TransformationStatus::Discarded => {
-                    return Ok(())
-                }
+        match transform_triggers(&event) {
+            TransformationStatus::Unchanged => {}
+            TransformationStatus::Modified(transformed_event) => {
+                event = transformed_event;
+            }
+            TransformationStatus::Discarded => {
+                return Ok(())
             }
         };
-
     }
 
     Ok(())
 }
 
-pub fn transform_triggers(event: &TransformedEvent) -> (TransformationStatus, Option<TransformedEvent>) {
+pub fn transform_left_pad(){
+
+}
+
+pub fn transform_triggers(event: &TransformedEvent) -> TransformationStatus {
     if vec![ButtonName::LowerTriggerAsBtn_SideL, ButtonName::LowerTriggerAsBtn_SideR].contains(&event.button) {
-        return (TransformationStatus::Discarded, None)
+        return TransformationStatus::Discarded
     };
     if vec![ButtonName::LowerTrigger_SideL, ButtonName::LowerTrigger_SideR].contains(&event.button) {
         if event.event_type == EventTypeName::ButtonChanged {
-            return (TransformationStatus::Modified, Some(
-                if event.value > GLOBAL_CONFIGS.triggers_threshold_pct as f32 / 100.0 {
+            return TransformationStatus::Modified(
+                if event.value > GLOBAL_CONFIGS.triggers_threshold_f32 {
                     TransformedEvent {
                         event_type: EventTypeName::ButtonPressed,
                         axis: Default::default(),
@@ -58,8 +59,8 @@ pub fn transform_triggers(event: &TransformedEvent) -> (TransformationStatus, Op
                         button: event.button,
                     }
                 }
-            ));
+            );
         }
     };
-    (TransformationStatus::Unchanged, None)
+    TransformationStatus::Unchanged
 }
