@@ -22,14 +22,19 @@ pub enum ButtonName {
     // 
     Wing_SideL,
     Wing_SideR,
-    // 
+    //
+    LowerTriggerAsBtn_SideL,
+    LowerTriggerAsBtn_SideR,
+
     LowerTrigger_SideL,
-    UpperTrigger_SideL,
     LowerTrigger_SideR,
+
+    UpperTrigger_SideL,
     UpperTrigger_SideR,
     // 
     PadAsBtn_SideL,
     PadAsBtn_SideR,
+
     PadAsTouch_SideL,
     PadAsTouch_SideR,
     StickAsBtn,
@@ -106,9 +111,13 @@ pub fn match_button(code: u16) -> Result<ButtonName> {
         544 => ButtonName::PadUp_SideL,
         546 => ButtonName::PadLeft_SideL,
         //
-        312 => ButtonName::LowerTrigger_SideL,
+        312 => ButtonName::LowerTriggerAsBtn_SideL,
+        313 => ButtonName::LowerTriggerAsBtn_SideR,
+
+        21 => ButtonName::LowerTrigger_SideL,
+        20 => ButtonName::LowerTrigger_SideR,
+
         310 => ButtonName::UpperTrigger_SideL,
-        313 => ButtonName::LowerTrigger_SideR,
         311 => ButtonName::UpperTrigger_SideR,
         // 
         314 => ButtonName::ExtraBtn_SideL,
