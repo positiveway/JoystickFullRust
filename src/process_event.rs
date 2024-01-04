@@ -10,12 +10,6 @@ pub struct ControllerState {
     pub pressed_buttons: HashMap<ButtonName, bool>,
 }
 
-enum TransformationStatus {
-    Unchanged,
-    Modified(TransformedEvent),
-    Discarded,
-}
-
 pub fn process_event(event: &EventType, controller_state: &ControllerState) -> Result<()> {
     let mut event = match_event(event)?;
     event = transform_triggers(event);
