@@ -17,50 +17,51 @@ enum TransformationStatus {
 }
 
 pub fn process_event(event: &EventType, controller_state: &ControllerState) -> Result<()> {
-    let event = match_event(event)?;
-    if let Some(mut event) = event {
-        match transform_triggers(&event) {
-            TransformationStatus::Unchanged => {}
-            TransformationStatus::Modified(transformed_event) => {
-                event = transformed_event;
-            }
-            TransformationStatus::Discarded => {
-                return Ok(());
-            }
-        };
-    }
+    let mut event = match_event(event)?;
+    event = transform_triggers(event);
+    event = transform_left_pad(event);
 
     Ok(())
 }
 
-pub fn transform_left_pad() {}
+pub fn transform_left_pad(event: TransformedEvent) -> TransformedEvent {
+    match event.button {
+        ButtonName::PadDown_SideL | ButtonName::PadRight_SideL | ButtonName::PadUp_SideL | ButtonName::PadLeft_SideL => {
+            TransformedEvent {
+                event_type: event.event_type,
+                axis: Default::default(),
+                value: event.value,
+                button: ButtonName::PadAsBtn_SideL,
+            }
+        }
+        _ => TransformedEvent::discarded()
+    }
+}
 
-pub fn transform_triggers(event: &TransformedEvent) -> TransformationStatus {
+pub fn transform_triggers(event: TransformedEvent) -> TransformedEvent {
     match event.button {
         ButtonName::LowerTriggerAsBtn_SideL | ButtonName::LowerTriggerAsBtn_SideR => {
-            TransformationStatus::Discarded
+            TransformedEvent::discarded()
         }
         ButtonName::LowerTrigger_SideL | ButtonName::LowerTrigger_SideR => {
             // this includes all buttons events so values 1.0 and 0.0 are handled
             // EventTypeName::ButtonReleased | EventTypeName::ButtonPressed | EventTypeName::ButtonChanged => {
-            TransformationStatus::Modified(
-                if event.value > GLOBAL_CONFIGS.triggers_threshold_f32 {
-                    TransformedEvent {
-                        event_type: EventTypeName::ButtonPressed,
-                        axis: Default::default(),
-                        value: 1f32,
-                        button: event.button,
-                    }
-                } else {
-                    TransformedEvent {
-                        event_type: EventTypeName::ButtonReleased,
-                        axis: Default::default(),
-                        value: 0f32,
-                        button: event.button,
-                    }
+            if event.value > GLOBAL_CONFIGS.triggers_threshold_f32 {
+                TransformedEvent {
+                    event_type: EventTypeName::ButtonPressed,
+                    axis: Default::default(),
+                    value: 1f32,
+                    button: event.button,
                 }
-            )
+            } else {
+                TransformedEvent {
+                    event_type: EventTypeName::ButtonReleased,
+                    axis: Default::default(),
+                    value: 0f32,
+                    button: event.button,
+                }
+            }
         }
-        _ => TransformationStatus::Unchanged
+        _ => event
     }
 }

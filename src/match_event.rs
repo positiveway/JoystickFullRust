@@ -81,6 +81,7 @@ pub enum EventTypeName {
     //
     #[default]
     Unknown,
+    Discarded,
 }
 
 #[derive(Serialize, Deserialize, Default, Clone, Debug)]
@@ -89,6 +90,14 @@ pub struct TransformedEvent {
     pub axis: AxisName,
     pub value: f32,
     pub button: ButtonName,
+}
+
+impl TransformedEvent {
+    pub fn discarded() -> TransformedEvent {
+        let mut event = TransformedEvent::default();
+        event.event_type = EventTypeName::Discarded;
+        event
+    }
 }
 
 pub fn match_button(code: u16) -> Result<ButtonName> {
@@ -151,21 +160,21 @@ pub fn match_axis(code: u16) -> Result<AxisName> {
     Ok(res)
 }
 
-pub fn match_event(event: &EventType) -> Result<Option<TransformedEvent>> {
+pub fn match_event(event: &EventType) -> Result<TransformedEvent> {
     Ok(match event {
         AxisChanged(axis, value, code) => {
             let code_as_num = print_code(code)?;
 
-            Some(TransformedEvent {
+            TransformedEvent {
                 event_type: EventTypeName::AxisChanged,
                 axis: match_axis(code_as_num)?,
                 value: *value,
                 button: Default::default(),
-            })
-        },
+            }
+        }
         ButtonChanged(button, value, code) => {
             let code_as_num = print_code(code)?;
-            Some(TransformedEvent {
+            TransformedEvent {
                 event_type: match *value {
                     0f32 => EventTypeName::ButtonReleased,
                     1f32 => EventTypeName::ButtonPressed,
@@ -174,9 +183,9 @@ pub fn match_event(event: &EventType) -> Result<Option<TransformedEvent>> {
                 axis: Default::default(),
                 value: *value,
                 button: match_button(code_as_num)?,
-            })
-        },
-        _ => None,
+            }
+        }
+        _ => TransformedEvent::discarded(),
     })
 }
 

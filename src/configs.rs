@@ -10,10 +10,10 @@ use crate::exec_or_eyre;
 const PROJECT_NAME: &str = "JoystickFullRust";
 
 lazy_static! {
-    pub static ref CONFIGS_DIR: PathBuf = {get_project_dir().join("config")};
-    pub static ref LAYOUTS_DIR: PathBuf = {CONFIGS_DIR.join("layouts")};
+    pub static ref CONFIGS_DIR: PathBuf = get_project_dir().join("config");
+    pub static ref LAYOUTS_DIR: PathBuf = CONFIGS_DIR.join("layouts");
 
-    pub static ref GLOBAL_CONFIGS: Configs = {Configs::load()};
+    pub static ref GLOBAL_CONFIGS: Configs = Configs::load();
 }
 
 
