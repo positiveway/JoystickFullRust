@@ -15,12 +15,20 @@ pub fn process_event(event: &EventType, controller_state: &ControllerState) -> R
     event = transform_triggers(event);
     event = transform_left_pad(event);
 
+    if event.event_type == EventTypeName::Discarded {
+        return Ok(());
+    }
+
+
     Ok(())
 }
 
 pub fn transform_left_pad(event: TransformedEvent) -> TransformedEvent {
     match event.button {
-        ButtonName::PadDown_SideL | ButtonName::PadRight_SideL | ButtonName::PadUp_SideL | ButtonName::PadLeft_SideL => {
+        ButtonName::PadDown_SideL |
+        ButtonName::PadRight_SideL |
+        ButtonName::PadUp_SideL |
+        ButtonName::PadLeft_SideL => {
             TransformedEvent {
                 event_type: event.event_type,
                 axis: Default::default(),
