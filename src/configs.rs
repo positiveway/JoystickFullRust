@@ -5,7 +5,6 @@ use std::time::Duration;
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use color_eyre::eyre::{Result};
-use strum_macros::Display;
 use crate::exec_or_eyre;
 use crate::match_event::ButtonName;
 

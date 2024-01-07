@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use strum_macros::Display;
 use regex::Regex;
 use color_eyre::eyre::{bail, Result};
+use crate::configs::GLOBAL_CONFIGS;
 use crate::exec_or_eyre;
 
 
@@ -71,33 +72,22 @@ pub enum AxisName {
     Unknown,
 }
 
-#[derive(Display, Eq, Hash, PartialEq, Default, Copy, Clone, Debug, Serialize, Deserialize)]
+#[derive(Display, Eq, Hash, PartialEq, Copy, Clone, Debug, Serialize, Deserialize)]
 #[strum(serialize_all = "snake_case")]
 pub enum EventTypeName {
     AxisChanged,
     ButtonReleased,
     ButtonPressed,
     ButtonChanged,
-    //
-    #[default]
-    Unknown,
     Discarded,
 }
 
-#[derive(Serialize, Deserialize, Default, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct TransformedEvent {
     pub event_type: EventTypeName,
     pub axis: AxisName,
-    pub value: f32,
     pub button: ButtonName,
-}
-
-impl TransformedEvent {
-    pub fn discarded() -> TransformedEvent {
-        let mut event = TransformedEvent::default();
-        event.event_type = EventTypeName::Discarded;
-        event
-    }
+    pub value: f32,
 }
 
 pub fn match_button(code: u16) -> Result<ButtonName> {
@@ -185,7 +175,22 @@ pub fn match_event(event: &EventType) -> Result<TransformedEvent> {
                 button: match_button(code_as_num)?,
             }
         }
-        _ => TransformedEvent::discarded(),
+        Disconnected => {
+            TransformedEvent {
+                event_type: EventTypeName::ButtonReleased,
+                axis: Default::default(),
+                button: GLOBAL_CONFIGS.buttons_layout.reset_button,
+                value: 0.0,
+            }
+        }
+        _ => {
+            TransformedEvent {
+                event_type: EventTypeName::Discarded,
+                axis: Default::default(),
+                button: Default::default(),
+                value: 0.0,
+            }
+        }
     })
 }
 

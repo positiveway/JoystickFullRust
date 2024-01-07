@@ -48,131 +48,154 @@ impl ControllerState {
     }
 }
 
+
+enum TransformStatus {
+    Discarded,
+    Unchanged,
+    Transformed(TransformedEvent),
+    Handled,
+}
+
 pub fn process_event(event: &EventType, controller_state: &ControllerState) -> Result<()> {
     let mut event = match_event(event)?;
-    event = transform_triggers(event);
-    event = transform_left_pad(event);
-
     if event.event_type == EventTypeName::Discarded {
         return Ok(());
     }
 
-    if let _handled = process_right_pad(&event, controller_state) {
-        return Ok(());
-    }
+    match transform_triggers(&event) {
+        TransformStatus::Discarded | TransformStatus::Handled => {
+            return Ok(());
+        }
+        TransformStatus::Transformed(transformed_event) => {
+            event = transformed_event;
+        }
+        TransformStatus::Unchanged => {}
+    };
 
+    match transform_left_pad(&event) {
+        TransformStatus::Discarded | TransformStatus::Handled => {
+            return Ok(());
+        }
+        TransformStatus::Transformed(transformed_event) => {
+            event = transformed_event;
+        }
+        TransformStatus::Unchanged => {}
+    };
+
+    match process_right_pad(&event, controller_state)? {
+        TransformStatus::Discarded | TransformStatus::Handled => {
+            return Ok(());
+        }
+        TransformStatus::Transformed(transformed_event) => {
+            event = transformed_event;
+        }
+        TransformStatus::Unchanged => {}
+    };
 
     Ok(())
 }
 
-pub fn process_right_pad(event: &TransformedEvent, controller_state: &ControllerState) -> Result<bool> {
+fn send_mouse_event(pad_event: PadEvent, controller_state: &ControllerState) -> Result<()> {
+    exec_or_eyre!(controller_state.mouse_sender.send(pad_event))
+}
+
+pub fn process_right_pad(event: &TransformedEvent, controller_state: &ControllerState) -> Result<TransformStatus> {
     let switch_button: ButtonName = GLOBAL_CONFIGS.buttons_layout.switch_button;
     let reset_button: ButtonName = GLOBAL_CONFIGS.buttons_layout.reset_button;
 
-    let pad_event: Option<PadEvent> = {
-        match event.button {
-            ButtonName::PadAsTouch_SideR => {
-                match event.event_type {
-                    EventTypeName::ButtonReleased => {
-                        Some(PadEvent::FingerLifted)
-                    }
-                    _ => { None }
-                }
-            }
-            _ => { None }
-        };
-
-        if event.button == switch_button {
+    match event.button {
+        ButtonName::PadAsTouch_SideR => {
             match event.event_type {
                 EventTypeName::ButtonReleased => {
-                    Some(PadEvent::ModeSwitched)
+                    send_mouse_event(PadEvent::FingerLifted, controller_state)?;
+                    return Ok(TransformStatus::Handled);
                 }
-                _ => { None }
+                _ => {}
             }
-        } else if event.button == reset_button {
-            match event.event_type {
-                EventTypeName::ButtonReleased => {
-                    Some(PadEvent::Reset)
-                }
-                _ => { None }
-            }
-        } else {
-            None
-        };
-
-        // match event.event_type {
-        //     EventTypeName::AxisChanged => {}
-        //     EventTypeName::ButtonReleased => {}
-        //     EventTypeName::ButtonPressed => {}
-        //     EventTypeName::ButtonChanged => {}
-        //     EventTypeName::Unknown => {}
-        //     EventTypeName::Discarded => {}
-        // }
-        match event.axis {
-            AxisName::PadX_SideR => {
-                Some(PadEvent::Moved(event.value, true))
-            }
-            AxisName::PadY_SideR => {
-                Some(PadEvent::Moved(event.value, false))
-            }
-            _ => { None }
-        };
-
-        None
+        }
+        _ => {}
     };
 
-    match pad_event {
-        None => {
-            Ok(false)
+    if event.button == switch_button {
+        match event.event_type {
+            EventTypeName::ButtonReleased => {
+                send_mouse_event(PadEvent::ModeSwitched, controller_state)?;
+                return Ok(TransformStatus::Handled);
+            }
+            _ => {}
         }
-        Some(pad_event) => {
-            exec_or_eyre!(controller_state.mouse_sender.send(pad_event))?;
-            Ok(true)
+    } else if event.button == reset_button {
+        match event.event_type {
+            EventTypeName::ButtonReleased => {
+                send_mouse_event(PadEvent::Reset, controller_state)?;
+                return Ok(TransformStatus::Unchanged);
+            }
+            _ => {}
         }
-    }
+    };
+
+    match event.event_type {
+        EventTypeName::AxisChanged => {
+            match event.axis {
+                AxisName::PadX_SideR => {
+                    send_mouse_event(PadEvent::Moved(event.value, true), controller_state)?;
+                    return Ok(TransformStatus::Handled);
+                }
+                AxisName::PadY_SideR => {
+                    send_mouse_event(PadEvent::Moved(event.value, false), controller_state)?;
+                    return Ok(TransformStatus::Handled);
+                }
+                _ => {}
+            };
+        }
+        _ => {}
+    };
+
+    Ok(TransformStatus::Unchanged)
 }
 
-pub fn transform_left_pad(event: TransformedEvent) -> TransformedEvent {
+
+pub fn transform_left_pad(event: &TransformedEvent) -> TransformStatus {
     match event.button {
         ButtonName::PadDown_SideL |
         ButtonName::PadRight_SideL |
         ButtonName::PadUp_SideL |
         ButtonName::PadLeft_SideL => {
-            TransformedEvent {
+            TransformStatus::Transformed(TransformedEvent {
                 event_type: event.event_type,
                 axis: Default::default(),
                 value: event.value,
                 button: ButtonName::PadAsBtn_SideL,
-            }
+            })
         }
-        _ => TransformedEvent::discarded()
+        _ => TransformStatus::Unchanged
     }
 }
 
-pub fn transform_triggers(event: TransformedEvent) -> TransformedEvent {
+pub fn transform_triggers(event: &TransformedEvent) -> TransformStatus {
     match event.button {
         ButtonName::LowerTriggerAsBtn_SideL | ButtonName::LowerTriggerAsBtn_SideR => {
-            TransformedEvent::discarded()
+            TransformStatus::Discarded
         }
         ButtonName::LowerTrigger_SideL | ButtonName::LowerTrigger_SideR => {
             // this includes all buttons events so values 1.0 and 0.0 are handled
             // EventTypeName::ButtonReleased | EventTypeName::ButtonPressed | EventTypeName::ButtonChanged => {
             if event.value > GLOBAL_CONFIGS.triggers_threshold_f32 {
-                TransformedEvent {
+                TransformStatus::Transformed(TransformedEvent {
                     event_type: EventTypeName::ButtonPressed,
                     axis: Default::default(),
                     value: 1f32,
                     button: event.button,
-                }
+                })
             } else {
-                TransformedEvent {
+                TransformStatus::Transformed(TransformedEvent {
                     event_type: EventTypeName::ButtonReleased,
                     axis: Default::default(),
                     value: 0f32,
                     button: event.button,
-                }
+                })
             }
         }
-        _ => event
+        _ => TransformStatus::Unchanged
     }
 }
