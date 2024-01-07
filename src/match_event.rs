@@ -1,14 +1,14 @@
 use gilrs::{Axis, Button, Event, EventType::*, EventType};
 use gilrs::ev::Code;
 use serde::{Deserialize, Serialize};
-use strum_macros::Display;
+use strum_macros::{Display, EnumString};
 use regex::Regex;
 use color_eyre::eyre::{bail, Result};
 use crate::configs::GLOBAL_CONFIGS;
 use crate::exec_or_eyre;
 
 
-#[derive(Display, Eq, Hash, PartialEq, Default, Copy, Clone, Debug, Serialize, Deserialize)]
+#[derive(EnumString, Display, Eq, Hash, PartialEq, Default, Copy, Clone, Debug, Serialize, Deserialize)]
 #[strum(serialize_all = "snake_case")]
 pub enum ButtonName {
     BtnUp_SideL,
