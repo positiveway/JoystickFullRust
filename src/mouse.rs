@@ -115,7 +115,7 @@ pub fn create_writing_thread(mouse_receiver: MouseReceiver, button_receiver: But
                 MouseMode::CursorMove => {
                     virtual_device.move_mouse(
                         convert_diff(coords_diff.x, multiplier),
-                        convert_diff(coords_diff.y, multiplier),
+                        convert_diff(-coords_diff.y, multiplier),
                     ).unwrap();
                 }
                 MouseMode::Scrolling => {

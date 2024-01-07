@@ -175,27 +175,36 @@ pub fn transform_left_pad(event: &TransformedEvent) -> TransformStatus {
 pub fn transform_triggers(event: &TransformedEvent) -> TransformStatus {
     match event.button {
         ButtonName::LowerTriggerAsBtn_SideL | ButtonName::LowerTriggerAsBtn_SideR => {
-            TransformStatus::Discarded
+            return TransformStatus::Discarded;
         }
-        ButtonName::LowerTrigger_SideL | ButtonName::LowerTrigger_SideR => {
+
+        _ => {}
+    };
+
+    match event.axis {
+        AxisName::LowerTrigger_SideL | AxisName::LowerTrigger_SideR => {
             // this includes all buttons events so values 1.0 and 0.0 are handled
             // EventTypeName::ButtonReleased | EventTypeName::ButtonPressed | EventTypeName::ButtonChanged => {
-            if event.value > GLOBAL_CONFIGS.triggers_threshold_f32 {
-                TransformStatus::Transformed(TransformedEvent {
-                    event_type: EventTypeName::ButtonPressed,
-                    axis: Default::default(),
-                    value: 1f32,
-                    button: event.button,
-                })
-            } else {
-                TransformStatus::Transformed(TransformedEvent {
-                    event_type: EventTypeName::ButtonReleased,
-                    axis: Default::default(),
-                    value: 0f32,
-                    button: event.button,
-                })
-            }
+            return TransformStatus::Transformed({
+                if event.value > GLOBAL_CONFIGS.triggers_threshold_f32 {
+                    TransformedEvent {
+                        event_type: EventTypeName::ButtonPressed,
+                        axis: Default::default(),
+                        value: 1f32,
+                        button: event.button,
+                    }
+                } else {
+                    TransformedEvent {
+                        event_type: EventTypeName::ButtonReleased,
+                        axis: Default::default(),
+                        value: 0f32,
+                        button: event.button,
+                    }
+                }
+            });
         }
-        _ => TransformStatus::Unchanged
-    }
+        _ => {}
+    };
+
+    TransformStatus::Unchanged
 }

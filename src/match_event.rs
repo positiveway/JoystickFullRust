@@ -26,10 +26,7 @@ pub enum ButtonName {
     //
     LowerTriggerAsBtn_SideL,
     LowerTriggerAsBtn_SideR,
-
-    LowerTrigger_SideL,
-    LowerTrigger_SideR,
-
+    //
     UpperTrigger_SideL,
     UpperTrigger_SideR,
     // 
@@ -63,10 +60,15 @@ pub enum ButtonName {
 pub enum AxisName {
     PadX_SideL,
     PadY_SideL,
+    //
     PadX_SideR,
     PadY_SideR,
+    //
     StickX,
     StickY,
+    //
+    LowerTrigger_SideL,
+    LowerTrigger_SideR,
     //
     #[default]
     Unknown,
@@ -113,9 +115,6 @@ pub fn match_button(code: u16) -> Result<ButtonName> {
         312 => ButtonName::LowerTriggerAsBtn_SideL,
         313 => ButtonName::LowerTriggerAsBtn_SideR,
 
-        21 => ButtonName::LowerTrigger_SideL,
-        20 => ButtonName::LowerTrigger_SideR,
-
         310 => ButtonName::UpperTrigger_SideL,
         311 => ButtonName::UpperTrigger_SideR,
         // 
@@ -138,6 +137,9 @@ pub fn match_axis(code: u16) -> Result<AxisName> {
         //
         3 => AxisName::PadX_SideR,
         4 => AxisName::PadY_SideR,
+        //
+        21 => AxisName::LowerTrigger_SideL,
+        20 => AxisName::LowerTrigger_SideR,
         //
         0 => AxisName::StickX,
         1 => AxisName::StickY,
