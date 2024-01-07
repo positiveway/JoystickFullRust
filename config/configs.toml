@@ -2,6 +2,6 @@ buttons_layout="gaming"
 typing_layout="typing"
 finger_rotation=15
 triggers_threshold_pct=30
-mouse_speed = 200
+mouse_speed = 600
 scroll_speed = 20
 horizontal_threshold_pct = 85

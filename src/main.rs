@@ -15,6 +15,8 @@ use crate::match_event::print_event;
 use crate::mouse::{create_writing_thread};
 use crate::process_event::{ControllerState, process_event};
 
+static IS_DEBUG: bool = false;
+
 fn read_send_events(gilrs: &mut Gilrs, controller_state: &ControllerState) -> Result<()> {
     print_deadzones(gilrs, 0)?;
 
@@ -22,7 +24,10 @@ fn read_send_events(gilrs: &mut Gilrs, controller_state: &ControllerState) -> Re
         // Examine new events
         while let Some(Event { id, event, time }) = gilrs.next_event() {
             process_event(&event, &controller_state)?;
-            println!("{}", print_event(&event)?);
+
+            if IS_DEBUG {
+                println!("{}", print_event(&event)?);
+            }
 
             if event == Disconnected {
                 println!("Gamepad disconnected");
@@ -47,13 +52,13 @@ fn check_configs() -> Result<()> {
 fn init_controller() -> Result<()> {
     check_configs()?;
 
-    let mut gilrs = init_gilrs()?;
-
     let mut controller_state = ControllerState::default();
     let thread_handle = create_writing_thread(
         controller_state.mouse_receiver.clone(),
         controller_state.button_receiver.clone(),
     );
+
+    let mut gilrs = init_gilrs()?;
 
     let mut is_wait_msg_printed = false;
     loop {
