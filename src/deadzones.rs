@@ -1,6 +1,13 @@
 use gilrs::{Axis, Gamepad, Gilrs};
 use color_eyre::eyre::{OptionExt, Result};
-use crate::shared::*;
+use serde::{Deserialize, Serialize};
+use strum_macros::Display;
+
+#[derive(PartialEq, Default, Copy, Clone, Debug, Serialize, Deserialize)]
+struct Coords {
+    pub x: f32,
+    pub y: f32,
+}
 
 fn get_deadzone(gamepad: &Gamepad, axis: Axis) -> Result<f32> {
     gamepad.deadzone(gamepad.axis_code(axis).ok_or_eyre("No such axis")?).ok_or_eyre("Can't get a deadzone")

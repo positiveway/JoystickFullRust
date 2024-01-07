@@ -1,10 +1,13 @@
 use std::env::current_dir;
 use std::fs::read_to_string;
 use std::path::{Path, PathBuf};
+use std::time::Duration;
 use lazy_static::lazy_static;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use color_eyre::eyre::{Result};
+use strum_macros::Display;
 use crate::exec_or_eyre;
+use crate::match_event::ButtonName;
 
 
 const PROJECT_NAME: &str = "JoystickFullRust";
@@ -17,16 +20,30 @@ lazy_static! {
 }
 
 
-#[derive(Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Configs {
-    pub typing_layout: String,
-    pub buttons_layout: String,
+    #[serde(alias = "typing_layout")]
+    pub typing_layout_name: String,
+    #[serde(alias = "buttons_layout")]
+    pub buttons_layout_name: String,
+    #[serde(skip)]
+    pub buttons_layout: ButtonsLayout,
     #[serde(default)]
     pub finger_rotation: u8,
     #[serde(alias = "triggers_threshold_pct")]
     pub _triggers_threshold_pct: u8,
     #[serde(skip)]
     pub triggers_threshold_f32: f32,
+    #[serde(skip)]
+    pub channel_size: usize,
+    #[serde(skip)]
+    pub mouse_interval: Duration,
+    pub mouse_speed: u16,
+    pub scroll_speed: u16,
+    #[serde(alias = "horizontal_threshold_pct")]
+    pub _horizontal_threshold_pct: u8,
+    #[serde(skip)]
+    pub horizontal_threshold_f32: f32,
 }
 
 pub fn convert_pct(value: u8) -> f32{
@@ -40,13 +57,22 @@ impl Configs {
     pub fn load() -> Configs{
         let mut configs = Self::load_raw().unwrap();
         configs.triggers_threshold_f32 = convert_pct(configs._triggers_threshold_pct);
+        configs.horizontal_threshold_f32 = convert_pct(configs._horizontal_threshold_pct);
+        configs.channel_size = 100;
+        configs.mouse_interval = Duration::from_millis(1);
         configs
     }
 }
-// ButtonsLayout TypingLayout
 
-#[derive(Deserialize)]
-pub struct ButtonsLayout {}
+#[derive(Clone, Default, Debug, Serialize, Deserialize)]
+pub struct ButtonsLayout {
+    #[serde(alias = "switch_button")]
+    pub _switch_button: String,
+    pub switch_button: ButtonName,
+    #[serde(alias = "reset_button")]
+    pub _reset_button: String,
+    pub reset_button: ButtonName,
+}
 
 
 pub fn last_path_component(path: &Path) -> &str {

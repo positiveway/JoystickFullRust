@@ -19,3 +19,4 @@ duplicate = "1.0.0"
 strum = { version = "0.25.0", features = ["derive"] }
 strum_macros = "0.25.3"
 regex = "1.10.2"
+crossbeam-channel = "0.5.10"

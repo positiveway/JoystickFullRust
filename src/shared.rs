@@ -1,3 +1,5 @@
+use serde::{Deserialize, Serialize};
+use strum_macros::Display;
 #[macro_export]
 macro_rules! convert_error {
     ($err:expr $(,)?) => ({
@@ -15,8 +17,3 @@ macro_rules! exec_or_eyre {
     });
 }
 
-#[derive(Clone, Copy, Debug, Default)]
-pub struct Coords {
-    pub x: f32,
-    pub y: f32,
-}

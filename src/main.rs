@@ -3,6 +3,7 @@ mod match_event;
 mod shared;
 mod configs;
 mod process_event;
+mod mouse;
 
 use std::thread::sleep;
 use std::time::Duration;
@@ -11,13 +12,11 @@ use gilrs::{Event, EventType::*, Gilrs};
 use crate::configs::{Configs};
 use crate::deadzones::print_deadzones;
 use crate::match_event::print_event;
+use crate::mouse::{create_writing_thread};
 use crate::process_event::{ControllerState, process_event};
 
-
-fn read_send_events(gilrs: &mut Gilrs) -> Result<()> {
+fn read_send_events(gilrs: &mut Gilrs, controller_state: &ControllerState) -> Result<()> {
     print_deadzones(gilrs, 0)?;
-
-    let mut controller_state = ControllerState::default();
 
     loop {
         // Examine new events
@@ -39,9 +38,9 @@ fn init_gilrs() -> Result<Gilrs> {
     exec_or_eyre!(Gilrs::new())
 }
 
-fn check_configs() -> Result<()>{
+fn check_configs() -> Result<()> {
     let configs = Configs::load_raw()?;
-    println!("Layout: {}", configs.buttons_layout);
+    println!("Layout: {}", configs.buttons_layout_name);
     Ok(())
 }
 
@@ -49,6 +48,12 @@ fn init_controller() -> Result<()> {
     check_configs()?;
 
     let mut gilrs = init_gilrs()?;
+
+    let mut controller_state = ControllerState::default();
+    let thread_handle = create_writing_thread(
+        controller_state.mouse_receiver.clone(),
+        controller_state.button_receiver.clone(),
+    );
 
     let mut is_wait_msg_printed = false;
     loop {
@@ -68,10 +73,13 @@ fn init_controller() -> Result<()> {
             println!("Only one gamepad is supported. Disconnect other gamepads");
         } else {
             is_wait_msg_printed = false;
-            read_send_events(&mut gilrs)?;
+            read_send_events(&mut gilrs, &controller_state)?;
         }
         sleep(Duration::from_millis(5000));
     }
+
+    thread_handle.join().unwrap();
+    Ok(())
 }
 
 fn main() -> Result<()> {
