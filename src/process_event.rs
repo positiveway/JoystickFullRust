@@ -136,6 +136,9 @@ pub fn process_right_pad(event: &TransformedEvent, controller_state: &Controller
 
     match event.event_type {
         EventTypeName::AxisChanged => {
+            if event.value == 0f32 {
+                return Ok(TransformStatus::Discarded)
+            }
             match event.axis {
                 AxisName::PadX_SideR => {
                     send_mouse_event(PadEvent::Moved(event.value, true), controller_state)?;
