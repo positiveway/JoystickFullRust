@@ -1,6 +1,7 @@
 use std::thread;
 use std::thread::{JoinHandle, sleep};
 use std::time::Instant;
+use color_eyre::owo_colors::OwoColorize;
 use mouse_keyboard_input::{Coord, VirtualDevice};
 use serde::{Deserialize, Serialize};
 use strum_macros::Display;
@@ -27,9 +28,19 @@ impl Coords {
         self.y = None;
     }
 
+    fn update_one_coord(prev: &mut Option<f32>, new: Option<f32>) {
+        if new.is_some() {
+            *prev = new;
+        }
+    }
+
     pub fn update(&mut self, new: &Self) {
-        self.x = new.x;
-        self.y = new.y;
+        Self::update_one_coord(&mut self.x, new.x);
+        Self::update_one_coord(&mut self.y, new.y);
+    }
+
+    pub fn not_fully_init(&self) -> bool {
+        self.x.is_none() || self.y.is_none()
     }
 }
 
@@ -40,6 +51,10 @@ struct CoordsDiff {
 }
 
 impl CoordsDiff {
+    pub fn all_changed(&self) -> bool {
+        self.x != 0f32 && self.y != 0f32
+    }
+
     pub fn convert(&self, multiplier: u16) -> ConvertedCoordsDiff {
         ConvertedCoordsDiff {
             x: convert_diff(self.x, multiplier),
@@ -101,6 +116,12 @@ impl CoordsState {
     pub fn update(&mut self) {
         self.prev.update(&self.cur)
     }
+
+    pub fn update_if_not_init(&mut self) {
+        if self.prev.not_fully_init() {
+            self.update();
+        }
+    }
 }
 
 #[derive(Copy, Clone, Default, Debug, Serialize, Deserialize)]
@@ -116,19 +137,13 @@ impl PadsCoords {
         self.right_pad.reset();
         self.stick.reset();
     }
-
-    pub fn update(&mut self) {
-        self.left_pad.update();
-        self.right_pad.update();
-        self.stick.update();
-    }
 }
 
 
 fn assign_pad_stick_event(coords_state: &mut CoordsState, pad_stick_event: PadStickEvent) {
     match pad_stick_event {
         PadStickEvent::FingerLifted => {
-            coords_state.cur.reset()
+            coords_state.reset()
         }
         PadStickEvent::MovedX(value) => {
             coords_state.cur.x = Some(value);
@@ -137,6 +152,19 @@ fn assign_pad_stick_event(coords_state: &mut CoordsState, pad_stick_event: PadSt
             coords_state.cur.y = Some(value);
         }
     }
+}
+
+fn get_diff_and_update(coords_state: &mut CoordsState, multiplier: u16) -> ConvertedCoordsDiff {
+    let coords_diff = calc_diff(coords_state);
+    let coords_diff = coords_diff.convert(multiplier);
+    if coords_diff.is_any_changes() {
+        coords_state.update();
+    } else {
+        coords_state.update_if_not_init();
+    };
+    coords_state.cur.reset();
+
+    coords_diff
 }
 
 pub fn create_writing_thread(
@@ -184,25 +212,21 @@ pub fn create_writing_thread(
             }
 
             if mouse_mode != MouseMode::Typing {
-                let mouse_diff = calc_diff(&pads_coords.right_pad);
-                let mouse_diff = mouse_diff.convert(configs.mouse_speed);
+                let mouse_diff = get_diff_and_update(&mut pads_coords.right_pad, configs.mouse_speed);
                 if mouse_diff.is_any_changes() {
                     virtual_device.move_mouse(mouse_diff.x, -mouse_diff.y).unwrap();
                 }
 
                 if !is_gaming_mode {
-                    let scroll_diff = calc_diff(&pads_coords.left_pad);
-                    if scroll_diff.y.abs() > configs.horizontal_threshold_f32 {
-                        let scroll_diff = scroll_diff.convert(configs.scroll_speed);
+                    let scroll_diff = get_diff_and_update(&mut pads_coords.right_pad, configs.mouse_speed);
+                    if scroll_diff.is_any_changes() {
+                        virtual_device.scroll_x(scroll_diff.x).unwrap();
                         virtual_device.scroll_y(scroll_diff.y).unwrap();
-                    } else {
-                        let scroll_diff = scroll_diff.convert(configs.scroll_speed);
-                        virtual_device.scroll_y(scroll_diff.x).unwrap();
                     }
                 }
             }
 
-            pads_coords.update();
+            pads_coords.stick.update();
         };
 
         let mut button_func = || {
