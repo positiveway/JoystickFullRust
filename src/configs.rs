@@ -56,12 +56,14 @@ impl Configs {
         configs.channel_size = 100;
         configs.mouse_interval = Duration::from_millis(10);
 
+        configs.buttons_layout = ButtonsLayout::mock();
+
         Ok(configs)
     }
 }
 
 //FIXME: Remove default
-#[derive(Clone, Default, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct ButtonsLayout {
     pub gaming_mode: bool,
     #[serde(alias = "switch_button")]
@@ -70,6 +72,18 @@ pub struct ButtonsLayout {
     #[serde(alias = "reset_button")]
     pub _reset_button: String,
     pub reset_button: ButtonName,
+}
+
+impl ButtonsLayout {
+    pub fn mock() -> Self {
+        Self {
+            gaming_mode: false,
+            _switch_button: "".to_string(),
+            switch_button: ButtonName::BtnDown_SideR,
+            _reset_button: "".to_string(),
+            reset_button: ButtonName::ExtraBtnCentral,
+        }
+    }
 }
 
 

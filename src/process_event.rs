@@ -131,12 +131,12 @@ pub fn process_pad_stick(event: &TransformedEvent, controller_state: &Controller
                 _ => {}
             };
 
-            if event.button == controller_state.SWITCH_BUTTON {
-                send_mouse_event(MouseEvent::ModeSwitched)?;
-                return Ok(TransformStatus::Handled);
-            } else if event.button == controller_state.RESET_BUTTON {
+            if event.button == controller_state.RESET_BUTTON {
                 send_mouse_event(MouseEvent::Reset)?;
                 return Ok(TransformStatus::Unchanged);
+            } else if event.button == controller_state.SWITCH_BUTTON {
+                send_mouse_event(MouseEvent::ModeSwitched)?;
+                return Ok(TransformStatus::Handled);
             };
         }
         _ => {}
@@ -191,7 +191,7 @@ pub fn transform_left_pad(event: &TransformedEvent) -> TransformStatus {
         ButtonName::PadLeft_SideL => {
             TransformStatus::Transformed(TransformedEvent {
                 event_type: event.event_type,
-                axis: Default::default(),
+                axis: AxisName::None,
                 value: event.value,
                 button: ButtonName::PadAsBtn_SideL,
             })
@@ -210,22 +210,25 @@ pub fn transform_triggers(event: &TransformedEvent, configs: &Configs) -> Transf
 
     match event.axis {
         AxisName::LowerTrigger_SideL | AxisName::LowerTrigger_SideR => {
-            // this includes all buttons events so values 1.0 and 0.0 are handled
-            // EventTypeName::ButtonReleased | EventTypeName::ButtonPressed | EventTypeName::ButtonChanged => {
+            let button = match event.axis {
+                AxisName::LowerTrigger_SideL => { ButtonName::LowerTriggerAsBtn_SideL }
+                AxisName::LowerTrigger_SideR => { ButtonName::LowerTriggerAsBtn_SideR }
+                _ => { ButtonName::None }
+            };
             return TransformStatus::Transformed({
                 if event.value > configs.triggers_threshold_f32 {
                     TransformedEvent {
                         event_type: EventTypeName::ButtonPressed,
-                        axis: Default::default(),
+                        axis: AxisName::None,
                         value: 1f32,
-                        button: event.button,
+                        button,
                     }
                 } else {
                     TransformedEvent {
                         event_type: EventTypeName::ButtonReleased,
-                        axis: Default::default(),
+                        axis: AxisName::None,
                         value: 0f32,
-                        button: event.button,
+                        button,
                     }
                 }
             });

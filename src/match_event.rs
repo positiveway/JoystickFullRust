@@ -8,7 +8,7 @@ use crate::configs::Configs;
 use crate::exec_or_eyre;
 
 
-#[derive(EnumString, Display, Eq, Hash, PartialEq, Default, Copy, Clone, Debug, Serialize, Deserialize)]
+#[derive(EnumString, Display, Default, Eq, Hash, PartialEq, Copy, Clone, Debug, Serialize, Deserialize)]
 #[strum(serialize_all = "snake_case")]
 pub enum ButtonName {
     BtnUp_SideL,
@@ -52,10 +52,10 @@ pub enum ButtonName {
     ExtraBtnCentral,
     //
     #[default]
-    Unknown,
+    None,
 }
 
-#[derive(Display, Eq, Hash, PartialEq, Default, Copy, Clone, Debug, Serialize, Deserialize)]
+#[derive(Display, Default, Eq, Hash, PartialEq, Copy, Clone, Debug, Serialize, Deserialize)]
 #[strum(serialize_all = "snake_case")]
 pub enum AxisName {
     PadX_SideL,
@@ -71,7 +71,7 @@ pub enum AxisName {
     LowerTrigger_SideR,
     //
     #[default]
-    Unknown,
+    None,
 }
 
 #[derive(Display, Eq, Hash, PartialEq, Copy, Clone, Debug, Serialize, Deserialize)]
@@ -93,7 +93,7 @@ pub struct TransformedEvent {
 }
 
 pub fn match_button(code: u16) -> Result<ButtonName> {
-    let res = match code {
+    Ok(match code {
         304 => ButtonName::BtnDown_SideR,
         305 => ButtonName::BtnRight_SideR,
         308 => ButtonName::BtnUp_SideR,
@@ -122,16 +122,12 @@ pub fn match_button(code: u16) -> Result<ButtonName> {
         315 => ButtonName::ExtraBtn_SideR,
         316 => ButtonName::ExtraBtnCentral,
         //
-        _ => ButtonName::Unknown,
-    };
-    if res == ButtonName::Unknown {
-        bail!("Unknown button: {code}")
-    }
-    Ok(res)
+        _ => bail!("Unknown button: {code}")
+    })
 }
 
 pub fn match_axis(code: u16) -> Result<AxisName> {
-    let res = match code {
+    Ok(match code {
         16 => AxisName::PadX_SideL,
         17 => AxisName::PadY_SideL,
         //
@@ -144,12 +140,8 @@ pub fn match_axis(code: u16) -> Result<AxisName> {
         0 => AxisName::StickX,
         1 => AxisName::StickY,
         //
-        _ => AxisName::Unknown,
-    };
-    if res == AxisName::Unknown {
-        bail!("Unknown button: {code}")
-    }
-    Ok(res)
+        _ => bail!("Unknown button: {code}")
+    })
 }
 
 pub fn match_event(event: &EventType, configs: &Configs) -> Result<TransformedEvent> {
@@ -161,7 +153,7 @@ pub fn match_event(event: &EventType, configs: &Configs) -> Result<TransformedEv
                 event_type: EventTypeName::AxisChanged,
                 axis: match_axis(code_as_num)?,
                 value: *value,
-                button: Default::default(),
+                button: ButtonName::None,
             }
         }
         ButtonChanged(button, value, code) => {
@@ -172,7 +164,7 @@ pub fn match_event(event: &EventType, configs: &Configs) -> Result<TransformedEv
                     1f32 => EventTypeName::ButtonPressed,
                     _ => EventTypeName::ButtonChanged,
                 },
-                axis: Default::default(),
+                axis: AxisName::None,
                 value: *value,
                 button: match_button(code_as_num)?,
             }
@@ -180,7 +172,7 @@ pub fn match_event(event: &EventType, configs: &Configs) -> Result<TransformedEv
         Disconnected => {
             TransformedEvent {
                 event_type: EventTypeName::ButtonReleased,
-                axis: Default::default(),
+                axis: AxisName::None,
                 button: configs.buttons_layout.reset_button,
                 value: 0.0,
             }
@@ -188,8 +180,8 @@ pub fn match_event(event: &EventType, configs: &Configs) -> Result<TransformedEv
         _ => {
             TransformedEvent {
                 event_type: EventTypeName::Discarded,
-                axis: Default::default(),
-                button: Default::default(),
+                axis: AxisName::None,
+                button: ButtonName::None,
                 value: 0.0,
             }
         }
