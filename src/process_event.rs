@@ -8,19 +8,27 @@ use crossbeam_channel::{Sender, Receiver, bounded};
 use mouse_keyboard_input::Button;
 use strum_macros::Display;
 use crate::exec_or_eyre;
+use crate::process_event::PadStickEvent::FingerLifted;
 
 
 #[derive(Display, Copy, Clone, Debug, Serialize, Deserialize)]
-pub enum PadEvent {
+pub enum PadStickEvent {
     FingerLifted,
-    // value, is_x
-    Moved(f32, bool),
+    MovedX(f32),
+    MovedY(f32),
+}
+
+#[derive(Display, Copy, Clone, Debug, Serialize, Deserialize)]
+pub enum MouseEvent {
+    LeftPad(PadStickEvent),
+    RightPad(PadStickEvent),
+    Stick(PadStickEvent),
     ModeSwitched,
     Reset,
 }
 
-pub type MouseSender = Sender<PadEvent>;
-pub type MouseReceiver = Receiver<PadEvent>;
+pub type MouseSender = Sender<MouseEvent>;
+pub type MouseReceiver = Receiver<MouseEvent>;
 
 pub type ButtonSender = Sender<Button>;
 pub type ButtonReceiver = Receiver<Button>;
@@ -82,7 +90,7 @@ pub fn process_event(event: &EventType, controller_state: &ControllerState) -> R
         TransformStatus::Unchanged => {}
     };
 
-    match process_right_pad(&event, controller_state)? {
+    match process_pad_stick(&event, controller_state)? {
         TransformStatus::Discarded | TransformStatus::Handled => {
             return Ok(());
         }
@@ -95,57 +103,69 @@ pub fn process_event(event: &EventType, controller_state: &ControllerState) -> R
     Ok(())
 }
 
-fn send_mouse_event(pad_event: PadEvent, controller_state: &ControllerState) -> Result<()> {
-    exec_or_eyre!(controller_state.mouse_sender.send(pad_event))
-}
 
-pub fn process_right_pad(event: &TransformedEvent, controller_state: &ControllerState) -> Result<TransformStatus> {
+pub fn process_pad_stick(event: &TransformedEvent, controller_state: &ControllerState) -> Result<TransformStatus> {
     let switch_button: ButtonName = GLOBAL_CONFIGS.buttons_layout.switch_button;
     let reset_button: ButtonName = GLOBAL_CONFIGS.buttons_layout.reset_button;
 
-    match event.button {
-        ButtonName::PadAsTouch_SideR => {
-            match event.event_type {
-                EventTypeName::ButtonReleased => {
-                    send_mouse_event(PadEvent::FingerLifted, controller_state)?;
+    let send_mouse_event = |mouse_event: MouseEvent| -> Result<()> {
+        exec_or_eyre!(controller_state.mouse_sender.send(mouse_event))
+    };
+
+    match event.event_type {
+        EventTypeName::ButtonReleased => {
+            match event.button {
+                ButtonName::PadAsTouch_SideR => {
+                    send_mouse_event(MouseEvent::RightPad(FingerLifted))?;
+                    return Ok(TransformStatus::Handled);
+                }
+                ButtonName::PadAsTouch_SideL => {
+                    send_mouse_event(MouseEvent::LeftPad(FingerLifted))?;
                     return Ok(TransformStatus::Handled);
                 }
                 _ => {}
-            }
+            };
+
+            if event.button == switch_button {
+                send_mouse_event(MouseEvent::ModeSwitched)?;
+                return Ok(TransformStatus::Handled);
+            } else if event.button == reset_button {
+                send_mouse_event(MouseEvent::Reset)?;
+                return Ok(TransformStatus::Unchanged);
+            };
         }
         _ => {}
-    };
-
-    if event.button == switch_button {
-        match event.event_type {
-            EventTypeName::ButtonReleased => {
-                send_mouse_event(PadEvent::ModeSwitched, controller_state)?;
-                return Ok(TransformStatus::Handled);
-            }
-            _ => {}
-        }
-    } else if event.button == reset_button {
-        match event.event_type {
-            EventTypeName::ButtonReleased => {
-                send_mouse_event(PadEvent::Reset, controller_state)?;
-                return Ok(TransformStatus::Unchanged);
-            }
-            _ => {}
-        }
-    };
+    }
 
     match event.event_type {
         EventTypeName::AxisChanged => {
             if event.value == 0f32 {
-                return Ok(TransformStatus::Discarded)
-            }
+                return Ok(TransformStatus::Discarded);
+            };
+
             match event.axis {
+                AxisName::PadX_SideL => {
+                    send_mouse_event(MouseEvent::LeftPad(PadStickEvent::MovedX(event.value)))?;
+                    return Ok(TransformStatus::Handled);
+                }
+                AxisName::PadY_SideL => {
+                    send_mouse_event(MouseEvent::LeftPad(PadStickEvent::MovedY(event.value)))?;
+                    return Ok(TransformStatus::Handled);
+                }
                 AxisName::PadX_SideR => {
-                    send_mouse_event(PadEvent::Moved(event.value, true), controller_state)?;
+                    send_mouse_event(MouseEvent::RightPad(PadStickEvent::MovedX(event.value)))?;
                     return Ok(TransformStatus::Handled);
                 }
                 AxisName::PadY_SideR => {
-                    send_mouse_event(PadEvent::Moved(event.value, false), controller_state)?;
+                    send_mouse_event(MouseEvent::RightPad(PadStickEvent::MovedY(event.value)))?;
+                    return Ok(TransformStatus::Handled);
+                }
+                AxisName::StickX => {
+                    send_mouse_event(MouseEvent::Stick(PadStickEvent::MovedX(event.value)))?;
+                    return Ok(TransformStatus::Handled);
+                }
+                AxisName::StickY => {
+                    send_mouse_event(MouseEvent::Stick(PadStickEvent::MovedY(event.value)))?;
                     return Ok(TransformStatus::Handled);
                 }
                 _ => {}

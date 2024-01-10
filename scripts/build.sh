@@ -1,6 +1,6 @@
 build_clean=true
-use_polonius=true
-new_trait_solver=true
+use_polonius=false
+new_trait_solver=false
 use_another_linker=false #can make things slower
 
 # exit when any command fails

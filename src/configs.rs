@@ -45,7 +45,7 @@ pub struct Configs {
     pub horizontal_threshold_f32: f32,
 }
 
-pub fn convert_pct(value: u8) -> f32{
+pub fn convert_pct(value: u8) -> f32 {
     value as f32 / 100f32
 }
 
@@ -53,18 +53,20 @@ impl Configs {
     pub fn load_raw() -> Result<Configs> {
         read_toml(CONFIGS_DIR.as_path(), "configs")
     }
-    pub fn load() -> Configs{
+    pub fn load() -> Configs {
         let mut configs = Self::load_raw().unwrap();
         configs.triggers_threshold_f32 = convert_pct(configs._triggers_threshold_pct);
         configs.horizontal_threshold_f32 = convert_pct(configs._horizontal_threshold_pct);
         configs.channel_size = 100;
-        configs.mouse_interval = Duration::from_millis(1);
+        configs.mouse_interval = Duration::from_millis(10);
         configs
     }
 }
 
+//FIXME: Remove default
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
 pub struct ButtonsLayout {
+    pub gaming_mode: bool,
     #[serde(alias = "switch_button")]
     pub _switch_button: String,
     pub switch_button: ButtonName,

@@ -5,19 +5,32 @@ use mouse_keyboard_input::{Coord, VirtualDevice};
 use serde::{Deserialize, Serialize};
 use strum_macros::Display;
 use crate::configs::{Configs, GLOBAL_CONFIGS};
-use crate::process_event::{PadEvent, MouseReceiver, ButtonReceiver};
+use crate::process_event::{MouseEvent, MouseReceiver, ButtonReceiver, PadStickEvent};
 
 #[derive(Display, Eq, Hash, PartialEq, Default, Copy, Clone, Debug, Serialize, Deserialize)]
 pub enum MouseMode {
     #[default]
     CursorMove,
-    Scrolling,
+    Typing,
 }
 
-#[derive(PartialEq, Copy, Clone, Debug, Serialize, Deserialize)]
+#[derive(PartialEq, Copy, Clone, Default, Debug, Serialize, Deserialize)]
 struct Coords {
     pub x: Option<f32>,
     pub y: Option<f32>,
+}
+
+
+impl Coords {
+    pub fn reset(&mut self) {
+        self.x = None;
+        self.y = None;
+    }
+
+    pub fn update(&mut self, new: &Self) {
+        self.x = new.x;
+        self.y = new.y;
+    }
 }
 
 #[derive(PartialEq, Default, Copy, Clone, Debug, Serialize, Deserialize)]
@@ -26,19 +39,28 @@ struct CoordsDiff {
     pub y: f32,
 }
 
-
-impl Coords {
-    pub fn default() -> Self {
-        Self { x: None, y: None }
-    }
-
-    pub fn reset(&mut self) {
-        self.x = None;
-        self.y = None;
+impl CoordsDiff {
+    pub fn convert(&self, multiplier: u16) -> ConvertedCoordsDiff {
+        ConvertedCoordsDiff {
+            x: convert_diff(self.x, multiplier),
+            y: convert_diff(self.y, multiplier),
+        }
     }
 }
 
-fn calc_diff(prev_coord: Option<f32>, cur_coord: Option<f32>) -> f32 {
+#[derive(PartialEq, Copy, Clone, Debug, Serialize, Deserialize)]
+struct ConvertedCoordsDiff {
+    pub x: Coord,
+    pub y: Coord,
+}
+
+impl ConvertedCoordsDiff {
+    pub fn is_any_changes(&self) -> bool {
+        self.x != 0 || self.y != 0
+    }
+}
+
+fn calc_diff_one_coord(prev_coord: Option<f32>, cur_coord: Option<f32>) -> f32 {
     match cur_coord {
         None => { 0f32 }
         Some(cur_value) => {
@@ -52,8 +74,69 @@ fn calc_diff(prev_coord: Option<f32>, cur_coord: Option<f32>) -> f32 {
     }
 }
 
+fn calc_diff(coords_state: &CoordsState) -> CoordsDiff {
+    CoordsDiff {
+        x: calc_diff_one_coord(coords_state.prev.x, coords_state.cur.x),
+        y: calc_diff_one_coord(coords_state.prev.y, coords_state.cur.y),
+    }
+}
+
 fn convert_diff(value: f32, multiplier: u16) -> Coord {
     (value * multiplier as f32).round() as Coord
+}
+
+
+#[derive(Copy, Clone, Default, Debug, Serialize, Deserialize)]
+pub struct CoordsState {
+    prev: Coords,
+    cur: Coords,
+}
+
+impl CoordsState {
+    pub fn reset(&mut self) {
+        self.prev.reset();
+        self.cur.reset();
+    }
+
+    pub fn update(&mut self) {
+        self.prev.update(&self.cur)
+    }
+}
+
+#[derive(Copy, Clone, Default, Debug, Serialize, Deserialize)]
+pub struct PadsCoords {
+    left_pad: CoordsState,
+    right_pad: CoordsState,
+    stick: CoordsState,
+}
+
+impl PadsCoords {
+    pub fn reset(&mut self) {
+        self.left_pad.reset();
+        self.right_pad.reset();
+        self.stick.reset();
+    }
+
+    pub fn update(&mut self) {
+        self.left_pad.update();
+        self.right_pad.update();
+        self.stick.update();
+    }
+}
+
+
+fn assign_pad_stick_event(coords_state: &mut CoordsState, pad_stick_event: PadStickEvent) {
+    match pad_stick_event {
+        PadStickEvent::FingerLifted => {
+            coords_state.cur.reset()
+        }
+        PadStickEvent::MovedX(value) => {
+            coords_state.cur.x = Some(value);
+        }
+        PadStickEvent::MovedY(value) => {
+            coords_state.cur.y = Some(value);
+        }
+    }
 }
 
 pub fn create_writing_thread(mouse_receiver: MouseReceiver, button_receiver: ButtonReceiver) -> JoinHandle<()> {
@@ -62,73 +145,61 @@ pub fn create_writing_thread(mouse_receiver: MouseReceiver, button_receiver: But
 
         let configs: Configs = GLOBAL_CONFIGS.clone();
         let writing_interval = configs.mouse_interval;
+        let is_gaming_mode = configs.buttons_layout.gaming_mode;
 
         let mut mouse_mode = MouseMode::default();
-        let mut cur_coords = Coords::default();
-        let mut prev_coords = Coords::default();
+        let mut pads_coords = PadsCoords::default();
+
 
         let mut mouse_func = || {
             for event in mouse_receiver.try_iter() {
                 match event {
-                    PadEvent::Reset => {
-                        cur_coords.reset();
-                        mouse_mode = MouseMode::default();
-                    }
-
-                    PadEvent::FingerLifted => {
-                        cur_coords.reset();
-                    }
-                    PadEvent::Moved(value, is_x) => {
-                        match is_x {
-                            true => {
-                                cur_coords.x = Some(value);
-                            }
-                            false => {
-                                cur_coords.y = Some(value);
-                            }
-                        }
-                    }
-                    PadEvent::ModeSwitched => {
+                    MouseEvent::ModeSwitched => {
                         match mouse_mode {
                             MouseMode::CursorMove => {
-                                mouse_mode = MouseMode::Scrolling;
+                                mouse_mode = MouseMode::Typing;
                             }
-                            MouseMode::Scrolling => {
+                            MouseMode::Typing => {
                                 mouse_mode = MouseMode::CursorMove;
                             }
                         }
                     }
-                }
-            }
-
-            let multiplier = match mouse_mode {
-                MouseMode::CursorMove => { configs.mouse_speed }
-                MouseMode::Scrolling => { configs.scroll_speed }
-            };
-
-            let coords_diff = CoordsDiff {
-                x: calc_diff(prev_coords.x, cur_coords.x),
-                y: calc_diff(prev_coords.y, cur_coords.y),
-            };
-
-            match mouse_mode {
-                MouseMode::CursorMove => {
-                    virtual_device.move_mouse(
-                        convert_diff(coords_diff.x, multiplier),
-                        convert_diff(-coords_diff.y, multiplier),
-                    ).unwrap();
-                }
-                MouseMode::Scrolling => {
-                    if coords_diff.y.abs() > configs.horizontal_threshold_f32 {
-                        virtual_device.scroll_y(convert_diff(coords_diff.y, multiplier)).unwrap();
-                    } else {
-                        virtual_device.scroll_x(convert_diff(coords_diff.x, multiplier)).unwrap();
+                    MouseEvent::Reset => {
+                        mouse_mode = MouseMode::default();
+                        pads_coords.reset();
+                    }
+                    MouseEvent::LeftPad(pad_stick_event) => {
+                        assign_pad_stick_event(&mut pads_coords.left_pad, pad_stick_event)
+                    }
+                    MouseEvent::RightPad(pad_stick_event) => {
+                        assign_pad_stick_event(&mut pads_coords.right_pad, pad_stick_event)
+                    }
+                    MouseEvent::Stick(pad_stick_event) => {
+                        assign_pad_stick_event(&mut pads_coords.stick, pad_stick_event)
                     }
                 }
             }
 
-            prev_coords.x = cur_coords.x;
-            prev_coords.y = cur_coords.y;
+            if mouse_mode != MouseMode::Typing {
+                let mouse_diff = calc_diff(&pads_coords.right_pad);
+                let mouse_diff = mouse_diff.convert(configs.mouse_speed);
+                if mouse_diff.is_any_changes() {
+                    virtual_device.move_mouse(mouse_diff.x, -mouse_diff.y).unwrap();
+                }
+
+                if !is_gaming_mode {
+                    let scroll_diff = calc_diff(&pads_coords.left_pad);
+                    if scroll_diff.y.abs() > configs.horizontal_threshold_f32 {
+                        let scroll_diff = scroll_diff.convert(configs.scroll_speed);
+                        virtual_device.scroll_y(scroll_diff.y).unwrap();
+                    } else {
+                        let scroll_diff = scroll_diff.convert(configs.scroll_speed);
+                        virtual_device.scroll_y(scroll_diff.x).unwrap();
+                    }
+                }
+            }
+
+            pads_coords.update();
         };
 
         let mut button_func = || {
