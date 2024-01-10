@@ -1,7 +1,6 @@
 use std::thread;
 use std::thread::{JoinHandle, sleep};
 use std::time::Instant;
-use color_eyre::owo_colors::OwoColorize;
 use mouse_keyboard_input::{Coord, VirtualDevice};
 use serde::{Deserialize, Serialize};
 use strum_macros::Display;
@@ -34,13 +33,20 @@ impl Coords {
         }
     }
 
+    fn update_one_if_not_init(prev: &mut Option<f32>, new: Option<f32>) {
+        if prev.is_none() {
+            Self::update_one_coord(prev, new);
+        }
+    }
+
     pub fn update(&mut self, new: &Self) {
         Self::update_one_coord(&mut self.x, new.x);
         Self::update_one_coord(&mut self.y, new.y);
     }
 
-    pub fn not_fully_init(&self) -> bool {
-        self.x.is_none() || self.y.is_none()
+    pub fn update_if_not_init(&mut self, new: &Self) {
+        Self::update_one_if_not_init(&mut self.x, new.x);
+        Self::update_one_if_not_init(&mut self.y, new.y);
     }
 }
 
@@ -51,9 +57,9 @@ struct CoordsDiff {
 }
 
 impl CoordsDiff {
-    pub fn all_changed(&self) -> bool {
-        self.x != 0f32 && self.y != 0f32
-    }
+    // pub fn all_changed(&self) -> bool {
+    //     self.x != 0f32 && self.y != 0f32
+    // }
 
     pub fn convert(&self, multiplier: u16) -> ConvertedCoordsDiff {
         ConvertedCoordsDiff {
@@ -118,9 +124,7 @@ impl CoordsState {
     }
 
     pub fn update_if_not_init(&mut self) {
-        if self.prev.not_fully_init() {
-            self.update();
-        }
+        self.prev.update_if_not_init(&self.cur);
     }
 }
 
