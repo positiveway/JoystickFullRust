@@ -4,7 +4,7 @@ use std::time::Instant;
 use mouse_keyboard_input::{Coord, VirtualDevice};
 use serde::{Deserialize, Serialize};
 use strum_macros::Display;
-use crate::configs::{Configs, GLOBAL_CONFIGS};
+use crate::configs::{Configs};
 use crate::process_event::{MouseEvent, MouseReceiver, ButtonReceiver, PadStickEvent};
 
 #[derive(Display, Eq, Hash, PartialEq, Default, Copy, Clone, Debug, Serialize, Deserialize)]
@@ -139,11 +139,14 @@ fn assign_pad_stick_event(coords_state: &mut CoordsState, pad_stick_event: PadSt
     }
 }
 
-pub fn create_writing_thread(mouse_receiver: MouseReceiver, button_receiver: ButtonReceiver) -> JoinHandle<()> {
+pub fn create_writing_thread(
+    mouse_receiver: MouseReceiver,
+    button_receiver: ButtonReceiver,
+    configs: Configs,
+) -> JoinHandle<()> {
     thread::spawn(move || {
         let mut virtual_device = VirtualDevice::default().unwrap();
 
-        let configs: Configs = GLOBAL_CONFIGS.clone();
         let writing_interval = configs.mouse_interval;
         let is_gaming_mode = configs.buttons_layout.gaming_mode;
 

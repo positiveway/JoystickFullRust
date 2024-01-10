@@ -15,7 +15,7 @@ use crate::match_event::print_event;
 use crate::mouse::{create_writing_thread};
 use crate::process_event::{ControllerState, process_event};
 
-static IS_DEBUG: bool = false;
+static IS_DEBUG: bool = true;
 
 fn read_send_events(gilrs: &mut Gilrs, controller_state: &ControllerState) -> Result<()> {
     print_deadzones(gilrs, 0)?;
@@ -43,19 +43,16 @@ fn init_gilrs() -> Result<Gilrs> {
     exec_or_eyre!(Gilrs::new())
 }
 
-fn check_configs() -> Result<()> {
-    let configs = Configs::load_raw()?;
-    println!("Layout: {}", configs.buttons_layout_name);
-    Ok(())
-}
 
 fn init_controller() -> Result<()> {
-    check_configs()?;
+    let configs = Configs::load()?;
+    println!("Layout: {}", configs.buttons_layout_name);
 
-    let mut controller_state = ControllerState::default();
+    let mut controller_state = ControllerState::new(configs.clone());
     let thread_handle = create_writing_thread(
         controller_state.mouse_receiver.clone(),
         controller_state.button_receiver.clone(),
+        configs,
     );
 
     let mut gilrs = init_gilrs()?;
@@ -87,6 +84,9 @@ fn init_controller() -> Result<()> {
     Ok(())
 }
 
+// Don't use lazy_static with multiple threads.
+// Lock poisoning or CPU-level contention will occur.
+// One thread will stay in locked state
 fn main() -> Result<()> {
     color_eyre::install()?;
 

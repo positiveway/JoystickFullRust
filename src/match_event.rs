@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use strum_macros::{Display, EnumString};
 use regex::Regex;
 use color_eyre::eyre::{bail, Result};
-use crate::configs::GLOBAL_CONFIGS;
+use crate::configs::Configs;
 use crate::exec_or_eyre;
 
 
@@ -152,7 +152,7 @@ pub fn match_axis(code: u16) -> Result<AxisName> {
     Ok(res)
 }
 
-pub fn match_event(event: &EventType) -> Result<TransformedEvent> {
+pub fn match_event(event: &EventType, configs: &Configs) -> Result<TransformedEvent> {
     Ok(match event {
         AxisChanged(axis, value, code) => {
             let code_as_num = print_code(code)?;
@@ -181,7 +181,7 @@ pub fn match_event(event: &EventType) -> Result<TransformedEvent> {
             TransformedEvent {
                 event_type: EventTypeName::ButtonReleased,
                 axis: Default::default(),
-                button: GLOBAL_CONFIGS.buttons_layout.reset_button,
+                button: configs.buttons_layout.reset_button,
                 value: 0.0,
             }
         }

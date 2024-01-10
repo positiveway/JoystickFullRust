@@ -14,8 +14,6 @@ const PROJECT_NAME: &str = "JoystickFullRust";
 lazy_static! {
     pub static ref CONFIGS_DIR: PathBuf = get_project_dir().join("config");
     pub static ref LAYOUTS_DIR: PathBuf = CONFIGS_DIR.join("layouts");
-
-    pub static ref GLOBAL_CONFIGS: Configs = Configs::load();
 }
 
 
@@ -50,16 +48,15 @@ pub fn convert_pct(value: u8) -> f32 {
 }
 
 impl Configs {
-    pub fn load_raw() -> Result<Configs> {
-        read_toml(CONFIGS_DIR.as_path(), "configs")
-    }
-    pub fn load() -> Configs {
-        let mut configs = Self::load_raw().unwrap();
+    pub fn load() -> Result<Configs> {
+        let mut configs: Configs = read_toml(CONFIGS_DIR.as_path(), "configs")?;
+
         configs.triggers_threshold_f32 = convert_pct(configs._triggers_threshold_pct);
         configs.horizontal_threshold_f32 = convert_pct(configs._horizontal_threshold_pct);
         configs.channel_size = 100;
         configs.mouse_interval = Duration::from_millis(10);
-        configs
+
+        Ok(configs)
     }
 }
 
