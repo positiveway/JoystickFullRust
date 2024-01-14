@@ -1,4 +1,4 @@
-use gilrs::{Axis, Gamepad, Gilrs};
+use gilrs::{Axis, Filter, Gamepad, Gilrs};
 use color_eyre::eyre::{OptionExt, Result};
 use serde::{Deserialize, Serialize};
 use strum_macros::Display;
@@ -21,6 +21,7 @@ fn get_gamepad(gilrs: &Gilrs, id: usize) -> Result<Gamepad> {
             res = Some(gamepad);
         }
     };
+    // gilrs.next_event().filter_ev()
     res.ok_or_eyre("Couldn't get Gamepad by id")
 }
 

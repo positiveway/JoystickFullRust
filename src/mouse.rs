@@ -4,13 +4,12 @@ use std::time::Instant;
 use mouse_keyboard_input::{Coord, VirtualDevice};
 use serde::{Deserialize, Serialize};
 use strum_macros::Display;
-use crate::configs::{Configs};
+use crate::configs::{Configs, JitterThreshold};
 use color_eyre::eyre::{Result};
 use crate::process_event::{MouseEvent, MouseReceiver, ButtonReceiver, PadStickEvent};
 use crate::exec_or_eyre;
 
 use std::f64::consts::PI;
-use gilrs::ev::filter::Jitter;
 
 fn smoothing_factor(t_e: f64, cutoff: f64) -> f64 {
     let r = 2.0 * PI * cutoff * t_e;
@@ -119,10 +118,6 @@ struct CoordsDiff {
 }
 
 impl CoordsDiff {
-    // pub fn all_changed(&self) -> bool {
-    //     self.x != 0f32 && self.y != 0f32
-    // }
-
     pub fn convert(&self, multiplier: u16) -> ConvertedCoordsDiff {
         ConvertedCoordsDiff {
             x: convert_diff(self.x, multiplier),
@@ -130,7 +125,11 @@ impl CoordsDiff {
         }
     }
 
-    pub fn full_diff(&self) -> f64 {
+    pub fn is_any_changes(&self) -> bool {
+        self.x != 0.0 || self.y != 0.0
+    }
+
+    pub fn magnitude(&self) -> f64 {
         hypot(self.x, self.y)
     }
 }
@@ -146,30 +145,38 @@ impl ConvertedCoordsDiff {
         self.x != 0 || self.y != 0
     }
 
-    pub fn full_diff(&self) -> f64 {
+    pub fn magnitude(&self) -> f64 {
         hypot(self.x, self.y)
     }
 }
 
+#[derive(Copy, Clone, Default, Debug, Serialize, Deserialize)]
+pub struct PadsDiff {
+    left_pad: CoordsDiff,
+    right_pad: CoordsDiff,
+    stick: CoordsDiff,
+}
 
-fn calc_diff_one_coord(prev_coord: Option<f32>, cur_coord: Option<f32>) -> f32 {
+fn discard_jitter(value: f32, jitter_threshold: f32) -> f32 {
+    if value.abs() <= jitter_threshold {
+        0.0
+    } else {
+        value
+    }
+}
+
+fn calc_diff_one_coord(prev_coord: Option<f32>, cur_coord: Option<f32>, jitter_threshold: f32) -> f32 {
     match cur_coord {
         None => { 0f32 }
         Some(cur_value) => {
             match prev_coord {
                 None => { 0f32 }
                 Some(prev_value) => {
-                    cur_value - prev_value
+                    let diff = cur_value - prev_value;
+                    discard_jitter(diff, jitter_threshold)
                 }
             }
         }
-    }
-}
-
-fn calc_diff(coords_state: &CoordsState) -> CoordsDiff {
-    CoordsDiff {
-        x: calc_diff_one_coord(coords_state.prev.x, coords_state.cur.x),
-        y: calc_diff_one_coord(coords_state.prev.y, coords_state.cur.y),
     }
 }
 
@@ -197,6 +204,13 @@ impl CoordsState {
     pub fn update_if_not_init(&mut self) {
         self.prev.update_if_not_init(&self.cur);
     }
+
+    fn calc_diff(&self, jitter_threshold: f32) -> CoordsDiff {
+        CoordsDiff {
+            x: calc_diff_one_coord(self.prev.x, self.cur.x, jitter_threshold),
+            y: calc_diff_one_coord(self.prev.y, self.cur.y, jitter_threshold),
+        }
+    }
 }
 
 #[derive(Copy, Clone, Default, Debug, Serialize, Deserialize)]
@@ -212,8 +226,33 @@ impl PadsCoords {
         self.right_pad.reset();
         self.stick.reset();
     }
-}
 
+    pub fn update(&mut self) {
+        self.left_pad.update();
+        self.right_pad.update();
+        self.stick.update();
+    }
+
+    pub fn update_if_not_init(&mut self) {
+        self.left_pad.update_if_not_init();
+        self.right_pad.update_if_not_init();
+        self.stick.update_if_not_init();
+    }
+
+    pub fn calc_diff(&self, jitter_threshold: &JitterThreshold) -> PadsDiff {
+        PadsDiff {
+            left_pad: self.left_pad.calc_diff(jitter_threshold.left_pad),
+            right_pad: self.right_pad.calc_diff(jitter_threshold.right_pad),
+            stick: self.stick.calc_diff(jitter_threshold.stick),
+        }
+    }
+
+    pub fn calc_diff_and_update(&mut self, jitter_threshold: &JitterThreshold) -> PadsDiff {
+        let pads_diff = self.calc_diff(jitter_threshold);
+        self.update_if_not_init();
+        pads_diff
+    }
+}
 
 fn assign_pad_stick_event(coords_state: &mut CoordsState, pad_stick_event: PadStickEvent) {
     match pad_stick_event {
@@ -229,25 +268,6 @@ fn assign_pad_stick_event(coords_state: &mut CoordsState, pad_stick_event: PadSt
     }
 }
 
-fn get_diff_and_update(coords_state: &mut CoordsState, multiplier: u16) -> ConvertedCoordsDiff {
-    let coords_diff = calc_diff(coords_state);
-    // if coords_diff.x != 0f32 || coords_diff.y != 0f32{
-    //     println!("({}, {})", coords_diff.x, coords_diff.y);
-    // }
-    let coords_diff = coords_diff.convert(multiplier);
-
-    coords_state.update();
-
-    // if coords_diff.is_any_changes() {
-    //     coords_state.update();
-    // } else {
-    //     coords_state.update_if_not_init();
-    // };
-    // coords_state.cur.reset();
-
-    coords_diff
-}
-
 fn writing_thread(
     mouse_receiver: MouseReceiver,
     button_receiver: ButtonReceiver,
@@ -260,7 +280,6 @@ fn writing_thread(
 
     let mut mouse_mode = MouseMode::default();
     let mut pads_coords = PadsCoords::default();
-
 
     let mut mouse_func = || -> Result<()> {
         for event in mouse_receiver.try_iter() {
@@ -291,15 +310,19 @@ fn writing_thread(
             }
         }
 
+        let pads_diff = pads_coords.calc_diff_and_update(&configs.jitter_threshold);
+
         if mouse_mode != MouseMode::Typing {
-            let mouse_diff = get_diff_and_update(&mut pads_coords.right_pad, configs.mouse_speed);
+            let mouse_diff = pads_diff.right_pad.convert(configs.mouse_speed);
             if mouse_diff.is_any_changes() {
+                pads_coords.right_pad.update();
                 exec_or_eyre!(virtual_device.move_mouse(mouse_diff.x, -mouse_diff.y))?;
             }
 
             if !is_gaming_mode {
-                let scroll_diff = get_diff_and_update(&mut pads_coords.left_pad, configs.scroll_speed);
+                let scroll_diff = pads_diff.left_pad.convert(configs.scroll_speed);
                 if scroll_diff.is_any_changes() {
+                    pads_coords.left_pad.update();
                     exec_or_eyre!(virtual_device.scroll_x(scroll_diff.x))?;
                     exec_or_eyre!(virtual_device.scroll_y(scroll_diff.y))?;
                 }
@@ -307,6 +330,7 @@ fn writing_thread(
         }
 
         pads_coords.stick.update();
+        // pads_coords.update();
         Ok(())
     };
 

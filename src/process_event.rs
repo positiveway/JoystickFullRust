@@ -153,30 +153,6 @@ pub fn process_pad_stick(event: &TransformedEvent, controller_state: &Controller
                 return Ok(TransformStatus::Discarded);
             };
 
-            let discard_jitter = |jitter_threshold: f32| -> bool {
-                event.value.abs() <= jitter_threshold
-            };
-
-            let jitter_threshold = &controller_state.configs.jitter_threshold;
-
-            if match event.axis {
-                AxisName::PadX_SideL | AxisName::PadY_SideL => {
-                    discard_jitter(jitter_threshold.left_pad)
-                }
-                AxisName::PadX_SideR | AxisName::PadY_SideR => {
-                    discard_jitter(jitter_threshold.right_pad)
-                }
-                AxisName::StickX | AxisName::StickY => {
-                    discard_jitter(jitter_threshold.stick)
-                }
-                _ => {
-                    false
-                }
-            }
-            {
-                return Ok(TransformStatus::Discarded);
-            }
-
             if let Some(event_to_send) =
                 match event.axis {
                     AxisName::PadX_SideL => {
