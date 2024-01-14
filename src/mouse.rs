@@ -344,6 +344,7 @@ fn writing_thread(
         }
 
         pads_coords.stick.update();
+        //Important to keep
         pads_coords.update_if_not_init();
         // pads_coords.update();
         Ok(())
