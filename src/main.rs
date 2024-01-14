@@ -6,10 +6,13 @@ mod process_event;
 mod mouse;
 mod math_ops;
 
+use std::env;
 use std::thread::sleep;
 use std::time::Duration;
 use color_eyre::eyre::{Result};
+use env_logger::{Builder, builder};
 use gilrs::{Event, EventType::*, Gilrs};
+use log::debug;
 use crate::configs::{Configs};
 use crate::deadzones::print_deadzones;
 use crate::match_event::print_event;
@@ -26,7 +29,7 @@ fn read_send_events(gilrs: &mut Gilrs, controller_state: &ControllerState) -> Re
             process_event(&event, &controller_state)?;
 
             if controller_state.configs.debug {
-                println!("{}", print_event(&event)?);
+                debug!("{}", print_event(&event)?);
             }
 
             if event == Disconnected {
@@ -46,7 +49,21 @@ fn init_gilrs() -> Result<Gilrs> {
 
 fn init_controller() -> Result<()> {
     let configs = Configs::load()?;
-    println!("Layout: {}", configs.buttons_layout_name);
+
+    if env::var("RUST_LOG").is_err() {
+        env::set_var("RUST_LOG", match configs.debug {
+            true => { "debug" }
+            false => { "warn" }
+        })
+    }
+    builder()
+        .format_module_path(false)
+        .format_target(false)
+        .format_indent(None)
+        .format_timestamp(None)
+        .init();
+
+    debug!("Layout: {}", configs.buttons_layout_name);
 
     let mut controller_state = ControllerState::new(configs.clone());
     let thread_handle = create_writing_thread(
@@ -86,6 +103,7 @@ fn init_controller() -> Result<()> {
 // One thread will stay in locked state
 fn main() -> Result<()> {
     color_eyre::install()?;
+
 
     init_controller()
 }

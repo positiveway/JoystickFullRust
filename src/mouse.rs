@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use strum_macros::Display;
 use crate::configs::{Configs, FingerRotation, JitterThreshold};
 use color_eyre::eyre::{bail, Result};
+use log::{debug, info};
 use crate::process_event::{MouseEvent, MouseReceiver, ButtonReceiver, PadStickEvent};
 use crate::exec_or_eyre;
 use crate::math_ops::{hypot, rotate_around_center, Vector, NONE_VAL_ERR_MSG};
@@ -216,11 +217,11 @@ impl CoordsState {
 
         let rotated_coords = rotated_vector.as_coords();
         if self.debug {
-            println!("Origin: {}", self.cur);
-            println!("Rotated: {}", rotated_coords);
-            println!("Angle: [Orig: {}, Shifted: {}; Rotation: {}]",
+            debug!("Origin: {}", self.cur);
+            debug!("Rotated: {}", rotated_coords);
+            debug!("Angle: [Orig: {}, Shifted: {}; Rotation: {}]",
                      orig_angle, rotated_vector.angle(), self.finger_rotation);
-            println!();
+            debug!("");
         }
         Ok(rotated_coords)
     }
@@ -234,7 +235,7 @@ impl CoordsState {
             true => {
                 match self.rotate_cur_coords() {
                     Err(error) => {
-                        println!("{}", error);
+                        info!("{}", error);
                         self.cur
                     }
                     Ok(rotated_coords) => {
@@ -251,7 +252,7 @@ impl CoordsState {
                 match self.rotate_prev_coords() {
                     Ok(value) => { value }
                     Err(error) => {
-                        println!("{}", error);
+                        info!("{}", error);
                         self.prev
                     }
                 }

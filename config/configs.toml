@@ -1,7 +1,7 @@
-debug = false
-buttons_layout="gaming"
-typing_layout="typing"
-triggers_threshold_pct=30
+debug = true
+buttons_layout = "gaming"
+typing_layout = "typing"
+triggers_threshold_pct = 30
 mouse_speed = 400
 scroll_speed = 600
 horizontal_threshold_pct = 35
