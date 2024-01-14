@@ -227,7 +227,7 @@ pub fn print_axis(axis: &Axis) -> &str {
 }
 
 fn print_code(code: &Code) -> Result<u16> {
-    let re = Regex::new(r"\(([0-9]+)\)").unwrap();
+    let re = exec_or_eyre!(Regex::new(r"\(([0-9]+)\)"))?;
     let binding = code.to_string();
     let Some(caps) = re.captures(binding.as_str()) else {
         bail!("Can't extract code: {}", code.to_string())

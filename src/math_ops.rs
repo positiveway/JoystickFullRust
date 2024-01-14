@@ -1,4 +1,6 @@
-use color_eyre::owo_colors::colors::xterm::CodGray;
+#![feature(const_trait_impl)]
+
+use color_eyre::eyre::{bail, Result, OptionExt};
 use serde::{Deserialize, Serialize};
 use crate::mouse::Coords;
 
@@ -73,6 +75,10 @@ pub struct Vector {
     pub y: f32,
 }
 
+pub const CONVERT_ERR_MSG: &str = "Could not convert";
+pub const NONE_VAL_ERR_MSG: &str = "Value is None";
+
+
 impl Vector {
     pub fn as_coords(&self) -> Coords {
         Coords {
@@ -80,22 +86,22 @@ impl Vector {
             y: Some(self.y),
         }
     }
-    pub fn from_2_coords(point1: Coords, point2: Coords) -> Option<Vector> {
+    pub fn from_2_coords(point1: Coords, point2: Coords) -> Result<Vector> {
         if point1.any_is_none() || point2.any_is_none() {
-            return None;
-        }
+            bail!(NONE_VAL_ERR_MSG);
+        };
 
-        Some(Self {
-            x: point2.x.unwrap() - point1.x.unwrap(),
-            y: point2.y.unwrap() - point1.y.unwrap(),
+        Ok(Self {
+            x: point2.x.ok_or_eyre(CONVERT_ERR_MSG)? - point1.x.ok_or_eyre(CONVERT_ERR_MSG)?,
+            y: point2.y.ok_or_eyre(CONVERT_ERR_MSG)? - point1.y.ok_or_eyre(CONVERT_ERR_MSG)?,
         })
     }
 
-    pub fn from_coords(coords: Coords) -> Self {
-        Self {
-            x: coords.x.unwrap(),
-            y: coords.y.unwrap(),
-        }
+    pub fn from_coords(coords: Coords) -> Result<Self> {
+        Ok(Self {
+            x: coords.x.ok_or_eyre(CONVERT_ERR_MSG)?,
+            y: coords.y.ok_or_eyre(CONVERT_ERR_MSG)?,
+        })
     }
 
     pub fn angle(&self) -> f32 {
@@ -152,21 +158,12 @@ impl std::ops::SubAssign<Vector> for Vector {
     }
 }
 
-pub fn rotate_by_angle(point1: Coords, point2: Coords, rotation_angle: f32) -> Option<Vector> {
-    if point1.any_is_none() || point2.any_is_none() {
-        return None;
-    }
-
-    let point1 = Vector::from_coords(point1);
-    let mut point2 = Vector::from_coords(point2);
-
-
+pub fn rotate_by_angle(point1: Vector, mut point2: Vector, rotation_angle: f32) -> Vector {
     let rotation_angle = rotation_angle * DEGREES_TO_RADIANS;
     let sin: f32 = rotation_angle.sin();
     let cos: f32 = rotation_angle.cos();
 
     point2 -= point1;
-
 
     let mut rotated_point = Vector {
         x: point2.x * cos - point2.y * sin,
@@ -175,9 +172,9 @@ pub fn rotate_by_angle(point1: Coords, point2: Coords, rotation_angle: f32) -> O
 
     rotated_point += point1;
 
-    Some(rotated_point)
+    rotated_point
 }
 
-pub fn rotate_around_center(point: Coords, rotation_angle: f32) -> Option<Vector> {
-    rotate_by_angle(Vector::zero().as_coords(), point, rotation_angle)
+pub fn rotate_around_center(point: Vector, rotation_angle: f32) -> Vector {
+    rotate_by_angle(Vector::zero(), point, rotation_angle)
 }

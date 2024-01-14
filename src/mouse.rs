@@ -5,10 +5,10 @@ use mouse_keyboard_input::{Coord, VirtualDevice};
 use serde::{Deserialize, Serialize};
 use strum_macros::Display;
 use crate::configs::{Configs, FingerRotation, JitterThreshold};
-use color_eyre::eyre::{Result};
+use color_eyre::eyre::{bail, Result};
 use crate::process_event::{MouseEvent, MouseReceiver, ButtonReceiver, PadStickEvent};
 use crate::exec_or_eyre;
-use crate::math_ops::{hypot, rotate_around_center, Vector};
+use crate::math_ops::{hypot, rotate_around_center, Vector, NONE_VAL_ERR_MSG};
 
 
 #[derive(Display, Eq, Hash, PartialEq, Default, Copy, Clone, Debug, Serialize, Deserialize)]
@@ -53,11 +53,24 @@ impl Coords {
         Self::update_one_if_not_init(&mut self.y, new.y);
     }
 
+    // fn set_one_coord(cur: &mut Option<f32>, prev: Option<f32>) {
+    //     if cur.is_none() {
+    //         *cur = prev;
+    //     }
+    // }
+
+    // pub fn set_prev_if_cur_is_none(&mut self, prev: &Self) {
+    //     Self::set_one_coord(&mut self.x, prev.x);
+    //     Self::set_one_coord(&mut self.y, prev.y);
+    // }
+
     pub fn any_is_none(&self) -> bool {
         self.x.is_none() || self.y.is_none()
     }
 
-
+    pub fn any_changes(&self) -> bool {
+        self.x.is_some() || self.y.is_some()
+    }
 }
 
 fn option_to_string(value: Option<f32>) -> String {
@@ -116,23 +129,14 @@ impl ConvertedCoordsDiff {
     }
 }
 
-fn discard_jitter(value: f32, jitter_threshold: f32) -> f32 {
-    if value.abs() <= jitter_threshold {
-        0.0
-    } else {
-        value
-    }
-}
-
-fn calc_diff_one_coord(prev_coord: Option<f32>, cur_coord: Option<f32>, jitter_threshold: f32) -> f32 {
-    match cur_coord {
-        None => { 0f32 }
-        Some(cur_value) => {
-            match prev_coord {
-                None => { 0f32 }
-                Some(prev_value) => {
-                    let diff = cur_value - prev_value;
-                    discard_jitter(diff, jitter_threshold)
+fn calc_diff_one_coord(prev_coord: Option<f32>, cur_coord: Option<f32>) -> f32 {
+    match prev_coord {
+        None => { 0.0 }
+        Some(prev_value) => {
+            match cur_coord {
+                None => { 0.0 }
+                Some(cur_value) => {
+                    cur_value - prev_value
                 }
             }
         }
@@ -162,8 +166,20 @@ impl CoordsState {
         }
     }
 
+    pub fn any_changes(&self) -> bool {
+        self.cur.any_changes()
+    }
+
+    // pub fn set_prev_if_cur_is_none(&mut self) {
+    //     self.cur.set_prev_if_cur_is_none(&self.prev);
+    // }
+
     pub fn reset(&mut self) {
         self.prev.reset();
+        self.cur.reset();
+    }
+
+    pub fn reset_current(&mut self) {
         self.cur.reset();
     }
 
@@ -175,25 +191,42 @@ impl CoordsState {
         self.prev.update_if_not_init(&self.cur);
     }
 
-    pub fn rotate_coords(&self) -> Option<Coords> {
-        match rotate_around_center(self.cur, self.finger_rotation as f32) {
-            None => { None }
-            Some(rotated_vector) => {
-                let rotated_coords = rotated_vector.as_coords();
-                println!("Origin: {}", self.cur);
-                println!("Rotated: {}", rotated_coords);
-                println!("Angle: [Orig: {}, Shifted: {}; Rotation: {}]", Vector::from_coords(self.cur).angle(), rotated_vector.angle(), self.finger_rotation);
-                Some(rotated_coords)
-            }
-        }
+    fn get_cur_or_prev(prev: Option<f32>, cur: Option<f32>) -> Result<f32> {
+        Ok(match cur {
+            None => match prev {
+                None => bail!(NONE_VAL_ERR_MSG),
+                Some(value) => { value }
+            },
+            Some(value) => { value }
+        })
+    }
+
+    pub fn rotate_coords(&self) -> Result<Coords> {
+        let point = Vector {
+            x: Self::get_cur_or_prev(self.prev.x, self.cur.x)?,
+            y: Self::get_cur_or_prev(self.prev.y, self.cur.y)?,
+        };
+
+        let orig_angle = point.angle();
+        let rotated_vector = rotate_around_center(point, self.finger_rotation as f32);
+
+        let rotated_coords = rotated_vector.as_coords();
+        println!("Origin: {}", self.cur);
+        println!("Rotated: {}", rotated_coords);
+        println!("Angle: [Orig: {}, Shifted: {}; Rotation: {}]",
+                 orig_angle, rotated_vector.angle(), self.finger_rotation);
+        println!();
+        Ok(rotated_coords)
     }
 
     pub fn diff(&mut self) -> CoordsDiff {
-        self.rotate_coords();
         let cur_coords = self.cur;
         // let cur_coords = match self.rotate_coords(){
-        //     None => {self.cur}
-        //     Some(rotated_coords) => {
+        //     Err(error) => {
+        //         println!("{}", error);
+        //         self.cur
+        //     }
+        //     Ok(rotated_coords) => {
         //         self.cur.x=rotated_coords.x;
         //         self.cur.y=rotated_coords.y;
         //         rotated_coords
@@ -201,8 +234,8 @@ impl CoordsState {
         // };
 
         let diff = CoordsDiff {
-            x: calc_diff_one_coord(self.prev.x, cur_coords.x, self.jitter_threshold),
-            y: calc_diff_one_coord(self.prev.y, cur_coords.y, self.jitter_threshold),
+            x: calc_diff_one_coord(self.prev.x, cur_coords.x),
+            y: calc_diff_one_coord(self.prev.y, cur_coords.y),
         };
         diff
     }
@@ -250,6 +283,18 @@ impl PadsCoords {
         self.stick.reset();
     }
 
+    pub fn reset_current(&mut self) {
+        self.left_pad.reset_current();
+        self.right_pad.reset_current();
+        self.stick.reset_current();
+    }
+
+    // pub fn set_prev_if_cur_is_none(&mut self) {
+    //     self.left_pad.set_prev_if_cur_is_none();
+    //     self.right_pad.set_prev_if_cur_is_none();
+    //     self.stick.set_prev_if_cur_is_none();
+    // }
+
     pub fn update(&mut self) {
         self.left_pad.update();
         self.right_pad.update();
@@ -263,16 +308,35 @@ impl PadsCoords {
     }
 }
 
-fn assign_pad_stick_event(coords_state: &mut CoordsState, pad_stick_event: PadStickEvent) {
+fn is_jitter(value: f32, jitter_threshold: f32) -> bool {
+    value.abs() <= jitter_threshold
+}
+
+fn discard_jitter(prev_value: Option<f32>, new_value: f32, jitter_threshold: f32) -> Option<f32> {
+    match prev_value {
+        None => { Some(new_value) }
+        Some(prev_value) => {
+            let diff = new_value - prev_value;
+            match is_jitter(diff, jitter_threshold) {
+                true => { None }
+                false => { Some(new_value) }
+            }
+        }
+    }
+}
+
+fn assign_pad_stick_event(coords_state: &mut CoordsState, jitter_threshold: f32, pad_stick_event: PadStickEvent) {
     match pad_stick_event {
         PadStickEvent::FingerLifted => {
             coords_state.reset()
         }
         PadStickEvent::MovedX(value) => {
-            coords_state.cur.x = Some(value);
+            coords_state.cur.x = discard_jitter(
+                coords_state.prev.x, value, jitter_threshold);
         }
         PadStickEvent::MovedY(value) => {
-            coords_state.cur.y = Some(value);
+            coords_state.cur.y = discard_jitter(
+                coords_state.prev.y, value, jitter_threshold);
         }
     }
 }
@@ -308,30 +372,41 @@ fn writing_thread(
                     pads_coords.reset();
                 }
                 MouseEvent::LeftPad(pad_stick_event) => {
-                    assign_pad_stick_event(&mut pads_coords.left_pad, pad_stick_event)
+                    assign_pad_stick_event(&mut pads_coords.left_pad,
+                                           configs.jitter_threshold.left_pad,
+                                           pad_stick_event)
                 }
                 MouseEvent::RightPad(pad_stick_event) => {
-                    assign_pad_stick_event(&mut pads_coords.right_pad, pad_stick_event)
+                    assign_pad_stick_event(&mut pads_coords.right_pad,
+                                           configs.jitter_threshold.right_pad,
+                                           pad_stick_event)
                 }
                 MouseEvent::Stick(pad_stick_event) => {
-                    assign_pad_stick_event(&mut pads_coords.stick, pad_stick_event)
+                    assign_pad_stick_event(&mut pads_coords.stick,
+                                           configs.jitter_threshold.stick,
+                                           pad_stick_event)
                 }
             }
         }
 
-        if mouse_mode != MouseMode::Typing {
-            let mouse_diff = pads_coords.right_pad.diff_and_update();
-            let mouse_diff = mouse_diff.convert(configs.mouse_speed);
-            if mouse_diff.is_any_changes() {
-                exec_or_eyre!(virtual_device.move_mouse(mouse_diff.x, -mouse_diff.y))?;
-            }
+        // pads_coords.set_prev_if_cur_is_none();
 
+        if mouse_mode != MouseMode::Typing {
+            if pads_coords.right_pad.any_changes() {
+                let mouse_diff = pads_coords.right_pad.diff();
+                let mouse_diff = mouse_diff.convert(configs.mouse_speed);
+                if mouse_diff.is_any_changes() {
+                    exec_or_eyre!(virtual_device.move_mouse(mouse_diff.x, -mouse_diff.y))?;
+                }
+            }
             if !is_gaming_mode {
-                let scroll_diff = pads_coords.left_pad.diff_and_update();
-                let scroll_diff = scroll_diff.convert(configs.scroll_speed);
-                if scroll_diff.is_any_changes() {
-                    exec_or_eyre!(virtual_device.scroll_x(scroll_diff.x))?;
-                    exec_or_eyre!(virtual_device.scroll_y(scroll_diff.y))?;
+                if pads_coords.left_pad.any_changes() {
+                    let scroll_diff = pads_coords.left_pad.diff();
+                    let scroll_diff = scroll_diff.convert(configs.scroll_speed);
+                    if scroll_diff.is_any_changes() {
+                        exec_or_eyre!(virtual_device.scroll_x(scroll_diff.x))?;
+                        exec_or_eyre!(virtual_device.scroll_y(scroll_diff.y))?;
+                    }
                 }
             }
         }
@@ -339,7 +414,8 @@ fn writing_thread(
         pads_coords.stick.update();
         //Important to keep
         pads_coords.update_if_not_init();
-        // pads_coords.update();
+        pads_coords.update();
+        pads_coords.reset_current();
         Ok(())
     };
 
@@ -370,6 +446,4 @@ pub fn create_writing_thread(
     thread::spawn(move || {
         writing_thread(mouse_receiver, button_receiver, configs).unwrap();
     })
-
-    // scheduler.join().expect("Scheduler panicked");
 }

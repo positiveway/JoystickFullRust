@@ -81,9 +81,6 @@ fn init_controller() -> Result<()> {
         }
         sleep(Duration::from_millis(5000));
     }
-
-    thread_handle.join().unwrap();
-    Ok(())
 }
 
 // Don't use lazy_static with multiple threads.
