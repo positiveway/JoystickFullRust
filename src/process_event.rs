@@ -119,16 +119,21 @@ pub fn process_pad_stick(event: &TransformedEvent, controller_state: &Controller
 
     match event.event_type {
         EventTypeName::ButtonReleased => {
-            match event.button {
-                ButtonName::PadAsTouch_SideR => {
-                    send_mouse_event(MouseEvent::RightPad(FingerLifted))?;
-                    return Ok(TransformStatus::Handled);
+            if let Some(event_to_send) =
+                match event.button {
+                    ButtonName::PadAsTouch_SideR => {
+                        Some(MouseEvent::RightPad(FingerLifted))
+                    }
+                    ButtonName::PadAsTouch_SideL => {
+                        Some(MouseEvent::LeftPad(FingerLifted))
+                    }
+                    _ => {
+                        None
+                    }
                 }
-                ButtonName::PadAsTouch_SideL => {
-                    send_mouse_event(MouseEvent::LeftPad(FingerLifted))?;
-                    return Ok(TransformStatus::Handled);
-                }
-                _ => {}
+            {
+                send_mouse_event(event_to_send)?;
+                return Ok(TransformStatus::Handled);
             };
 
             if event.button == controller_state.RESET_BUTTON {
@@ -148,32 +153,57 @@ pub fn process_pad_stick(event: &TransformedEvent, controller_state: &Controller
                 return Ok(TransformStatus::Discarded);
             };
 
-            match event.axis {
-                AxisName::PadX_SideL => {
-                    send_mouse_event(MouseEvent::LeftPad(PadStickEvent::MovedX(event.value)))?;
-                    return Ok(TransformStatus::Handled);
+            let discard_jitter = |jitter_threshold: f32| -> bool {
+                event.value.abs() <= jitter_threshold
+            };
+
+            let jitter_threshold = &controller_state.configs.jitter_threshold;
+
+            if match event.axis {
+                AxisName::PadX_SideL | AxisName::PadY_SideL => {
+                    discard_jitter(jitter_threshold.left_pad)
                 }
-                AxisName::PadY_SideL => {
-                    send_mouse_event(MouseEvent::LeftPad(PadStickEvent::MovedY(event.value)))?;
-                    return Ok(TransformStatus::Handled);
+                AxisName::PadX_SideR | AxisName::PadY_SideR => {
+                    discard_jitter(jitter_threshold.right_pad)
                 }
-                AxisName::PadX_SideR => {
-                    send_mouse_event(MouseEvent::RightPad(PadStickEvent::MovedX(event.value)))?;
-                    return Ok(TransformStatus::Handled);
+                AxisName::StickX | AxisName::StickY => {
+                    discard_jitter(jitter_threshold.stick)
                 }
-                AxisName::PadY_SideR => {
-                    send_mouse_event(MouseEvent::RightPad(PadStickEvent::MovedY(event.value)))?;
-                    return Ok(TransformStatus::Handled);
+                _ => {
+                    false
                 }
-                AxisName::StickX => {
-                    send_mouse_event(MouseEvent::Stick(PadStickEvent::MovedX(event.value)))?;
-                    return Ok(TransformStatus::Handled);
+            }
+            {
+                return Ok(TransformStatus::Discarded);
+            }
+
+            if let Some(event_to_send) =
+                match event.axis {
+                    AxisName::PadX_SideL => {
+                        Some(MouseEvent::LeftPad(PadStickEvent::MovedX(event.value)))
+                    }
+                    AxisName::PadY_SideL => {
+                        Some(MouseEvent::LeftPad(PadStickEvent::MovedY(event.value)))
+                    }
+                    AxisName::PadX_SideR => {
+                        Some(MouseEvent::RightPad(PadStickEvent::MovedX(event.value)))
+                    }
+                    AxisName::PadY_SideR => {
+                        Some(MouseEvent::RightPad(PadStickEvent::MovedY(event.value)))
+                    }
+                    AxisName::StickX => {
+                        Some(MouseEvent::Stick(PadStickEvent::MovedX(event.value)))
+                    }
+                    AxisName::StickY => {
+                        Some(MouseEvent::Stick(PadStickEvent::MovedY(event.value)))
+                    }
+                    _ => {
+                        None
+                    }
                 }
-                AxisName::StickY => {
-                    send_mouse_event(MouseEvent::Stick(PadStickEvent::MovedY(event.value)))?;
-                    return Ok(TransformStatus::Handled);
-                }
-                _ => {}
+            {
+                send_mouse_event(event_to_send)?;
+                return Ok(TransformStatus::Handled);
             };
         }
         _ => {}

@@ -5,7 +5,69 @@ use mouse_keyboard_input::{Coord, VirtualDevice};
 use serde::{Deserialize, Serialize};
 use strum_macros::Display;
 use crate::configs::{Configs};
+use color_eyre::eyre::{Result};
 use crate::process_event::{MouseEvent, MouseReceiver, ButtonReceiver, PadStickEvent};
+use crate::exec_or_eyre;
+
+use std::f64::consts::PI;
+use gilrs::ev::filter::Jitter;
+
+fn smoothing_factor(t_e: f64, cutoff: f64) -> f64 {
+    let r = 2.0 * PI * cutoff * t_e;
+    r / (r + 1.0)
+}
+
+fn exponential_smoothing(a: f64, x: f64, x_prev: f64) -> f64 {
+    a * x + (1.0 - a) * x_prev
+}
+
+fn create_filter(cutoff: f64, beta: f64) -> impl FnMut(f64, f64) -> f64 {
+    let mut self_filter = Filter {
+        cutoff: cutoff,
+        beta: beta,
+        d_cutoff: 1.0,
+        dx0: 0.0,
+        x_prev: 0.0,
+        dx_prev: 0.0,
+        t_prev: 0.0,
+    };
+
+    move |t: f64, x: f64| {
+        let t_e = t - self_filter.t_prev;
+        let a_d = smoothing_factor(t_e, self_filter.d_cutoff);
+        let dx = (x - self_filter.x_prev) / t_e;
+        let dx_hat = exponential_smoothing(a_d, dx, self_filter.dx_prev);
+        let cutoff = self_filter.cutoff + self_filter.beta * dx_hat.abs();
+        let a = smoothing_factor(t_e, cutoff);
+        let x_hat = exponential_smoothing(a, x, self_filter.x_prev);
+        self_filter.x_prev = x_hat;
+        self_filter.dx_prev = dx_hat;
+        self_filter.t_prev = t;
+        x_hat
+    }
+}
+
+struct Filter {
+    cutoff: f64,
+    beta: f64,
+    d_cutoff: f64,
+    dx0: f64,
+    x_prev: f64,
+    dx_prev: f64,
+    t_prev: f64,
+}
+
+// fn main() {
+//     let filter = create_filter(1.0, 0.0);
+//     let result = filter(0.0, 0.0);
+//     println!("{}", result);
+// }
+
+pub fn hypot<T>(a: T, b: T) -> f64
+    where T: core::ops::Mul<T, Output=T> + core::ops::Add<T, Output=T> + core::convert::Into<f64> + Copy
+{
+    (a * a + b * b).into().sqrt()
+}
 
 #[derive(Display, Eq, Hash, PartialEq, Default, Copy, Clone, Debug, Serialize, Deserialize)]
 pub enum MouseMode {
@@ -67,6 +129,10 @@ impl CoordsDiff {
             y: convert_diff(self.y, multiplier),
         }
     }
+
+    pub fn full_diff(&self) -> f64 {
+        hypot(self.x, self.y)
+    }
 }
 
 #[derive(PartialEq, Copy, Clone, Debug, Serialize, Deserialize)]
@@ -79,7 +145,12 @@ impl ConvertedCoordsDiff {
     pub fn is_any_changes(&self) -> bool {
         self.x != 0 || self.y != 0
     }
+
+    pub fn full_diff(&self) -> f64 {
+        hypot(self.x, self.y)
+    }
 }
+
 
 fn calc_diff_one_coord(prev_coord: Option<f32>, cur_coord: Option<f32>) -> f32 {
     match cur_coord {
@@ -160,15 +231,102 @@ fn assign_pad_stick_event(coords_state: &mut CoordsState, pad_stick_event: PadSt
 
 fn get_diff_and_update(coords_state: &mut CoordsState, multiplier: u16) -> ConvertedCoordsDiff {
     let coords_diff = calc_diff(coords_state);
+    // if coords_diff.x != 0f32 || coords_diff.y != 0f32{
+    //     println!("({}, {})", coords_diff.x, coords_diff.y);
+    // }
     let coords_diff = coords_diff.convert(multiplier);
-    if coords_diff.is_any_changes() {
-        coords_state.update();
-    } else {
-        coords_state.update_if_not_init();
-    };
-    coords_state.cur.reset();
+
+    coords_state.update();
+
+    // if coords_diff.is_any_changes() {
+    //     coords_state.update();
+    // } else {
+    //     coords_state.update_if_not_init();
+    // };
+    // coords_state.cur.reset();
 
     coords_diff
+}
+
+fn writing_thread(
+    mouse_receiver: MouseReceiver,
+    button_receiver: ButtonReceiver,
+    configs: Configs,
+) -> Result<()> {
+    let mut virtual_device = exec_or_eyre!(VirtualDevice::default())?;
+
+    let writing_interval = configs.mouse_interval;
+    let is_gaming_mode = configs.buttons_layout.gaming_mode;
+
+    let mut mouse_mode = MouseMode::default();
+    let mut pads_coords = PadsCoords::default();
+
+
+    let mut mouse_func = || -> Result<()> {
+        for event in mouse_receiver.try_iter() {
+            match event {
+                MouseEvent::ModeSwitched => {
+                    match mouse_mode {
+                        MouseMode::CursorMove => {
+                            mouse_mode = MouseMode::Typing;
+                        }
+                        MouseMode::Typing => {
+                            mouse_mode = MouseMode::CursorMove;
+                        }
+                    }
+                }
+                MouseEvent::Reset => {
+                    mouse_mode = MouseMode::default();
+                    pads_coords.reset();
+                }
+                MouseEvent::LeftPad(pad_stick_event) => {
+                    assign_pad_stick_event(&mut pads_coords.left_pad, pad_stick_event)
+                }
+                MouseEvent::RightPad(pad_stick_event) => {
+                    assign_pad_stick_event(&mut pads_coords.right_pad, pad_stick_event)
+                }
+                MouseEvent::Stick(pad_stick_event) => {
+                    assign_pad_stick_event(&mut pads_coords.stick, pad_stick_event)
+                }
+            }
+        }
+
+        if mouse_mode != MouseMode::Typing {
+            let mouse_diff = get_diff_and_update(&mut pads_coords.right_pad, configs.mouse_speed);
+            if mouse_diff.is_any_changes() {
+                exec_or_eyre!(virtual_device.move_mouse(mouse_diff.x, -mouse_diff.y))?;
+            }
+
+            if !is_gaming_mode {
+                let scroll_diff = get_diff_and_update(&mut pads_coords.left_pad, configs.scroll_speed);
+                if scroll_diff.is_any_changes() {
+                    exec_or_eyre!(virtual_device.scroll_x(scroll_diff.x))?;
+                    exec_or_eyre!(virtual_device.scroll_y(scroll_diff.y))?;
+                }
+            }
+        }
+
+        pads_coords.stick.update();
+        Ok(())
+    };
+
+    let mut button_func = || -> Result<()> {
+        for event in button_receiver.try_iter() {}
+        Ok(())
+    };
+
+    loop {
+        let start = Instant::now();
+
+        mouse_func()?;
+        button_func()?;
+
+        let runtime = start.elapsed();
+
+        if let Some(remaining) = writing_interval.checked_sub(runtime) {
+            sleep(remaining);
+        }
+    }
 }
 
 pub fn create_writing_thread(
@@ -177,78 +335,7 @@ pub fn create_writing_thread(
     configs: Configs,
 ) -> JoinHandle<()> {
     thread::spawn(move || {
-        let mut virtual_device = VirtualDevice::default().unwrap();
-
-        let writing_interval = configs.mouse_interval;
-        let is_gaming_mode = configs.buttons_layout.gaming_mode;
-
-        let mut mouse_mode = MouseMode::default();
-        let mut pads_coords = PadsCoords::default();
-
-
-        let mut mouse_func = || {
-            for event in mouse_receiver.try_iter() {
-                match event {
-                    MouseEvent::ModeSwitched => {
-                        match mouse_mode {
-                            MouseMode::CursorMove => {
-                                mouse_mode = MouseMode::Typing;
-                            }
-                            MouseMode::Typing => {
-                                mouse_mode = MouseMode::CursorMove;
-                            }
-                        }
-                    }
-                    MouseEvent::Reset => {
-                        mouse_mode = MouseMode::default();
-                        pads_coords.reset();
-                    }
-                    MouseEvent::LeftPad(pad_stick_event) => {
-                        assign_pad_stick_event(&mut pads_coords.left_pad, pad_stick_event)
-                    }
-                    MouseEvent::RightPad(pad_stick_event) => {
-                        assign_pad_stick_event(&mut pads_coords.right_pad, pad_stick_event)
-                    }
-                    MouseEvent::Stick(pad_stick_event) => {
-                        assign_pad_stick_event(&mut pads_coords.stick, pad_stick_event)
-                    }
-                }
-            }
-
-            if mouse_mode != MouseMode::Typing {
-                let mouse_diff = get_diff_and_update(&mut pads_coords.right_pad, configs.mouse_speed);
-                if mouse_diff.is_any_changes() {
-                    virtual_device.move_mouse(mouse_diff.x, -mouse_diff.y).unwrap();
-                }
-
-                if !is_gaming_mode {
-                    let scroll_diff = get_diff_and_update(&mut pads_coords.right_pad, configs.mouse_speed);
-                    if scroll_diff.is_any_changes() {
-                        virtual_device.scroll_x(scroll_diff.x).unwrap();
-                        virtual_device.scroll_y(scroll_diff.y).unwrap();
-                    }
-                }
-            }
-
-            pads_coords.stick.update();
-        };
-
-        let mut button_func = || {
-            for event in button_receiver.try_iter() {}
-        };
-
-        loop {
-            let start = Instant::now();
-
-            mouse_func();
-            button_func();
-
-            let runtime = start.elapsed();
-
-            if let Some(remaining) = writing_interval.checked_sub(runtime) {
-                sleep(remaining);
-            }
-        }
+        writing_thread(mouse_receiver, button_receiver, configs).unwrap();
     })
 
     // scheduler.join().expect("Scheduler panicked");

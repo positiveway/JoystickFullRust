@@ -80,7 +80,6 @@ pub enum EventTypeName {
     AxisChanged,
     ButtonReleased,
     ButtonPressed,
-    ButtonChanged,
     Discarded,
 }
 
@@ -162,7 +161,7 @@ pub fn match_event(event: &EventType, configs: &Configs) -> Result<TransformedEv
                 event_type: match *value {
                     0f32 => EventTypeName::ButtonReleased,
                     1f32 => EventTypeName::ButtonPressed,
-                    _ => EventTypeName::ButtonChanged,
+                    _ => bail!("Cannot happen"),
                 },
                 axis: AxisName::None,
                 value: *value,
@@ -286,10 +285,5 @@ pub fn print_event(event: &EventType) -> Result<String> {
             event_type = "Dropped"
         }
     };
-    let mut res_value = res_value.to_string();
-    const MAX_LENGTH: usize = 4;
-    if res_value.len() > MAX_LENGTH {
-        res_value = res_value[..MAX_LENGTH].parse()?
-    }
-    Ok(format!("{event_type}; BtnOrAxis: {button_or_axis}; Value: {res_value}; Code: {code_as_str}; Num: {code_as_num}"))
+    Ok(format!("{event_type}; BtnOrAxis: {button_or_axis}; Value: {:.3}; Code: {code_as_str}; Num: {code_as_num}", res_value))
 }

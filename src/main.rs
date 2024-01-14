@@ -15,7 +15,7 @@ use crate::match_event::print_event;
 use crate::mouse::{create_writing_thread};
 use crate::process_event::{ControllerState, process_event};
 
-static IS_DEBUG: bool = false;
+static IS_DEBUG: bool = true;
 
 fn read_send_events(gilrs: &mut Gilrs, controller_state: &ControllerState) -> Result<()> {
     print_deadzones(gilrs, 0)?;

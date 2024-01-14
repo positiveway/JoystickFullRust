@@ -18,6 +18,13 @@ lazy_static! {
 
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct JitterThreshold {
+    pub left_pad: f32,
+    pub right_pad: f32,
+    pub stick: f32,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Configs {
     #[serde(alias = "typing_layout")]
     pub typing_layout_name: String,
@@ -41,6 +48,7 @@ pub struct Configs {
     pub _horizontal_threshold_pct: u8,
     #[serde(skip)]
     pub horizontal_threshold_f32: f32,
+    pub jitter_threshold: JitterThreshold,
 }
 
 pub fn convert_pct(value: u8) -> f32 {
@@ -54,7 +62,7 @@ impl Configs {
         configs.triggers_threshold_f32 = convert_pct(configs._triggers_threshold_pct);
         configs.horizontal_threshold_f32 = convert_pct(configs._horizontal_threshold_pct);
         configs.channel_size = 100;
-        configs.mouse_interval = Duration::from_millis(10);
+        configs.mouse_interval = Duration::from_millis(1);
 
         configs.buttons_layout = ButtonsLayout::mock();
 
