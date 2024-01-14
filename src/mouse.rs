@@ -150,13 +150,6 @@ impl ConvertedCoordsDiff {
     }
 }
 
-#[derive(Copy, Clone, Default, Debug, Serialize, Deserialize)]
-pub struct PadsDiff {
-    left_pad: CoordsDiff,
-    right_pad: CoordsDiff,
-    stick: CoordsDiff,
-}
-
 fn discard_jitter(value: f32, jitter_threshold: f32) -> f32 {
     if value.abs() <= jitter_threshold {
         0.0
@@ -185,13 +178,22 @@ fn convert_diff(value: f32, multiplier: u16) -> Coord {
 }
 
 
-#[derive(Copy, Clone, Default, Debug, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 pub struct CoordsState {
     prev: Coords,
     cur: Coords,
+    jitter_threshold: f32,
 }
 
 impl CoordsState {
+    pub fn new(jitter_threshold: f32) -> Self {
+        Self {
+            prev: Default::default(),
+            cur: Default::default(),
+            jitter_threshold,
+        }
+    }
+
     pub fn reset(&mut self) {
         self.prev.reset();
         self.cur.reset();
@@ -205,15 +207,35 @@ impl CoordsState {
         self.prev.update_if_not_init(&self.cur);
     }
 
-    fn calc_diff(&self, jitter_threshold: f32) -> CoordsDiff {
+    pub fn diff(&self) -> CoordsDiff {
         CoordsDiff {
-            x: calc_diff_one_coord(self.prev.x, self.cur.x, jitter_threshold),
-            y: calc_diff_one_coord(self.prev.y, self.cur.y, jitter_threshold),
+            x: calc_diff_one_coord(self.prev.x, self.cur.x, self.jitter_threshold),
+            y: calc_diff_one_coord(self.prev.y, self.cur.y, self.jitter_threshold),
         }
+    }
+
+    pub fn convert_diff(&self, multiplier: u16) -> ConvertedCoordsDiff {
+        self.diff().convert(multiplier)
+    }
+
+    pub fn diff_and_update(&mut self) -> CoordsDiff {
+        let diff = self.diff();
+        if diff.is_any_changes() {
+            self.update();
+        }
+        diff
+    }
+
+    pub fn convert_diff_and_update(&mut self, multiplier: u16) -> ConvertedCoordsDiff {
+        let converted_diff = self.convert_diff(multiplier);
+        if converted_diff.is_any_changes() {
+            self.update();
+        }
+        converted_diff
     }
 }
 
-#[derive(Copy, Clone, Default, Debug, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 pub struct PadsCoords {
     left_pad: CoordsState,
     right_pad: CoordsState,
@@ -221,6 +243,14 @@ pub struct PadsCoords {
 }
 
 impl PadsCoords {
+    pub fn new(jitter_threshold: &JitterThreshold) -> Self {
+        Self {
+            left_pad: CoordsState::new(jitter_threshold.left_pad),
+            right_pad: CoordsState::new(jitter_threshold.right_pad),
+            stick: CoordsState::new(jitter_threshold.stick),
+        }
+    }
+
     pub fn reset(&mut self) {
         self.left_pad.reset();
         self.right_pad.reset();
@@ -237,20 +267,6 @@ impl PadsCoords {
         self.left_pad.update_if_not_init();
         self.right_pad.update_if_not_init();
         self.stick.update_if_not_init();
-    }
-
-    pub fn calc_diff(&self, jitter_threshold: &JitterThreshold) -> PadsDiff {
-        PadsDiff {
-            left_pad: self.left_pad.calc_diff(jitter_threshold.left_pad),
-            right_pad: self.right_pad.calc_diff(jitter_threshold.right_pad),
-            stick: self.stick.calc_diff(jitter_threshold.stick),
-        }
-    }
-
-    pub fn calc_diff_and_update(&mut self, jitter_threshold: &JitterThreshold) -> PadsDiff {
-        let pads_diff = self.calc_diff(jitter_threshold);
-        self.update_if_not_init();
-        pads_diff
     }
 }
 
@@ -279,7 +295,7 @@ fn writing_thread(
     let is_gaming_mode = configs.buttons_layout.gaming_mode;
 
     let mut mouse_mode = MouseMode::default();
-    let mut pads_coords = PadsCoords::default();
+    let mut pads_coords = PadsCoords::new(&configs.jitter_threshold);
 
     let mut mouse_func = || -> Result<()> {
         for event in mouse_receiver.try_iter() {
@@ -310,19 +326,17 @@ fn writing_thread(
             }
         }
 
-        let pads_diff = pads_coords.calc_diff_and_update(&configs.jitter_threshold);
-
         if mouse_mode != MouseMode::Typing {
-            let mouse_diff = pads_diff.right_pad.convert(configs.mouse_speed);
+            let mouse_diff = pads_coords.right_pad.diff_and_update();
+            let mouse_diff = mouse_diff.convert(configs.mouse_speed);
             if mouse_diff.is_any_changes() {
-                pads_coords.right_pad.update();
                 exec_or_eyre!(virtual_device.move_mouse(mouse_diff.x, -mouse_diff.y))?;
             }
 
             if !is_gaming_mode {
-                let scroll_diff = pads_diff.left_pad.convert(configs.scroll_speed);
+                let scroll_diff = pads_coords.left_pad.diff_and_update();
+                let scroll_diff = scroll_diff.convert(configs.scroll_speed);
                 if scroll_diff.is_any_changes() {
-                    pads_coords.left_pad.update();
                     exec_or_eyre!(virtual_device.scroll_x(scroll_diff.x))?;
                     exec_or_eyre!(virtual_device.scroll_y(scroll_diff.y))?;
                 }
@@ -330,6 +344,7 @@ fn writing_thread(
         }
 
         pads_coords.stick.update();
+        pads_coords.update_if_not_init();
         // pads_coords.update();
         Ok(())
     };
