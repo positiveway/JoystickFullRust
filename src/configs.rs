@@ -26,6 +26,7 @@ pub struct JitterThreshold {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct FingerRotation {
+    pub use_rotation: bool,
     pub left_pad: i16,
     pub right_pad: i16,
     pub stick: i16,
@@ -40,6 +41,7 @@ impl FingerRotation {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Configs {
+    pub debug: bool,
     #[serde(alias = "typing_layout")]
     pub typing_layout_name: String,
     #[serde(alias = "buttons_layout")]

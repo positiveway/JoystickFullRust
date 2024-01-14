@@ -154,15 +154,19 @@ pub struct CoordsState {
     cur: Coords,
     jitter_threshold: f32,
     finger_rotation: i16,
+    use_rotation: bool,
+    debug: bool,
 }
 
 impl CoordsState {
-    pub fn new(jitter_threshold: f32, finger_rotation: i16) -> Self {
+    pub fn new(jitter_threshold: f32, finger_rotation: i16, use_rotation: bool, debug: bool) -> Self {
         Self {
             prev: Default::default(),
             cur: Default::default(),
             jitter_threshold,
             finger_rotation,
+            use_rotation,
+            debug,
         }
     }
 
@@ -201,7 +205,7 @@ impl CoordsState {
         })
     }
 
-    pub fn rotate_coords(&self) -> Result<Coords> {
+    pub fn rotate_cur_coords(&self) -> Result<Coords> {
         let point = Vector {
             x: Self::get_cur_or_prev(self.prev.x, self.cur.x)?,
             y: Self::get_cur_or_prev(self.prev.y, self.cur.y)?,
@@ -211,31 +215,55 @@ impl CoordsState {
         let rotated_vector = rotate_around_center(point, self.finger_rotation as f32);
 
         let rotated_coords = rotated_vector.as_coords();
-        println!("Origin: {}", self.cur);
-        println!("Rotated: {}", rotated_coords);
-        println!("Angle: [Orig: {}, Shifted: {}; Rotation: {}]",
-                 orig_angle, rotated_vector.angle(), self.finger_rotation);
-        println!();
+        if self.debug {
+            println!("Origin: {}", self.cur);
+            println!("Rotated: {}", rotated_coords);
+            println!("Angle: [Orig: {}, Shifted: {}; Rotation: {}]",
+                     orig_angle, rotated_vector.angle(), self.finger_rotation);
+            println!();
+        }
         Ok(rotated_coords)
     }
 
+    pub fn rotate_prev_coords(&self) -> Result<Coords> {
+        Ok(rotate_around_center(Vector::from_coords(self.prev)?, self.finger_rotation as f32).as_coords())
+    }
+
     pub fn diff(&mut self) -> CoordsDiff {
-        let cur_coords = self.cur;
-        // let cur_coords = match self.rotate_coords(){
-        //     Err(error) => {
-        //         println!("{}", error);
-        //         self.cur
-        //     }
-        //     Ok(rotated_coords) => {
-        //         self.cur.x=rotated_coords.x;
-        //         self.cur.y=rotated_coords.y;
-        //         rotated_coords
-        //     }
-        // };
+        let cur_coords = match self.use_rotation {
+            true => {
+                match self.rotate_cur_coords() {
+                    Err(error) => {
+                        println!("{}", error);
+                        self.cur
+                    }
+                    Ok(rotated_coords) => {
+                        rotated_coords
+                    }
+                }
+            }
+            false => {
+                self.cur
+            }
+        };
+        let prev_coords = match self.use_rotation {
+            true => {
+                match self.rotate_prev_coords() {
+                    Ok(value) => { value }
+                    Err(error) => {
+                        println!("{}", error);
+                        self.prev
+                    }
+                }
+            }
+            false => {
+                self.prev
+            }
+        };
 
         let diff = CoordsDiff {
-            x: calc_diff_one_coord(self.prev.x, cur_coords.x),
-            y: calc_diff_one_coord(self.prev.y, cur_coords.y),
+            x: calc_diff_one_coord(prev_coords.x, cur_coords.x),
+            y: calc_diff_one_coord(prev_coords.y, cur_coords.y),
         };
         diff
     }
@@ -244,21 +272,21 @@ impl CoordsState {
         self.diff().convert(multiplier)
     }
 
-    pub fn diff_and_update(&mut self) -> CoordsDiff {
-        let diff = self.diff();
-        if diff.is_any_changes() {
-            self.update();
-        }
-        diff
-    }
-
-    pub fn convert_diff_and_update(&mut self, multiplier: u16) -> ConvertedCoordsDiff {
-        let converted_diff = self.convert_diff(multiplier);
-        if converted_diff.is_any_changes() {
-            self.update();
-        }
-        converted_diff
-    }
+    // pub fn diff_and_update(&mut self) -> CoordsDiff {
+    //     let diff = self.diff();
+    //     if diff.is_any_changes() {
+    //         self.update();
+    //     }
+    //     diff
+    // }
+    //
+    // pub fn convert_diff_and_update(&mut self, multiplier: u16) -> ConvertedCoordsDiff {
+    //     let converted_diff = self.convert_diff(multiplier);
+    //     if converted_diff.is_any_changes() {
+    //         self.update();
+    //     }
+    //     converted_diff
+    // }
 }
 
 #[derive(Copy, Clone, Debug, Serialize, Deserialize)]
@@ -269,11 +297,14 @@ pub struct PadsCoords {
 }
 
 impl PadsCoords {
-    pub fn new(jitter_threshold: &JitterThreshold, finger_rotation: &FingerRotation) -> Self {
+    pub fn new(jitter_threshold: &JitterThreshold, finger_rotation: &FingerRotation, debug: bool) -> Self {
         Self {
-            left_pad: CoordsState::new(jitter_threshold.left_pad, finger_rotation.left_pad),
-            right_pad: CoordsState::new(jitter_threshold.right_pad, finger_rotation.right_pad),
-            stick: CoordsState::new(jitter_threshold.stick, finger_rotation.stick),
+            left_pad: CoordsState::new(
+                jitter_threshold.left_pad, finger_rotation.left_pad, finger_rotation.use_rotation, debug),
+            right_pad: CoordsState::new(
+                jitter_threshold.right_pad, finger_rotation.right_pad, finger_rotation.use_rotation, debug),
+            stick: CoordsState::new(
+                jitter_threshold.stick, finger_rotation.stick, finger_rotation.use_rotation, debug),
         }
     }
 
@@ -352,7 +383,7 @@ fn writing_thread(
     let is_gaming_mode = configs.buttons_layout.gaming_mode;
 
     let mut mouse_mode = MouseMode::default();
-    let mut pads_coords = PadsCoords::new(&configs.jitter_threshold, &configs.finger_rotation);
+    let mut pads_coords = PadsCoords::new(&configs.jitter_threshold, &configs.finger_rotation, configs.debug);
 
     let mut mouse_func = || -> Result<()> {
         for event in mouse_receiver.try_iter() {
@@ -411,9 +442,9 @@ fn writing_thread(
             }
         }
 
-        pads_coords.stick.update();
+        // pads_coords.stick.update();
         //Important to keep
-        pads_coords.update_if_not_init();
+        // pads_coords.update_if_not_init();
         pads_coords.update();
         pads_coords.reset_current();
         Ok(())

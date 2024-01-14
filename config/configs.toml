@@ -1,3 +1,4 @@
+debug = false
 buttons_layout="gaming"
 typing_layout="typing"
 triggers_threshold_pct=30
@@ -5,8 +6,9 @@ mouse_speed = 400
 scroll_speed = 600
 horizontal_threshold_pct = 35
 [finger_rotation]
+use_rotation = true
 left_pad = 15
-right_pad = 20
+right_pad = 10
 stick = 15
 [jitter_threshold]
 left_pad = 0.02

@@ -16,8 +16,6 @@ use crate::match_event::print_event;
 use crate::mouse::{create_writing_thread};
 use crate::process_event::{ControllerState, process_event};
 
-static IS_DEBUG: bool = true;
-
 fn read_send_events(gilrs: &mut Gilrs, controller_state: &ControllerState) -> Result<()> {
     // gilrs.next_event().filter_ev()
     print_deadzones(gilrs, 0)?;
@@ -27,7 +25,7 @@ fn read_send_events(gilrs: &mut Gilrs, controller_state: &ControllerState) -> Re
         while let Some(Event { id, event, time }) = gilrs.next_event() {
             process_event(&event, &controller_state)?;
 
-            if IS_DEBUG {
+            if controller_state.configs.debug {
                 println!("{}", print_event(&event)?);
             }
 
