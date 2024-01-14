@@ -10,7 +10,7 @@ use std::env;
 use std::thread::sleep;
 use std::time::Duration;
 use color_eyre::eyre::{Result};
-use env_logger::{Builder, builder};
+use env_logger::{builder};
 use gilrs::{Event, EventType::*, Gilrs};
 use log::debug;
 use crate::configs::{Configs};
@@ -29,7 +29,6 @@ fn read_send_events(gilrs: &mut Gilrs, controller_state: &ControllerState) -> Re
             process_event(&event, &controller_state)?;
 
             debug!("{}", print_event(&event)?);
-
 
             if event == Disconnected {
                 println!("Gamepad disconnected");

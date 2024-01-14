@@ -32,13 +32,6 @@ pub struct FingerRotation {
     pub stick: i16,
 }
 
-impl FingerRotation {
-    pub fn apply_direction(&mut self) {
-        self.left_pad *= -1;
-        self.stick *= -1;
-    }
-}
-
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Configs {
     pub debug: bool,
@@ -76,7 +69,6 @@ impl Configs {
 
         configs.triggers_threshold_f32 = convert_pct(configs._triggers_threshold_pct);
         configs.horizontal_threshold_f32 = convert_pct(configs._horizontal_threshold_pct);
-        configs.finger_rotation.apply_direction();
 
         configs.channel_size = 100;
         configs.mouse_interval = Duration::from_millis(1);
