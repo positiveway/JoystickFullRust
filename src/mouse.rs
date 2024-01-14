@@ -156,18 +156,16 @@ pub struct CoordsState {
     jitter_threshold: f32,
     finger_rotation: i16,
     use_rotation: bool,
-    debug: bool,
 }
 
 impl CoordsState {
-    pub fn new(jitter_threshold: f32, finger_rotation: i16, use_rotation: bool, debug: bool) -> Self {
+    pub fn new(jitter_threshold: f32, finger_rotation: i16, use_rotation: bool) -> Self {
         Self {
             prev: Default::default(),
             cur: Default::default(),
             jitter_threshold,
             finger_rotation,
             use_rotation,
-            debug,
         }
     }
 
@@ -216,13 +214,11 @@ impl CoordsState {
         let rotated_vector = rotate_around_center(point, self.finger_rotation as f32);
 
         let rotated_coords = rotated_vector.as_coords();
-        if self.debug {
-            debug!("Origin: {}", self.cur);
-            debug!("Rotated: {}", rotated_coords);
-            debug!("Angle: [Orig: {}, Shifted: {}; Rotation: {}]",
-                     orig_angle, rotated_vector.angle(), self.finger_rotation);
-            debug!("");
-        }
+        debug!("Origin: {}", self.cur);
+        debug!("Rotated: {}", rotated_coords);
+        debug!("Angle: [Orig: {}, Shifted: {}; Rotation: {}]",
+                 orig_angle, rotated_vector.angle(), self.finger_rotation);
+        debug!("");
         Ok(rotated_coords)
     }
 
@@ -301,11 +297,11 @@ impl PadsCoords {
     pub fn new(jitter_threshold: &JitterThreshold, finger_rotation: &FingerRotation, debug: bool) -> Self {
         Self {
             left_pad: CoordsState::new(
-                jitter_threshold.left_pad, finger_rotation.left_pad, finger_rotation.use_rotation, debug),
+                jitter_threshold.left_pad, finger_rotation.left_pad, finger_rotation.use_rotation),
             right_pad: CoordsState::new(
-                jitter_threshold.right_pad, finger_rotation.right_pad, finger_rotation.use_rotation, debug),
+                jitter_threshold.right_pad, finger_rotation.right_pad, finger_rotation.use_rotation),
             stick: CoordsState::new(
-                jitter_threshold.stick, finger_rotation.stick, finger_rotation.use_rotation, debug),
+                jitter_threshold.stick, finger_rotation.stick, finger_rotation.use_rotation),
         }
     }
 

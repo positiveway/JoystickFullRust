@@ -1,4 +1,4 @@
-debug = true
+debug = false
 buttons_layout = "gaming"
 typing_layout = "typing"
 triggers_threshold_pct = 30

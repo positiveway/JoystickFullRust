@@ -28,9 +28,8 @@ fn read_send_events(gilrs: &mut Gilrs, controller_state: &ControllerState) -> Re
         while let Some(Event { id, event, time }) = gilrs.next_event() {
             process_event(&event, &controller_state)?;
 
-            if controller_state.configs.debug {
-                debug!("{}", print_event(&event)?);
-            }
+            debug!("{}", print_event(&event)?);
+
 
             if event == Disconnected {
                 println!("Gamepad disconnected");
@@ -45,7 +44,6 @@ fn read_send_events(gilrs: &mut Gilrs, controller_state: &ControllerState) -> Re
 fn init_gilrs() -> Result<Gilrs> {
     exec_or_eyre!(Gilrs::new())
 }
-
 
 fn init_controller() -> Result<()> {
     let configs = Configs::load()?;
