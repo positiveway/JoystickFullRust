@@ -1,10 +1,13 @@
 buttons_layout="gaming"
 typing_layout="typing"
-finger_rotation=15
 triggers_threshold_pct=30
 mouse_speed = 400
 scroll_speed = 600
 horizontal_threshold_pct = 35
+[finger_rotation]
+left_pad = 15
+right_pad = 20
+stick = 15
 [jitter_threshold]
 left_pad = 0.02
 right_pad = 0.01

@@ -25,6 +25,20 @@ pub struct JitterThreshold {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct FingerRotation {
+    pub left_pad: i16,
+    pub right_pad: i16,
+    pub stick: i16,
+}
+
+impl FingerRotation {
+    pub fn apply_direction(&mut self) {
+        self.left_pad *= -1;
+        self.stick *= -1;
+    }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Configs {
     #[serde(alias = "typing_layout")]
     pub typing_layout_name: String,
@@ -32,8 +46,7 @@ pub struct Configs {
     pub buttons_layout_name: String,
     #[serde(skip)]
     pub buttons_layout: ButtonsLayout,
-    #[serde(default)]
-    pub finger_rotation: u8,
+    pub finger_rotation: FingerRotation,
     #[serde(alias = "triggers_threshold_pct")]
     pub _triggers_threshold_pct: u8,
     #[serde(skip)]
@@ -61,6 +74,8 @@ impl Configs {
 
         configs.triggers_threshold_f32 = convert_pct(configs._triggers_threshold_pct);
         configs.horizontal_threshold_f32 = convert_pct(configs._horizontal_threshold_pct);
+        configs.finger_rotation.apply_direction();
+
         configs.channel_size = 100;
         configs.mouse_interval = Duration::from_millis(1);
 

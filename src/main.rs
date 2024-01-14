@@ -4,6 +4,7 @@ mod shared;
 mod configs;
 mod process_event;
 mod mouse;
+mod math_ops;
 
 use std::thread::sleep;
 use std::time::Duration;

@@ -4,69 +4,12 @@ use std::time::Instant;
 use mouse_keyboard_input::{Coord, VirtualDevice};
 use serde::{Deserialize, Serialize};
 use strum_macros::Display;
-use crate::configs::{Configs, JitterThreshold};
+use crate::configs::{Configs, FingerRotation, JitterThreshold};
 use color_eyre::eyre::{Result};
 use crate::process_event::{MouseEvent, MouseReceiver, ButtonReceiver, PadStickEvent};
 use crate::exec_or_eyre;
+use crate::math_ops::{hypot, rotate_around_center, Vector};
 
-use std::f64::consts::PI;
-
-fn smoothing_factor(t_e: f64, cutoff: f64) -> f64 {
-    let r = 2.0 * PI * cutoff * t_e;
-    r / (r + 1.0)
-}
-
-fn exponential_smoothing(a: f64, x: f64, x_prev: f64) -> f64 {
-    a * x + (1.0 - a) * x_prev
-}
-
-fn create_filter(cutoff: f64, beta: f64) -> impl FnMut(f64, f64) -> f64 {
-    let mut self_filter = Filter {
-        cutoff: cutoff,
-        beta: beta,
-        d_cutoff: 1.0,
-        dx0: 0.0,
-        x_prev: 0.0,
-        dx_prev: 0.0,
-        t_prev: 0.0,
-    };
-
-    move |t: f64, x: f64| {
-        let t_e = t - self_filter.t_prev;
-        let a_d = smoothing_factor(t_e, self_filter.d_cutoff);
-        let dx = (x - self_filter.x_prev) / t_e;
-        let dx_hat = exponential_smoothing(a_d, dx, self_filter.dx_prev);
-        let cutoff = self_filter.cutoff + self_filter.beta * dx_hat.abs();
-        let a = smoothing_factor(t_e, cutoff);
-        let x_hat = exponential_smoothing(a, x, self_filter.x_prev);
-        self_filter.x_prev = x_hat;
-        self_filter.dx_prev = dx_hat;
-        self_filter.t_prev = t;
-        x_hat
-    }
-}
-
-struct Filter {
-    cutoff: f64,
-    beta: f64,
-    d_cutoff: f64,
-    dx0: f64,
-    x_prev: f64,
-    dx_prev: f64,
-    t_prev: f64,
-}
-
-// fn main() {
-//     let filter = create_filter(1.0, 0.0);
-//     let result = filter(0.0, 0.0);
-//     println!("{}", result);
-// }
-
-pub fn hypot<T>(a: T, b: T) -> f64
-    where T: core::ops::Mul<T, Output=T> + core::ops::Add<T, Output=T> + core::convert::Into<f64> + Copy
-{
-    (a * a + b * b).into().sqrt()
-}
 
 #[derive(Display, Eq, Hash, PartialEq, Default, Copy, Clone, Debug, Serialize, Deserialize)]
 pub enum MouseMode {
@@ -76,7 +19,7 @@ pub enum MouseMode {
 }
 
 #[derive(PartialEq, Copy, Clone, Default, Debug, Serialize, Deserialize)]
-struct Coords {
+pub struct Coords {
     pub x: Option<f32>,
     pub y: Option<f32>,
 }
@@ -108,6 +51,29 @@ impl Coords {
     pub fn update_if_not_init(&mut self, new: &Self) {
         Self::update_one_if_not_init(&mut self.x, new.x);
         Self::update_one_if_not_init(&mut self.y, new.y);
+    }
+
+    pub fn any_is_none(&self) -> bool {
+        self.x.is_none() || self.y.is_none()
+    }
+
+
+}
+
+fn option_to_string(value: Option<f32>) -> String {
+    match value {
+        None => {
+            "None".to_string()
+        }
+        Some(value) => {
+            value.to_string()
+        }
+    }
+}
+
+impl std::fmt::Display for Coords {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "[x: {}, y: {}]", option_to_string(self.x), option_to_string(self.y))
     }
 }
 
@@ -183,14 +149,16 @@ pub struct CoordsState {
     prev: Coords,
     cur: Coords,
     jitter_threshold: f32,
+    finger_rotation: i16,
 }
 
 impl CoordsState {
-    pub fn new(jitter_threshold: f32) -> Self {
+    pub fn new(jitter_threshold: f32, finger_rotation: i16) -> Self {
         Self {
             prev: Default::default(),
             cur: Default::default(),
             jitter_threshold,
+            finger_rotation,
         }
     }
 
@@ -207,14 +175,39 @@ impl CoordsState {
         self.prev.update_if_not_init(&self.cur);
     }
 
-    pub fn diff(&self) -> CoordsDiff {
-        CoordsDiff {
-            x: calc_diff_one_coord(self.prev.x, self.cur.x, self.jitter_threshold),
-            y: calc_diff_one_coord(self.prev.y, self.cur.y, self.jitter_threshold),
+    pub fn rotate_coords(&self) -> Option<Coords> {
+        match rotate_around_center(self.cur, self.finger_rotation as f32) {
+            None => { None }
+            Some(rotated_vector) => {
+                let rotated_coords = rotated_vector.as_coords();
+                println!("Origin: {}", self.cur);
+                println!("Rotated: {}", rotated_coords);
+                println!("Angle: [Orig: {}, Shifted: {}; Rotation: {}]", Vector::from_coords(self.cur).angle(), rotated_vector.angle(), self.finger_rotation);
+                Some(rotated_coords)
+            }
         }
     }
 
-    pub fn convert_diff(&self, multiplier: u16) -> ConvertedCoordsDiff {
+    pub fn diff(&mut self) -> CoordsDiff {
+        self.rotate_coords();
+        let cur_coords = self.cur;
+        // let cur_coords = match self.rotate_coords(){
+        //     None => {self.cur}
+        //     Some(rotated_coords) => {
+        //         self.cur.x=rotated_coords.x;
+        //         self.cur.y=rotated_coords.y;
+        //         rotated_coords
+        //     }
+        // };
+
+        let diff = CoordsDiff {
+            x: calc_diff_one_coord(self.prev.x, cur_coords.x, self.jitter_threshold),
+            y: calc_diff_one_coord(self.prev.y, cur_coords.y, self.jitter_threshold),
+        };
+        diff
+    }
+
+    pub fn convert_diff(&mut self, multiplier: u16) -> ConvertedCoordsDiff {
         self.diff().convert(multiplier)
     }
 
@@ -243,11 +236,11 @@ pub struct PadsCoords {
 }
 
 impl PadsCoords {
-    pub fn new(jitter_threshold: &JitterThreshold) -> Self {
+    pub fn new(jitter_threshold: &JitterThreshold, finger_rotation: &FingerRotation) -> Self {
         Self {
-            left_pad: CoordsState::new(jitter_threshold.left_pad),
-            right_pad: CoordsState::new(jitter_threshold.right_pad),
-            stick: CoordsState::new(jitter_threshold.stick),
+            left_pad: CoordsState::new(jitter_threshold.left_pad, finger_rotation.left_pad),
+            right_pad: CoordsState::new(jitter_threshold.right_pad, finger_rotation.right_pad),
+            stick: CoordsState::new(jitter_threshold.stick, finger_rotation.stick),
         }
     }
 
@@ -295,7 +288,7 @@ fn writing_thread(
     let is_gaming_mode = configs.buttons_layout.gaming_mode;
 
     let mut mouse_mode = MouseMode::default();
-    let mut pads_coords = PadsCoords::new(&configs.jitter_threshold);
+    let mut pads_coords = PadsCoords::new(&configs.jitter_threshold, &configs.finger_rotation);
 
     let mut mouse_func = || -> Result<()> {
         for event in mouse_receiver.try_iter() {
