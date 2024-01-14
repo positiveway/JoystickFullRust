@@ -18,6 +18,7 @@ use crate::process_event::{ControllerState, process_event};
 static IS_DEBUG: bool = true;
 
 fn read_send_events(gilrs: &mut Gilrs, controller_state: &ControllerState) -> Result<()> {
+    // gilrs.next_event().filter_ev()
     print_deadzones(gilrs, 0)?;
 
     loop {

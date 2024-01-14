@@ -21,7 +21,6 @@ fn get_gamepad(gilrs: &Gilrs, id: usize) -> Result<Gamepad> {
             res = Some(gamepad);
         }
     };
-    // gilrs.next_event().filter_ev()
     res.ok_or_eyre("Couldn't get Gamepad by id")
 }
 
