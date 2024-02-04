@@ -7,7 +7,7 @@ use strum_macros::Display;
 use crate::configs::{Configs, FingerRotation, JitterThreshold};
 use color_eyre::eyre::{bail, Result};
 use log::{debug, info};
-use crate::process_event::{MouseEvent, MouseReceiver, ButtonReceiver, PadStickEvent};
+use crate::process_event::{MouseEvent, MouseReceiver, ButtonReceiver, PadStickEvent, ButtonEvent};
 use crate::exec_or_eyre;
 use crate::math_ops::{hypot, rotate_around_center, Vector, NONE_VAL_ERR_MSG};
 
@@ -382,7 +382,10 @@ fn writing_thread(
     let mut mouse_mode = MouseMode::default();
     let mut pads_coords = PadsCoords::new(&configs.jitter_threshold, &configs.finger_rotation, configs.debug);
 
-    let mut mouse_func = || -> Result<()> {
+    loop {
+        let start = Instant::now();
+
+        //MOUSE
         for event in mouse_receiver.try_iter() {
             match event {
                 MouseEvent::ModeSwitched => {
@@ -444,19 +447,19 @@ fn writing_thread(
         // pads_coords.update_if_not_init();
         pads_coords.update();
         pads_coords.reset_current();
-        Ok(())
-    };
 
-    let mut button_func = || -> Result<()> {
-        for event in button_receiver.try_iter() {}
-        Ok(())
-    };
 
-    loop {
-        let start = Instant::now();
-
-        mouse_func()?;
-        button_func()?;
+        //BUTTONS
+        for event in button_receiver.try_iter() {
+            match event {
+                ButtonEvent::Pressed(button) => {
+                    exec_or_eyre!(virtual_device.press(button))?
+                }
+                ButtonEvent::Released(button) => {
+                    exec_or_eyre!(virtual_device.release(button))?
+                }
+            }
+        }
 
         let runtime = start.elapsed();
 

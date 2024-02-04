@@ -1,7 +1,7 @@
 use gilrs::{Axis, Button, Event, EventType::*, EventType};
 use gilrs::ev::Code;
 use serde::{Deserialize, Serialize};
-use strum_macros::{AsRefStr, Display, EnumString};
+use strum_macros::{AsRefStr, Display, EnumIter, EnumString};
 use regex::Regex;
 use color_eyre::eyre::{bail, Result};
 use color_eyre::Report;
@@ -11,10 +11,9 @@ use crate::configs::Configs;
 use crate::exec_or_eyre;
 
 
-#[derive(EnumString, AsRefStr, Display, Default, Eq, Hash, PartialEq, Copy, Clone, Debug, Serialize, Deserialize)]
+#[derive(EnumIter, EnumString, AsRefStr, Display, Default, Eq, Hash, PartialEq, Copy, Clone, Debug, Serialize, Deserialize)]
 // #[strum(serialize_all = "snake_case")]
 pub enum ButtonName {
-
     BtnUp_SideL,
     BtnDown_SideL,
     BtnLeft_SideL,

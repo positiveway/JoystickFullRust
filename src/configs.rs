@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::env::current_dir;
 use std::fs::read_to_string;
 use std::path::{Path, PathBuf};
@@ -8,6 +9,8 @@ use color_eyre::eyre::{bail, Result};
 use crate::exec_or_eyre;
 use crate::match_event::ButtonName;
 use mouse_keyboard_input::Button;
+use strum::IntoEnumIterator;
+use crate::buttons_state::ButtonsState;
 use crate::key_codes::KeyCodes;
 
 
@@ -166,42 +169,7 @@ pub struct ButtonsLayout {
     pub reset_btn: ButtonName,
     pub switch_mode_btn: ButtonName,
     //
-    pub BtnUp_SideL: Button,
-    pub BtnDown_SideL: Button,
-    pub BtnLeft_SideL: Button,
-    pub BtnRight_SideL: Button,
-    // 
-    pub BtnUp_SideR: Button,
-    pub BtnDown_SideR: Button,
-    pub BtnLeft_SideR: Button,
-    pub BtnRight_SideR: Button,
-    // 
-    pub Wing_SideL: Button,
-    pub Wing_SideR: Button,
-    //
-    pub LowerTriggerAsBtn_SideL: Button,
-    pub LowerTriggerAsBtn_SideR: Button,
-    //
-    pub UpperTrigger_SideL: Button,
-    pub UpperTrigger_SideR: Button,
-    // 
-    pub PadAsBtn_SideL: Button,
-    pub PadAsBtn_SideR: Button,
-    pub StickAsBtn: Button,
-    //
-    pub PadUp_SideL: Button,
-    pub PadDown_SideL: Button,
-    pub PadLeft_SideL: Button,
-    pub PadRight_SideL: Button,
-    // 
-    pub PadUp_SideR: Button,
-    pub PadDown_SideR: Button,
-    pub PadLeft_SideR: Button,
-    pub PadRight_SideR: Button,
-    //
-    pub ExtraBtn_SideL: Button,
-    pub ExtraBtn_SideR: Button,
-    pub ExtraBtnCentral: Button,
+    pub layout: HashMap<ButtonName, Button>,
 }
 
 impl ButtonsLayout {
@@ -210,53 +178,54 @@ impl ButtonsLayout {
         let mut switch_mode_btn: ButtonName = Default::default();
         let mut reset_btn: ButtonName = Default::default();
 
-        let mut key_code_to_button = |button_name: ButtonName, code_as_str: String| -> Result<Button>{
-            KeyCodes::from_config(button_name, code_as_str, &mut reset_btn, &mut switch_mode_btn)
+        let mut layout: HashMap<ButtonName, Button> = HashMap::new();
+
+        let mut key_code_to_button = |button_name: ButtonName, code_as_str: String| -> Result<()>{
+            let button = KeyCodes::from_config(button_name, code_as_str, &mut reset_btn, &mut switch_mode_btn)?;
+            layout.insert(button_name, button);
+            Ok(())
         };
 
-        let mut layout = Self {
-            gaming_mode: layout_raw.gaming_mode,
-            //
-            reset_btn: ButtonName::default(),
-            switch_mode_btn: ButtonName::default(),
-            //
-            BtnUp_SideL: key_code_to_button(ButtonName::BtnUp_SideL, layout_raw.BtnUp_SideL)?,
-            BtnDown_SideL: key_code_to_button(ButtonName::BtnDown_SideL, layout_raw.BtnDown_SideL)?,
-            BtnLeft_SideL: key_code_to_button(ButtonName::BtnLeft_SideL, layout_raw.BtnLeft_SideL)?,
-            BtnRight_SideL: key_code_to_button(ButtonName::BtnRight_SideL, layout_raw.BtnRight_SideL)?,
-            BtnUp_SideR: key_code_to_button(ButtonName::BtnUp_SideR, layout_raw.BtnUp_SideR)?,
-            BtnDown_SideR: key_code_to_button(ButtonName::BtnDown_SideR, layout_raw.BtnDown_SideR)?,
-            BtnLeft_SideR: key_code_to_button(ButtonName::BtnLeft_SideR, layout_raw.BtnLeft_SideR)?,
-            BtnRight_SideR: key_code_to_button(ButtonName::BtnRight_SideR, layout_raw.BtnRight_SideR)?,
-            Wing_SideL: key_code_to_button(ButtonName::Wing_SideL, layout_raw.Wing_SideL)?,
-            Wing_SideR: key_code_to_button(ButtonName::Wing_SideR, layout_raw.Wing_SideR)?,
-            LowerTriggerAsBtn_SideL: key_code_to_button(ButtonName::LowerTriggerAsBtn_SideL, layout_raw.LowerTriggerAsBtn_SideL)?,
-            LowerTriggerAsBtn_SideR: key_code_to_button(ButtonName::LowerTriggerAsBtn_SideR, layout_raw.LowerTriggerAsBtn_SideR)?,
-            UpperTrigger_SideL: key_code_to_button(ButtonName::UpperTrigger_SideL, layout_raw.UpperTrigger_SideL)?,
-            UpperTrigger_SideR: key_code_to_button(ButtonName::UpperTrigger_SideR, layout_raw.UpperTrigger_SideR)?,
-            PadAsBtn_SideL: key_code_to_button(ButtonName::PadAsBtn_SideL, layout_raw.PadAsBtn_SideL)?,
-            PadAsBtn_SideR: key_code_to_button(ButtonName::PadAsBtn_SideR, layout_raw.PadAsBtn_SideR)?,
-            StickAsBtn: key_code_to_button(ButtonName::StickAsBtn, layout_raw.StickAsBtn)?,
-            PadUp_SideL: key_code_to_button(ButtonName::PadUp_SideL, layout_raw.PadUp_SideL)?,
-            PadDown_SideL: key_code_to_button(ButtonName::PadDown_SideL, layout_raw.PadDown_SideL)?,
-            PadLeft_SideL: key_code_to_button(ButtonName::PadLeft_SideL, layout_raw.PadLeft_SideL)?,
-            PadRight_SideL: key_code_to_button(ButtonName::PadRight_SideL, layout_raw.PadRight_SideL)?,
-            PadUp_SideR: key_code_to_button(ButtonName::PadUp_SideR, layout_raw.PadUp_SideR)?,
-            PadDown_SideR: key_code_to_button(ButtonName::PadDown_SideR, layout_raw.PadDown_SideR)?,
-            PadLeft_SideR: key_code_to_button(ButtonName::PadLeft_SideR, layout_raw.PadLeft_SideR)?,
-            PadRight_SideR: key_code_to_button(ButtonName::PadRight_SideR, layout_raw.PadRight_SideR)?,
-            ExtraBtn_SideL: key_code_to_button(ButtonName::ExtraBtn_SideL, layout_raw.ExtraBtn_SideL)?,
-            ExtraBtn_SideR: key_code_to_button(ButtonName::ExtraBtn_SideR, layout_raw.ExtraBtn_SideR)?,
-            ExtraBtnCentral: key_code_to_button(ButtonName::ExtraBtnCentral, layout_raw.ExtraBtnCentral)?,
-        };
+        key_code_to_button(ButtonName::BtnUp_SideL, layout_raw.BtnUp_SideL)?;
+        key_code_to_button(ButtonName::BtnDown_SideL, layout_raw.BtnDown_SideL)?;
+        key_code_to_button(ButtonName::BtnLeft_SideL, layout_raw.BtnLeft_SideL)?;
+        key_code_to_button(ButtonName::BtnRight_SideL, layout_raw.BtnRight_SideL)?;
+        key_code_to_button(ButtonName::BtnUp_SideR, layout_raw.BtnUp_SideR)?;
+        key_code_to_button(ButtonName::BtnDown_SideR, layout_raw.BtnDown_SideR)?;
+        key_code_to_button(ButtonName::BtnLeft_SideR, layout_raw.BtnLeft_SideR)?;
+        key_code_to_button(ButtonName::BtnRight_SideR, layout_raw.BtnRight_SideR)?;
+        key_code_to_button(ButtonName::Wing_SideL, layout_raw.Wing_SideL)?;
+        key_code_to_button(ButtonName::Wing_SideR, layout_raw.Wing_SideR)?;
+        key_code_to_button(ButtonName::LowerTriggerAsBtn_SideL, layout_raw.LowerTriggerAsBtn_SideL)?;
+        key_code_to_button(ButtonName::LowerTriggerAsBtn_SideR, layout_raw.LowerTriggerAsBtn_SideR)?;
+        key_code_to_button(ButtonName::UpperTrigger_SideL, layout_raw.UpperTrigger_SideL)?;
+        key_code_to_button(ButtonName::UpperTrigger_SideR, layout_raw.UpperTrigger_SideR)?;
+        key_code_to_button(ButtonName::PadAsBtn_SideL, layout_raw.PadAsBtn_SideL)?;
+        key_code_to_button(ButtonName::PadAsBtn_SideR, layout_raw.PadAsBtn_SideR)?;
+        key_code_to_button(ButtonName::StickAsBtn, layout_raw.StickAsBtn)?;
+        key_code_to_button(ButtonName::PadUp_SideL, layout_raw.PadUp_SideL)?;
+        key_code_to_button(ButtonName::PadDown_SideL, layout_raw.PadDown_SideL)?;
+        key_code_to_button(ButtonName::PadLeft_SideL, layout_raw.PadLeft_SideL)?;
+        key_code_to_button(ButtonName::PadRight_SideL, layout_raw.PadRight_SideL)?;
+        key_code_to_button(ButtonName::PadUp_SideR, layout_raw.PadUp_SideR)?;
+        key_code_to_button(ButtonName::PadDown_SideR, layout_raw.PadDown_SideR)?;
+        key_code_to_button(ButtonName::PadLeft_SideR, layout_raw.PadLeft_SideR)?;
+        key_code_to_button(ButtonName::PadRight_SideR, layout_raw.PadRight_SideR)?;
+        key_code_to_button(ButtonName::ExtraBtn_SideL, layout_raw.ExtraBtn_SideL)?;
+        key_code_to_button(ButtonName::ExtraBtn_SideR, layout_raw.ExtraBtn_SideR)?;
+        key_code_to_button(ButtonName::ExtraBtnCentral, layout_raw.ExtraBtnCentral)?;
 
         reset_btn.bail_if_not_init()?;
         switch_mode_btn.bail_if_not_init()?;
 
-        layout.reset_btn = reset_btn;
-        layout.switch_mode_btn = switch_mode_btn;
-
-        Ok(layout)
+        Ok(Self {
+            gaming_mode: layout_raw.gaming_mode,
+            //
+            reset_btn,
+            switch_mode_btn,
+            //
+            layout,
+        })
     }
 }
 

@@ -21,14 +21,14 @@ use crate::match_event::print_event;
 use crate::mouse::{create_writing_thread};
 use crate::process_event::{ControllerState, process_event};
 
-fn read_send_events(gilrs: &mut Gilrs, controller_state: &ControllerState) -> Result<()> {
+fn read_send_events(gilrs: &mut Gilrs, controller_state: &mut ControllerState) -> Result<()> {
     // gilrs.next_event().filter_ev()
     print_deadzones(gilrs, 0)?;
 
     loop {
         // Examine new events
         while let Some(Event { id, event, time }) = gilrs.next_event() {
-            process_event(&event, &controller_state)?;
+            process_event(&event, controller_state)?;
 
             debug!("{}", print_event(&event)?);
 
@@ -91,7 +91,7 @@ fn init_controller() -> Result<()> {
             println!("Only one gamepad is supported. Disconnect other gamepads");
         } else {
             is_wait_msg_printed = false;
-            read_send_events(&mut gilrs, &controller_state)?;
+            read_send_events(&mut gilrs, &mut controller_state)?;
         }
         sleep(Duration::from_millis(5000));
     }
