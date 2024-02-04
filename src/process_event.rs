@@ -7,7 +7,7 @@ use crate::configs::{Configs};
 use crossbeam_channel::{Sender, Receiver, bounded};
 use lazy_static::lazy_static;
 use mouse_keyboard_input::Button;
-use strum_macros::Display;
+use strum_macros::{Display};
 use crate::exec_or_eyre;
 use crate::process_event::PadStickEvent::FingerLifted;
 use crate::math_ops::RangeConverterBuilder;
@@ -44,8 +44,9 @@ pub struct ControllerState {
     pub button_sender: ButtonSender,
     pub button_receiver: ButtonReceiver,
     //
-    pub SWITCH_BUTTON: ButtonName,
-    pub RESET_BUTTON: ButtonName,
+    pub RESET_BTN: ButtonName,
+    pub SWITCH_MODE_BTN: ButtonName,
+    //
     pub configs: Configs,
 }
 
@@ -59,8 +60,8 @@ impl ControllerState {
             mouse_receiver,
             button_sender,
             button_receiver,
-            SWITCH_BUTTON: configs.buttons_layout.switch_button,
-            RESET_BUTTON: configs.buttons_layout.reset_button,
+            RESET_BTN: configs.buttons_layout.reset_btn,
+            SWITCH_MODE_BTN: configs.buttons_layout.switch_mode_btn,
             configs,
         }
     }
@@ -138,10 +139,10 @@ pub fn process_pad_stick(event: &TransformedEvent, controller_state: &Controller
                 return Ok(TransformStatus::Handled);
             };
 
-            if event.button == controller_state.RESET_BUTTON {
+            if event.button == controller_state.RESET_BTN {
                 send_mouse_event(MouseEvent::Reset)?;
                 return Ok(TransformStatus::Unchanged);
-            } else if event.button == controller_state.SWITCH_BUTTON {
+            } else if event.button == controller_state.SWITCH_MODE_BTN {
                 send_mouse_event(MouseEvent::ModeSwitched)?;
                 return Ok(TransformStatus::Handled);
             };

@@ -1,5 +1,5 @@
 debug = false
-buttons_layout = "gaming"
+buttons_layout = "desktop"
 typing_layout = "typing"
 triggers_threshold_pct = 30
 mouse_speed = 400

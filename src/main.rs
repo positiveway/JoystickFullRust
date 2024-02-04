@@ -5,6 +5,8 @@ mod configs;
 mod process_event;
 mod mouse;
 mod math_ops;
+mod key_codes;
+mod buttons_state;
 
 use std::env;
 use std::thread::sleep;

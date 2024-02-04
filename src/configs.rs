@@ -4,9 +4,11 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
-use color_eyre::eyre::{Result};
+use color_eyre::eyre::{bail, Result};
 use crate::exec_or_eyre;
 use crate::match_event::ButtonName;
+use mouse_keyboard_input::Button;
+use crate::key_codes::KeyCodes;
 
 
 const PROJECT_NAME: &str = "JoystickFullRust";
@@ -64,8 +66,8 @@ pub fn convert_pct(value: u8) -> f32 {
 }
 
 impl Configs {
-    pub fn load() -> Result<Configs> {
-        let mut configs: Configs = read_toml(CONFIGS_DIR.as_path(), "configs")?;
+    pub fn load() -> Result<Self> {
+        let mut configs: Self = read_toml(CONFIGS_DIR.as_path(), "configs")?;
 
         configs.triggers_threshold_f32 = convert_pct(configs._triggers_threshold_pct);
         configs.horizontal_threshold_f32 = convert_pct(configs._horizontal_threshold_pct);
@@ -73,33 +75,188 @@ impl Configs {
         configs.channel_size = 100;
         configs.mouse_interval = Duration::from_millis(1);
 
-        configs.buttons_layout = ButtonsLayout::mock();
+        configs.buttons_layout = ButtonsLayout::load(configs.buttons_layout_name.as_str())?;
 
         Ok(configs)
     }
 }
 
-//FIXME: Remove default
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ButtonsLayoutRaw {
+    pub gaming_mode: bool,
+    //
+    #[serde(default)]
+    pub BtnUp_SideL: String,
+    #[serde(default)]
+    pub BtnDown_SideL: String,
+    #[serde(default)]
+    pub BtnLeft_SideL: String,
+    #[serde(default)]
+    pub BtnRight_SideL: String,
+    //
+    #[serde(default)]
+    pub BtnUp_SideR: String,
+    #[serde(default)]
+    pub BtnDown_SideR: String,
+    #[serde(default)]
+    pub BtnLeft_SideR: String,
+    #[serde(default)]
+    pub BtnRight_SideR: String,
+    //
+    #[serde(default)]
+    pub Wing_SideL: String,
+    #[serde(default)]
+    pub Wing_SideR: String,
+    //
+    #[serde(default)]
+    pub LowerTriggerAsBtn_SideL: String,
+    #[serde(default)]
+    pub LowerTriggerAsBtn_SideR: String,
+    //
+    #[serde(default)]
+    pub UpperTrigger_SideL: String,
+    #[serde(default)]
+    pub UpperTrigger_SideR: String,
+    //
+    #[serde(default)]
+    pub PadAsBtn_SideL: String,
+    #[serde(default)]
+    pub PadAsBtn_SideR: String,
+    #[serde(default)]
+    pub StickAsBtn: String,
+    //
+    #[serde(default)]
+    pub PadUp_SideL: String,
+    #[serde(default)]
+    pub PadDown_SideL: String,
+    #[serde(default)]
+    pub PadLeft_SideL: String,
+    #[serde(default)]
+    pub PadRight_SideL: String,
+    //
+    #[serde(default)]
+    pub PadUp_SideR: String,
+    #[serde(default)]
+    pub PadDown_SideR: String,
+    #[serde(default)]
+    pub PadLeft_SideR: String,
+    #[serde(default)]
+    pub PadRight_SideR: String,
+    //
+    #[serde(default)]
+    pub ExtraBtn_SideL: String,
+    #[serde(default)]
+    pub ExtraBtn_SideR: String,
+    #[serde(default)]
+    pub ExtraBtnCentral: String,
+}
+
+impl ButtonsLayoutRaw {
+    pub fn load<S: AsRef<str>>(layout_name: S) -> Result<Self> {
+        let layout: Self = read_toml(LAYOUTS_DIR.as_path(), layout_name)?;
+        Ok(layout)
+    }
+}
+
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct ButtonsLayout {
     pub gaming_mode: bool,
-    #[serde(alias = "switch_button")]
-    pub _switch_button: String,
-    pub switch_button: ButtonName,
-    #[serde(alias = "reset_button")]
-    pub _reset_button: String,
-    pub reset_button: ButtonName,
+    //
+    pub reset_btn: ButtonName,
+    pub switch_mode_btn: ButtonName,
+    //
+    pub BtnUp_SideL: Button,
+    pub BtnDown_SideL: Button,
+    pub BtnLeft_SideL: Button,
+    pub BtnRight_SideL: Button,
+    // 
+    pub BtnUp_SideR: Button,
+    pub BtnDown_SideR: Button,
+    pub BtnLeft_SideR: Button,
+    pub BtnRight_SideR: Button,
+    // 
+    pub Wing_SideL: Button,
+    pub Wing_SideR: Button,
+    //
+    pub LowerTriggerAsBtn_SideL: Button,
+    pub LowerTriggerAsBtn_SideR: Button,
+    //
+    pub UpperTrigger_SideL: Button,
+    pub UpperTrigger_SideR: Button,
+    // 
+    pub PadAsBtn_SideL: Button,
+    pub PadAsBtn_SideR: Button,
+    pub StickAsBtn: Button,
+    //
+    pub PadUp_SideL: Button,
+    pub PadDown_SideL: Button,
+    pub PadLeft_SideL: Button,
+    pub PadRight_SideL: Button,
+    // 
+    pub PadUp_SideR: Button,
+    pub PadDown_SideR: Button,
+    pub PadLeft_SideR: Button,
+    pub PadRight_SideR: Button,
+    //
+    pub ExtraBtn_SideL: Button,
+    pub ExtraBtn_SideR: Button,
+    pub ExtraBtnCentral: Button,
 }
 
 impl ButtonsLayout {
-    pub fn mock() -> Self {
-        Self {
-            gaming_mode: false,
-            _switch_button: "".to_string(),
-            switch_button: ButtonName::BtnDown_SideR,
-            _reset_button: "".to_string(),
-            reset_button: ButtonName::ExtraBtnCentral,
-        }
+    pub fn load<S: AsRef<str>>(layout_name: S) -> Result<Self> {
+        let layout_raw = ButtonsLayoutRaw::load(layout_name)?;
+        let mut switch_mode_btn: ButtonName = Default::default();
+        let mut reset_btn: ButtonName = Default::default();
+
+        let mut key_code_to_button = |button_name: ButtonName, code_as_str: String| -> Result<Button>{
+            KeyCodes::from_config(button_name, code_as_str, &mut reset_btn, &mut switch_mode_btn)
+        };
+
+        let mut layout = Self {
+            gaming_mode: layout_raw.gaming_mode,
+            //
+            reset_btn: ButtonName::default(),
+            switch_mode_btn: ButtonName::default(),
+            //
+            BtnUp_SideL: key_code_to_button(ButtonName::BtnUp_SideL, layout_raw.BtnUp_SideL)?,
+            BtnDown_SideL: key_code_to_button(ButtonName::BtnDown_SideL, layout_raw.BtnDown_SideL)?,
+            BtnLeft_SideL: key_code_to_button(ButtonName::BtnLeft_SideL, layout_raw.BtnLeft_SideL)?,
+            BtnRight_SideL: key_code_to_button(ButtonName::BtnRight_SideL, layout_raw.BtnRight_SideL)?,
+            BtnUp_SideR: key_code_to_button(ButtonName::BtnUp_SideR, layout_raw.BtnUp_SideR)?,
+            BtnDown_SideR: key_code_to_button(ButtonName::BtnDown_SideR, layout_raw.BtnDown_SideR)?,
+            BtnLeft_SideR: key_code_to_button(ButtonName::BtnLeft_SideR, layout_raw.BtnLeft_SideR)?,
+            BtnRight_SideR: key_code_to_button(ButtonName::BtnRight_SideR, layout_raw.BtnRight_SideR)?,
+            Wing_SideL: key_code_to_button(ButtonName::Wing_SideL, layout_raw.Wing_SideL)?,
+            Wing_SideR: key_code_to_button(ButtonName::Wing_SideR, layout_raw.Wing_SideR)?,
+            LowerTriggerAsBtn_SideL: key_code_to_button(ButtonName::LowerTriggerAsBtn_SideL, layout_raw.LowerTriggerAsBtn_SideL)?,
+            LowerTriggerAsBtn_SideR: key_code_to_button(ButtonName::LowerTriggerAsBtn_SideR, layout_raw.LowerTriggerAsBtn_SideR)?,
+            UpperTrigger_SideL: key_code_to_button(ButtonName::UpperTrigger_SideL, layout_raw.UpperTrigger_SideL)?,
+            UpperTrigger_SideR: key_code_to_button(ButtonName::UpperTrigger_SideR, layout_raw.UpperTrigger_SideR)?,
+            PadAsBtn_SideL: key_code_to_button(ButtonName::PadAsBtn_SideL, layout_raw.PadAsBtn_SideL)?,
+            PadAsBtn_SideR: key_code_to_button(ButtonName::PadAsBtn_SideR, layout_raw.PadAsBtn_SideR)?,
+            StickAsBtn: key_code_to_button(ButtonName::StickAsBtn, layout_raw.StickAsBtn)?,
+            PadUp_SideL: key_code_to_button(ButtonName::PadUp_SideL, layout_raw.PadUp_SideL)?,
+            PadDown_SideL: key_code_to_button(ButtonName::PadDown_SideL, layout_raw.PadDown_SideL)?,
+            PadLeft_SideL: key_code_to_button(ButtonName::PadLeft_SideL, layout_raw.PadLeft_SideL)?,
+            PadRight_SideL: key_code_to_button(ButtonName::PadRight_SideL, layout_raw.PadRight_SideL)?,
+            PadUp_SideR: key_code_to_button(ButtonName::PadUp_SideR, layout_raw.PadUp_SideR)?,
+            PadDown_SideR: key_code_to_button(ButtonName::PadDown_SideR, layout_raw.PadDown_SideR)?,
+            PadLeft_SideR: key_code_to_button(ButtonName::PadLeft_SideR, layout_raw.PadLeft_SideR)?,
+            PadRight_SideR: key_code_to_button(ButtonName::PadRight_SideR, layout_raw.PadRight_SideR)?,
+            ExtraBtn_SideL: key_code_to_button(ButtonName::ExtraBtn_SideL, layout_raw.ExtraBtn_SideL)?,
+            ExtraBtn_SideR: key_code_to_button(ButtonName::ExtraBtn_SideR, layout_raw.ExtraBtn_SideR)?,
+            ExtraBtnCentral: key_code_to_button(ButtonName::ExtraBtnCentral, layout_raw.ExtraBtnCentral)?,
+        };
+
+        reset_btn.bail_if_not_init()?;
+        switch_mode_btn.bail_if_not_init()?;
+
+        layout.reset_btn = reset_btn;
+        layout.switch_mode_btn = switch_mode_btn;
+
+        Ok(layout)
     }
 }
 

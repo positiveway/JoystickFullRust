@@ -1,16 +1,20 @@
 use gilrs::{Axis, Button, Event, EventType::*, EventType};
 use gilrs::ev::Code;
 use serde::{Deserialize, Serialize};
-use strum_macros::{Display, EnumString};
+use strum_macros::{AsRefStr, Display, EnumString};
 use regex::Regex;
 use color_eyre::eyre::{bail, Result};
+use color_eyre::Report;
+use serde::de::Error;
+use strum::ParseError;
 use crate::configs::Configs;
 use crate::exec_or_eyre;
 
 
-#[derive(EnumString, Display, Default, Eq, Hash, PartialEq, Copy, Clone, Debug, Serialize, Deserialize)]
-#[strum(serialize_all = "snake_case")]
+#[derive(EnumString, AsRefStr, Display, Default, Eq, Hash, PartialEq, Copy, Clone, Debug, Serialize, Deserialize)]
+// #[strum(serialize_all = "snake_case")]
 pub enum ButtonName {
+
     BtnUp_SideL,
     BtnDown_SideL,
     BtnLeft_SideL,
@@ -32,10 +36,10 @@ pub enum ButtonName {
     // 
     PadAsBtn_SideL,
     PadAsBtn_SideR,
-
+    StickAsBtn,
+    //
     PadAsTouch_SideL,
     PadAsTouch_SideR,
-    StickAsBtn,
     //
     PadUp_SideL,
     PadDown_SideL,
@@ -55,8 +59,32 @@ pub enum ButtonName {
     None,
 }
 
-#[derive(Display, Default, Eq, Hash, PartialEq, Copy, Clone, Debug, Serialize, Deserialize)]
-#[strum(serialize_all = "snake_case")]
+impl ButtonName {
+    pub fn is_not_init(self) -> bool {
+        self == Self::default()
+    }
+
+    pub fn bail_if_not_init(self) -> Result<()> {
+        if self.is_not_init() {
+            bail!("'{self}' button is not specified")
+        } else {
+            Ok(())
+        }
+    }
+
+    // pub fn from_config(string: String) -> Result<Self> {
+    //     let button_name = Self::try_from(string.as_str());
+    //     match button_name {
+    //         Ok(button_name) => { Ok(button_name) }
+    //         Err(err) => {
+    //             Err(Report::new(err).wrap_err(format!("'{string}'")))
+    //         }
+    //     }
+    // }
+}
+
+#[derive(EnumString, AsRefStr, Display, Default, Eq, Hash, PartialEq, Copy, Clone, Debug, Serialize, Deserialize)]
+// #[strum(serialize_all = "snake_case")]
 pub enum AxisName {
     PadX_SideL,
     PadY_SideL,
@@ -74,8 +102,8 @@ pub enum AxisName {
     None,
 }
 
-#[derive(Display, Eq, Hash, PartialEq, Copy, Clone, Debug, Serialize, Deserialize)]
-#[strum(serialize_all = "snake_case")]
+#[derive(EnumString, AsRefStr, Display, Eq, Hash, PartialEq, Copy, Clone, Debug, Serialize, Deserialize)]
+// #[strum(serialize_all = "snake_case")]
 pub enum EventTypeName {
     AxisChanged,
     ButtonReleased,
@@ -172,7 +200,7 @@ pub fn match_event(event: &EventType, configs: &Configs) -> Result<TransformedEv
             TransformedEvent {
                 event_type: EventTypeName::ButtonReleased,
                 axis: AxisName::None,
-                button: configs.buttons_layout.reset_button,
+                button: configs.buttons_layout.reset_btn,
                 value: 0.0,
             }
         }
