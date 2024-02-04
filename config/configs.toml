@@ -7,8 +7,8 @@ scroll_speed = 600
 horizontal_threshold_pct = 35
 [finger_rotation]
 use_rotation = true
-left_pad = 15
-right_pad = 20
+left_pad = 8
+right_pad = 8
 stick = -10
 [jitter_threshold]
 left_pad = 0.02

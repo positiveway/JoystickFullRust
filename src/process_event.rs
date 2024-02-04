@@ -5,10 +5,12 @@ use serde::{Deserialize, Serialize};
 use crate::match_event::*;
 use crate::configs::{Configs};
 use crossbeam_channel::{Sender, Receiver, bounded};
+use lazy_static::lazy_static;
 use mouse_keyboard_input::Button;
 use strum_macros::Display;
 use crate::exec_or_eyre;
 use crate::process_event::PadStickEvent::FingerLifted;
+use crate::math_ops::RangeConverterBuilder;
 
 
 #[derive(Display, Copy, Clone, Debug, Serialize, Deserialize)]
@@ -78,7 +80,7 @@ pub fn process_event(event: &EventType, controller_state: &ControllerState) -> R
         return Ok(());
     }
 
-    match transform_triggers(&event, &controller_state.configs) {
+    match transform_triggers(&mut event, &controller_state.configs) {
         TransformStatus::Discarded | TransformStatus::Handled => {
             return Ok(());
         }
@@ -206,7 +208,11 @@ pub fn transform_left_pad(event: &TransformedEvent) -> TransformStatus {
     }
 }
 
-pub fn transform_triggers(event: &TransformedEvent, configs: &Configs) -> TransformStatus {
+lazy_static! {
+    pub static ref TRIGGERS_RANGE_CONVERTER: RangeConverterBuilder<f32>  = RangeConverterBuilder::build(-1.0, 1.0, 0.0, 1.0);
+}
+
+pub fn transform_triggers(event: &mut TransformedEvent, configs: &Configs) -> TransformStatus {
     match event.button {
         ButtonName::LowerTriggerAsBtn_SideL | ButtonName::LowerTriggerAsBtn_SideR => {
             return TransformStatus::Discarded;
@@ -222,6 +228,8 @@ pub fn transform_triggers(event: &TransformedEvent, configs: &Configs) -> Transf
                 _ => { ButtonName::None }
             };
             return TransformStatus::Transformed({
+                event.value = TRIGGERS_RANGE_CONVERTER.convert(event.value);
+
                 if event.value > configs.triggers_threshold_f32 {
                     TransformedEvent {
                         event_type: EventTypeName::ButtonPressed,

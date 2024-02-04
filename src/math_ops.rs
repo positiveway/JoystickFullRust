@@ -1,7 +1,6 @@
-#![feature(const_trait_impl)]
-
 use color_eyre::eyre::{bail, Result, OptionExt};
 use serde::{Deserialize, Serialize};
+use trait_set::trait_set;
 use crate::mouse::Coords;
 
 fn smoothing_factor(t_e: f64, cutoff: f64) -> f64 {
@@ -55,8 +54,24 @@ struct Filter {
 //     println!("{}", result);
 // }
 
-pub fn hypot<T>(a: T, b: T) -> f64
-    where T: core::ops::Mul<T, Output=T> + core::ops::Add<T, Output=T> + core::convert::Into<f64> + Copy
+trait_set! {
+    pub trait Numeric<T> = Copy +
+    Sized +
+    core::convert::Into<f64> +
+    core::ops::Mul<T, Output=T> +
+    core::ops::MulAssign<T> +
+    core::ops::Div<T, Output=T> +
+    core::ops::DivAssign<T> +
+    core::ops::Add<T, Output=T> +
+    core::ops::AddAssign<T> +
+    core::ops::Sub<T, Output=T> +
+    core::ops::SubAssign<T> +
+    core::ops::Rem<T, Output=T> +
+    core::ops::RemAssign<T> +
+    core::ops::Neg<Output=T>;
+}
+
+pub fn hypot<T: Numeric<T>>(a: T, b: T) -> f64
 {
     (a * a + b * b).into().sqrt()
 }
@@ -178,3 +193,40 @@ pub fn rotate_by_angle(point1: Vector, mut point2: Vector, rotation_angle: f32) 
 pub fn rotate_around_center(point: Vector, rotation_angle: f32) -> Vector {
     rotate_by_angle(Vector::zero(), point, rotation_angle)
 }
+
+pub fn convert_range<T: Numeric<T>>(input: T, input_start: T, input_end: T, output_start: T, output_end: T) -> T {
+    /* Note, "slope" below is a constant for given numbers, so if you are calculating
+   a lot of output values, it makes sense to calculate it once.  It also makes
+   understanding the code easier */
+    let slope = (output_end - output_start) / (input_end - input_start);
+    let output = output_start + slope * (input - input_start);
+    output
+}
+
+pub struct RangeConverterBuilder<T: Numeric<T>> {
+    slope: T,
+    pre_calc: T,
+}
+
+impl<T: Numeric<T>> RangeConverterBuilder<T> {
+    pub fn build(input_start: T, input_end: T, output_start: T, output_end: T) -> Self {
+        let slope = (output_end - output_start) / (input_end - input_start);
+
+        // let output = output_start + slope * (input - input_start);
+        // let output = output_start + slope * input - slope * input_start;
+        // let output = slope * input + output_start - slope * input_start;
+        let pre_calc = output_start - slope * input_start;
+        // let output = slope * input + pre_calc;
+
+        Self {
+            slope,
+            pre_calc,
+        }
+    }
+
+    pub fn convert(&self, input: T) -> T {
+        let output = self.slope * input + self.pre_calc;
+        output
+    }
+}
+
