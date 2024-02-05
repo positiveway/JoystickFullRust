@@ -12,6 +12,7 @@ use mouse_keyboard_input::Button;
 use strum::IntoEnumIterator;
 use crate::buttons_state::ButtonsState;
 use crate::key_codes::KeyCodes;
+use crate::math_ops::Vector;
 
 
 const PROJECT_NAME: &str = "JoystickFullRust";
@@ -90,69 +91,69 @@ pub struct ButtonsLayoutRaw {
     pub gaming_mode: bool,
     //
     #[serde(default)]
-    pub BtnUp_SideL: String,
+    pub BtnUp_SideL: Vec<String>,
     #[serde(default)]
-    pub BtnDown_SideL: String,
+    pub BtnDown_SideL: Vec<String>,
     #[serde(default)]
-    pub BtnLeft_SideL: String,
+    pub BtnLeft_SideL: Vec<String>,
     #[serde(default)]
-    pub BtnRight_SideL: String,
+    pub BtnRight_SideL: Vec<String>,
     //
     #[serde(default)]
-    pub BtnUp_SideR: String,
+    pub BtnUp_SideR: Vec<String>,
     #[serde(default)]
-    pub BtnDown_SideR: String,
+    pub BtnDown_SideR: Vec<String>,
     #[serde(default)]
-    pub BtnLeft_SideR: String,
+    pub BtnLeft_SideR: Vec<String>,
     #[serde(default)]
-    pub BtnRight_SideR: String,
+    pub BtnRight_SideR: Vec<String>,
     //
     #[serde(default)]
-    pub Wing_SideL: String,
+    pub Wing_SideL: Vec<String>,
     #[serde(default)]
-    pub Wing_SideR: String,
+    pub Wing_SideR: Vec<String>,
     //
     #[serde(default)]
-    pub LowerTriggerAsBtn_SideL: String,
+    pub LowerTriggerAsBtn_SideL: Vec<String>,
     #[serde(default)]
-    pub LowerTriggerAsBtn_SideR: String,
+    pub LowerTriggerAsBtn_SideR: Vec<String>,
     //
     #[serde(default)]
-    pub UpperTrigger_SideL: String,
+    pub UpperTrigger_SideL: Vec<String>,
     #[serde(default)]
-    pub UpperTrigger_SideR: String,
+    pub UpperTrigger_SideR: Vec<String>,
     //
     #[serde(default)]
-    pub PadAsBtn_SideL: String,
+    pub PadAsBtn_SideL: Vec<String>,
     #[serde(default)]
-    pub PadAsBtn_SideR: String,
+    pub PadAsBtn_SideR: Vec<String>,
     #[serde(default)]
-    pub StickAsBtn: String,
+    pub StickAsBtn: Vec<String>,
     //
     #[serde(default)]
-    pub PadUp_SideL: String,
+    pub PadUp_SideL: Vec<String>,
     #[serde(default)]
-    pub PadDown_SideL: String,
+    pub PadDown_SideL: Vec<String>,
     #[serde(default)]
-    pub PadLeft_SideL: String,
+    pub PadLeft_SideL: Vec<String>,
     #[serde(default)]
-    pub PadRight_SideL: String,
+    pub PadRight_SideL: Vec<String>,
     //
     #[serde(default)]
-    pub PadUp_SideR: String,
+    pub PadUp_SideR: Vec<String>,
     #[serde(default)]
-    pub PadDown_SideR: String,
+    pub PadDown_SideR: Vec<String>,
     #[serde(default)]
-    pub PadLeft_SideR: String,
+    pub PadLeft_SideR: Vec<String>,
     #[serde(default)]
-    pub PadRight_SideR: String,
+    pub PadRight_SideR: Vec<String>,
     //
     #[serde(default)]
-    pub ExtraBtn_SideL: String,
+    pub ExtraBtn_SideL: Vec<String>,
     #[serde(default)]
-    pub ExtraBtn_SideR: String,
+    pub ExtraBtn_SideR: Vec<String>,
     #[serde(default)]
-    pub ExtraBtnCentral: String,
+    pub ExtraBtnCentral: Vec<String>,
 }
 
 impl ButtonsLayoutRaw {
@@ -162,6 +163,8 @@ impl ButtonsLayoutRaw {
     }
 }
 
+pub type Buttons = Vec<Button>;
+
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct ButtonsLayout {
     pub gaming_mode: bool,
@@ -169,7 +172,7 @@ pub struct ButtonsLayout {
     pub reset_btn: ButtonName,
     pub switch_mode_btn: ButtonName,
     //
-    pub layout: HashMap<ButtonName, Button>,
+    pub layout: HashMap<ButtonName, Buttons>,
 }
 
 impl ButtonsLayout {
@@ -178,11 +181,25 @@ impl ButtonsLayout {
         let mut switch_mode_btn: ButtonName = Default::default();
         let mut reset_btn: ButtonName = Default::default();
 
-        let mut layout: HashMap<ButtonName, Button> = HashMap::new();
+        let mut layout: HashMap<ButtonName, Buttons> = HashMap::new();
 
-        let mut key_code_to_button = |button_name: ButtonName, code_as_str: String| -> Result<()>{
-            let button = KeyCodes::from_config(button_name, code_as_str, &mut reset_btn, &mut switch_mode_btn)?;
-            layout.insert(button_name, button);
+        let mut key_code_to_button = |button_name: ButtonName, codes: Vec<String>| -> Result<()>{
+            let mut buttons = Buttons::new();
+
+            let detect_special = codes.len() == 1;
+
+            for code_as_str in codes {
+                let button = KeyCodes::from_config(
+                    button_name,
+                    code_as_str,
+                    &mut reset_btn,
+                    &mut switch_mode_btn,
+                    detect_special,
+                )?;
+                buttons.push(button)
+            }
+            layout.insert(button_name, buttons);
+
             Ok(())
         };
 
@@ -216,7 +233,6 @@ impl ButtonsLayout {
         key_code_to_button(ButtonName::ExtraBtnCentral, layout_raw.ExtraBtnCentral)?;
 
         reset_btn.bail_if_not_init()?;
-        switch_mode_btn.bail_if_not_init()?;
 
         Ok(Self {
             gaming_mode: layout_raw.gaming_mode,

@@ -90,8 +90,8 @@ pub struct Vector {
     pub y: f32,
 }
 
-pub const CONVERT_ERR_MSG: &str = "Could not convert";
 pub const NONE_VAL_ERR_MSG: &str = "Value is None";
+pub const CONVERT_ERR_MSG: &str = "Could not convert";
 
 
 impl Vector {
@@ -102,10 +102,6 @@ impl Vector {
         }
     }
     pub fn from_2_coords(point1: Coords, point2: Coords) -> Result<Vector> {
-        if point1.any_is_none() || point2.any_is_none() {
-            bail!(NONE_VAL_ERR_MSG);
-        };
-
         Ok(Self {
             x: point2.x.ok_or_eyre(CONVERT_ERR_MSG)? - point1.x.ok_or_eyre(CONVERT_ERR_MSG)?,
             y: point2.y.ok_or_eyre(CONVERT_ERR_MSG)? - point1.y.ok_or_eyre(CONVERT_ERR_MSG)?,

@@ -1,5 +1,5 @@
 use color_eyre::eyre::bail;
-use color_eyre::Report;
+use color_eyre::{Report, Result};
 use serde::{Deserialize, Serialize};
 use strum_macros::{AsRefStr, Display, EnumString};
 use crate::exec_or_eyre;
@@ -12,6 +12,7 @@ pub enum KeyCodes {
     None = 0,
     RESET_BTN = 10000,
     SWITCH_MODE_BTN = 10001,
+    RELEASE_ALL = 10002,
     KEY_ESC = 1,
     KEY_1 = 2,
     KEY_2 = 3,
@@ -236,8 +237,31 @@ pub enum KeyCodes {
     MOUSE_TASK = 0x117,
 }
 
+// impl KeyCodes {
+//     pub fn as_button(&self) -> Button{
+//         *self as Button
+//     }
+// }
+
+fn assign_special_button(special_button: &mut ButtonName, value: ButtonName) -> Result<(Button)> {
+    if *special_button != ButtonName::default() {
+        bail!("Duplicate of special button: '{}'. Value already exists: '{}'",
+            value, *special_button)
+    } else {
+        *special_button = value;
+        Ok(KeyCodes::None as Button)
+    }
+}
+
 impl KeyCodes {
-    pub fn from_config(button_name: ButtonName, code_str: String, reset_btn: &mut ButtonName, switch_mode_btn: &mut ButtonName) -> color_eyre::Result<Button> {
+    pub fn from_config(
+        button_name: ButtonName,
+        code_str: String,
+        reset_btn: &mut ButtonName,
+        switch_mode_btn: &mut ButtonName,
+        detect_special: bool,
+    ) -> Result<Button>
+    {
         if code_str == "" {
             return Ok(Self::None as Button);
         };
@@ -248,10 +272,16 @@ impl KeyCodes {
                 Err(Report::new(err).wrap_err(format!("'{button_name}'")))
             }
             Ok(key_code) => {
-                match key_code {
-                    KeyCodes::RESET_BTN => *reset_btn = button_name,
-                    KeyCodes::SWITCH_MODE_BTN => *switch_mode_btn = button_name,
-                    _ => {}
+                if detect_special {
+                    match key_code {
+                        KeyCodes::RESET_BTN => {
+                            return assign_special_button(reset_btn, button_name);
+                        }
+                        KeyCodes::SWITCH_MODE_BTN => {
+                            return assign_special_button(switch_mode_btn, button_name);
+                        },
+                        _ => {}
+                    }
                 }
                 Ok(key_code as Button)
             }
