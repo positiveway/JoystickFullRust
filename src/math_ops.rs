@@ -111,9 +111,7 @@ pub fn calc_angle(x: f32, y: f32) -> f32 {
     let angle_in_radians = y.atan2(x);
     // let angle_in_degrees = angle_in_radians.to_degrees();
     let angle_in_degrees = angle_in_radians * RADIANS_TO_DEGREES;
-    //SUPER Important: atan2 inverts (makes angles negative) and measures angle clockwise instead of counter-clockwise
-    // need to invert it back
-    let angle = resolve_angle(-angle_in_degrees);
+    let angle = resolve_angle(angle_in_degrees);
 
     if angle < 0.0 || angle >= 360.0 {
         panic!("Incorrect angle: '{}'", angle)
@@ -121,22 +119,9 @@ pub fn calc_angle(x: f32, y: f32) -> f32 {
     angle
 }
 
-// pub fn test_angle1(x: f32, y: f32) -> f32 {
-//     let angle_in_radians = y.atan2(x);
-//     let angle_in_degrees = angle_in_radians * RADIANS_TO_DEGREES;
-//     -angle_in_degrees
-// }
-//
-// pub fn test_angle2(x: f32, y: f32) -> f32 {
-//     let angle_in_radians = atan2(x, y);
-//     let angle_in_degrees = angle_in_radians * RADIANS_TO_DEGREES;
-//     angle_in_degrees
-// }
-
 pub fn distance(x: f32, y: f32) -> f32 {
     x.hypot(y)
 }
-
 
 #[derive(PartialEq, Copy, Clone, Default, Debug, Serialize, Deserialize)]
 pub struct Vector {
@@ -378,7 +363,7 @@ impl<T: Clone + Display + PartialEq> ZonesMapper<T> {
         let (zone, angle) = match (x, y) {
             (Some(x), Some(y)) => {
                 if distance(x, y) > self.threshold {
-                    println!("Angle: {}", calc_angle(x, y));
+                    // debug!("Angle: {}", calc_angle(x, y));
                     let angle = calc_angle(x, y) as usize;
                     (Some(self.angle_to_zone[angle]), Some(angle))
                 } else {

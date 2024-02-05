@@ -212,6 +212,7 @@ impl CoordsState {
 
         let rotated_coords = rotated_vector.as_coords();
         debug!("Origin: {}", self.cur);
+        debug!("Filled: {}", self.cur_pos());
         debug!("Rotated: {}", rotated_coords);
         debug!("Angle: [Orig: {}, Shifted: {}; Rotation: {}]",
                  orig_angle, rotated_vector.angle(), self.finger_rotation);
@@ -223,7 +224,7 @@ impl CoordsState {
         Ok(rotate_around_center(Vector::from_coords(self.prev)?, self.finger_rotation as f32).as_coords())
     }
 
-    pub fn cur_pos(&mut self) -> Coords {
+    pub fn cur_pos(&self) -> Coords {
         Coords {
             x: match self.cur.x {
                 None => { self.prev.x }
@@ -432,6 +433,14 @@ fn writing_thread(
                     pads_coords.reset();
                 }
                 MouseEvent::LeftPad(pad_stick_event) => {
+                    //SUPER Important: Steam Controller's Left pad inverts Y axis and thus
+                    // makes angles negative (angles go clockwise instead of counter-clockwise)
+                    // need to invert it back
+                    let pad_stick_event = match pad_stick_event {
+                        PadStickEvent::FingerLifted => { PadStickEvent::FingerLifted }
+                        PadStickEvent::MovedX(x) => { PadStickEvent::MovedX(x) }
+                        PadStickEvent::MovedY(y) => { PadStickEvent::MovedY(-y) }
+                    };
                     assign_pad_stick_event(&mut pads_coords.left_pad,
                                            layout_configs.jitter_threshold.left_pad,
                                            pad_stick_event)
@@ -470,7 +479,7 @@ fn writing_thread(
                         let scroll_diff = scroll_diff.convert(scroll_configs.speed);
                         if scroll_diff.is_any_changes() {
                             exec_or_eyre!(virtual_device.scroll_x(scroll_diff.x))?;
-                            exec_or_eyre!(virtual_device.scroll_y(scroll_diff.y))?;
+                            exec_or_eyre!(virtual_device.scroll_y(-scroll_diff.y))?;
                         }
                     }
                 }
@@ -482,9 +491,9 @@ fn writing_thread(
                             Err(_) => { cur_pos }
                         };
                         let (to_release, to_press) = wasd_zone_mapper.get_commands_diff(cur_pos.x, cur_pos.y);
-                        if !to_release.is_empty() || !to_press.is_empty() {
-                            println!("To release: '{:?}'; To press: '{:?}'", to_release, to_press)
-                        }
+                        // if !to_release.is_empty() || !to_press.is_empty() {
+                        //     println!("To release: '{:?}'; To press: '{:?}'", to_release, to_press)
+                        // }
                     }
                 }
             }
