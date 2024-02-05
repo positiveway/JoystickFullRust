@@ -7,7 +7,7 @@ speed = 600
 horizontal_threshold = 0.08
 [finger_rotation]
 use_rotation = true
-left_pad = 8 #important not to assign negative values
+left_pad = 20 #important not to assign negative values
 right_pad = 8
 stick = 8
 [jitter_threshold]

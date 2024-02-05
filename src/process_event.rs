@@ -107,7 +107,7 @@ pub fn process_event(orig_event: &EventType, controller_state: &mut ControllerSt
         TransformStatus::Unchanged => {}
     };
 
-    match transform_left_pad(&event, controller_state.layout_configs.gaming_mode) {
+    match transform_left_pad(&event) {
         TransformStatus::Discarded | TransformStatus::Handled => {
             return Ok(());
         }
@@ -230,28 +230,20 @@ pub fn process_pad_stick(event: &TransformedEvent, controller_state: &Controller
 }
 
 
-pub fn transform_left_pad(event: &TransformedEvent, gaming_mode: bool) -> TransformStatus {
-    match event.event_type {
-        EventTypeName::ButtonReleased | EventTypeName::ButtonPressed => {
-            match event.button {
-                ButtonName::PadDown_SideL |
-                ButtonName::PadRight_SideL |
-                ButtonName::PadUp_SideL |
-                ButtonName::PadLeft_SideL => {
-                    TransformStatus::Transformed(TransformedEvent {
-                        event_type: event.event_type,
-                        axis: AxisName::None,
-                        value: event.value,
-                        button: ButtonName::PadAsBtn_SideL,
-                    })
-                }
-                _ => TransformStatus::Unchanged
-            }
+pub fn transform_left_pad(event: &TransformedEvent) -> TransformStatus {
+    match event.button {
+        ButtonName::PadDown_SideL |
+        ButtonName::PadRight_SideL |
+        ButtonName::PadUp_SideL |
+        ButtonName::PadLeft_SideL => {
+            TransformStatus::Transformed(TransformedEvent {
+                event_type: event.event_type,
+                axis: AxisName::None,
+                value: event.value,
+                button: ButtonName::PadAsBtn_SideL,
+            })
         }
-        EventTypeName::AxisChanged => {
-            if gaming_mode {}
-            TransformStatus::Unchanged
-        }
+        _ => TransformStatus::Unchanged
     }
 }
 

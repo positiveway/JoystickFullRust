@@ -74,12 +74,8 @@ impl Coords {
         self.x.is_some() || self.y.is_some()
     }
 
-    pub fn angle(&self) -> Result<f32> {
-        Ok(calc_angle(self.x.ok_or_eyre(NONE_VAL_ERR_MSG)?, self.y.ok_or_eyre(NONE_VAL_ERR_MSG)?))
-    }
-
-    pub fn distance(&self) -> Result<f32> {
-        Ok(distance(self.x.ok_or_eyre(NONE_VAL_ERR_MSG)?, self.y.ok_or_eyre(NONE_VAL_ERR_MSG)?))
+    pub fn rotate(&self, rotation: i16) -> Result<Self> {
+        Ok(rotate_around_center(Vector::from_coords(*self)?, rotation as f32).as_coords())
     }
 }
 
@@ -404,8 +400,16 @@ fn writing_thread(
         vec![KeyCodes::KEY_S],
         vec![KeyCodes::KEY_D]
     ];
-    let _wasd_zone_range = ZoneAllowedRange::new(22, 22, 22)?;
-    let wasd_zone_mapper = ZonesMapper::gen_from_4(_wasd_zones, 90, &_wasd_zone_range)?;
+    let _wasd_zone_range = ZoneAllowedRange::new(
+        22,
+        22,
+        22,
+    )?;
+    let mut wasd_zone_mapper = ZonesMapper::gen_from_4(
+        _wasd_zones, 90,
+        &_wasd_zone_range,
+        layout_configs.wasd_threshold,
+    )?;
 
     loop {
         let start = Instant::now();
@@ -472,11 +476,14 @@ fn writing_thread(
                 }
                 true => {
                     if pads_coords.left_pad.any_changes() {
-                        let cur_pos = pads_coords.left_pad.cur_pos();
-                        if let Ok(angle) = cur_pos.angle() {
-                            if let Ok(distance) = cur_pos.distance() {
-                                if distance > layout_configs.wasd_threshold {}
-                            }
+                        let mut cur_pos = pads_coords.left_pad.cur_pos();
+                        cur_pos = match cur_pos.rotate(pads_coords.left_pad.finger_rotation) {
+                            Ok(rotated_coords) => { rotated_coords }
+                            Err(_) => { cur_pos }
+                        };
+                        let (to_release, to_press) = wasd_zone_mapper.get_commands_diff(cur_pos.x, cur_pos.y);
+                        if !to_release.is_empty() || !to_press.is_empty() {
+                            println!("To release: '{:?}'; To press: '{:?}'", to_release, to_press)
                         }
                     }
                 }

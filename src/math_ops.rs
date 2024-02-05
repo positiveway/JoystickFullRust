@@ -1,5 +1,6 @@
 use std::option::Option;
 use std::fmt::Display;
+use std::ops::Add;
 use color_eyre::eyre::{bail, Result, OptionExt};
 use log::debug;
 use serde::{Deserialize, Serialize};
@@ -83,18 +84,54 @@ const RADIANS_TO_DEGREES: f32 = 180f32 / std::f32::consts::PI;
 const DEGREES_TO_RADIANS: f32 = std::f32::consts::PI / 180f32;
 
 pub fn resolve_angle(angle: f32) -> f32 {
-    ((angle + 360.0) % 360.0).round()
+    // Important to round the source angle in the beginning, not the result.
+    // Otherwise, value can become greater than 360 if the source angle is greater than 359.5 but lower than 360
+    (angle.round() + 360.0) % 360.0
 }
 
-pub fn resolve_angle_int(angle: u16) -> u16 {
-    (angle + 360) % 360
-}
+// pub fn atan2(x: f32, y: f32) -> f32 {
+//     if x > 0.0 {
+//         (y / x).atan()
+//     } else if x < 0.0 && y >= 0.0 {
+//         (y / x).atan() + std::f32::consts::PI
+//     } else if x < 0.0 && y < 0.0 {
+//         (y / x).atan() - std::f32::consts::PI
+//     } else if x == 0.0 && y > 0.0 {
+//         std::f32::consts::PI / 2.0
+//     } else if x == 0.0 && y < 0.0 {
+//         -(std::f32::consts::PI / 2.0)
+//     } else if x == 0.0 && y == 0.0 {
+//         0.0  //represents undefined
+//     } else {
+//         10000.0
+//     }
+// }
 
 pub fn calc_angle(x: f32, y: f32) -> f32 {
     let angle_in_radians = y.atan2(x);
+    // let angle_in_degrees = angle_in_radians.to_degrees();
     let angle_in_degrees = angle_in_radians * RADIANS_TO_DEGREES;
-    resolve_angle(angle_in_degrees)
+    //SUPER Important: atan2 inverts (makes angles negative) and measures angle clockwise instead of counter-clockwise
+    // need to invert it back
+    let angle = resolve_angle(-angle_in_degrees);
+
+    if angle < 0.0 || angle >= 360.0 {
+        panic!("Incorrect angle: '{}'", angle)
+    }
+    angle
 }
+
+// pub fn test_angle1(x: f32, y: f32) -> f32 {
+//     let angle_in_radians = y.atan2(x);
+//     let angle_in_degrees = angle_in_radians * RADIANS_TO_DEGREES;
+//     -angle_in_degrees
+// }
+//
+// pub fn test_angle2(x: f32, y: f32) -> f32 {
+//     let angle_in_radians = atan2(x, y);
+//     let angle_in_degrees = angle_in_radians * RADIANS_TO_DEGREES;
+//     angle_in_degrees
+// }
 
 pub fn distance(x: f32, y: f32) -> f32 {
     x.hypot(y)
@@ -278,13 +315,93 @@ pub fn pivot_angle_to_allowed_range(angle: u16, zone_allowed_range: &ZoneAllowed
     }
 }
 
-#[derive(PartialEq, Clone, Debug)]
-pub struct ZonesMapper<T: Clone + Display> {
-    angle_to_value: [Option<Vec<T>>; 360],
+pub fn are_options_equal<T: PartialEq>(value1: Option<T>, value2: Option<T>) -> bool {
+    match (value1, value2) {
+        (Some(value1), Some(value2)) => { value1 == value2 }
+        (None, None) => true,
+        _ => false
+    }
 }
 
-impl<T: Clone + Display> ZonesMapper<T> {
-    pub fn gen_from_4(values: [Vec<T>; 4], start_angle: u16, zone_allowed_range: &ZoneAllowedRange) -> Result<Self> {
+pub fn are_options_different<T: PartialEq>(value1: Option<T>, value2: Option<T>) -> bool {
+    !are_options_equal(value1, value2)
+}
+
+#[derive(PartialEq, Clone, Debug)]
+pub struct ZonesMapper<T: Clone + Display + PartialEq> {
+    angle_to_value: [Option<Vec<T>>; 360],
+    angle_to_zone: [u8; 360],
+    prev_zone: Option<u8>,
+    prev_value: Option<Vec<T>>,
+    threshold: f32,
+}
+
+impl<T: Clone + Display + PartialEq> ZonesMapper<T> {
+    pub fn get_commands_diff(&mut self, x: Option<f32>, y: Option<f32>) -> (Vec<T>, Vec<T>) {
+        let (zone_changed, cur_value) = self.detect_zone(x, y);
+        let prev_value = self.prev_value.clone();
+        self.prev_value = cur_value.clone();
+
+        match zone_changed {
+            true => {
+                match (prev_value, cur_value) {
+                    (Some(prev_value), Some(cur_value)) => {
+                        let mut to_release = vec![];
+                        for prev_element_val in &prev_value {
+                            if !cur_value.contains(prev_element_val) {
+                                to_release.push(prev_element_val.clone());
+                            }
+                        };
+                        let mut to_press = vec![];
+                        for cur_element_val in &cur_value {
+                            if !prev_value.contains(cur_element_val) {
+                                to_press.push(cur_element_val.clone());
+                            }
+                        };
+                        (to_release, to_press)
+                    }
+                    (Some(prev_value), None) => {
+                        (prev_value.clone(), vec![])
+                    }
+                    (None, Some(cur_value)) => {
+                        (vec![], cur_value.clone())
+                    }
+                    (None, None) => (vec![], vec![])
+                }
+            }
+            false => {
+                (vec![], vec![])
+            }
+        }
+    }
+    pub fn detect_zone(&mut self, x: Option<f32>, y: Option<f32>) -> (bool, Option<Vec<T>>) {
+        let (zone, angle) = match (x, y) {
+            (Some(x), Some(y)) => {
+                if distance(x, y) > self.threshold {
+                    println!("Angle: {}", calc_angle(x, y));
+                    let angle = calc_angle(x, y) as usize;
+                    (Some(self.angle_to_zone[angle]), Some(angle))
+                } else {
+                    (None, None)
+                }
+            }
+            _ => (None, None)
+        };
+        // debug!("Prev zone: '{:?}'; Cur zone: '{:?}'", self.prev_zone, zone);
+
+        let zone_changed = are_options_different(self.prev_zone, zone);
+        // debug!("Changed: {}", zone_changed);
+        self.prev_zone = zone;
+        let value = match angle {
+            None => { None }
+            Some(angle) => {
+                self.angle_to_value[angle].clone()
+            }
+        };
+        (zone_changed, value)
+    }
+
+    pub fn gen_from_4(values: [Vec<T>; 4], start_angle: u16, zone_allowed_range: &ZoneAllowedRange, threshold: f32) -> Result<Self> {
         let mut expanded_values: [Vec<T>; 8] = core::array::from_fn(|i| values[0].clone());
         for ind in 0..values.len() {
             expanded_values[ind * 2] = values[ind].clone();
@@ -294,18 +411,19 @@ impl<T: Clone + Display> ZonesMapper<T> {
             ].concat();
         }
 
-        Self::gen_from_8(expanded_values, start_angle, zone_allowed_range)
+        Self::gen_from_8(expanded_values, start_angle, zone_allowed_range, threshold)
     }
 
-    pub fn gen_from_8(values: [Vec<T>; 8], start_angle: u16, zone_allowed_range: &ZoneAllowedRange) -> Result<Self> {
+    pub fn gen_from_8(values: [Vec<T>; 8], start_angle: u16, zone_allowed_range: &ZoneAllowedRange, threshold: f32) -> Result<Self> {
         let mut angle_to_value: [Option<Vec<T>>; 360] = std::array::from_fn(|_| None);
+        let mut angle_to_zone: [u8; 360] = std::array::from_fn(|_| 0);
 
         for ind in 0..values.len() {
             let pivot_angle = start_angle + 45 * ind as u16;
             let allowed_range = pivot_angle_to_allowed_range(pivot_angle, zone_allowed_range)?;
             let range_to_value = Self::gen_range(pivot_angle, allowed_range, &values[ind]);
             for (angle, value) in range_to_value {
-                if angle > 360 || angle < 0 {
+                if angle >= 360 || angle < 0 {
                     bail!("Incorrectly generated angle '{}'", angle)
                 }
                 let angle = angle as usize;
@@ -313,10 +431,11 @@ impl<T: Clone + Display> ZonesMapper<T> {
                     bail!("Duplicate angle '{}'", angle)
                 }
                 angle_to_value[angle] = Some(value.clone());
+                angle_to_zone[angle] = ind as u8;
             }
         }
 
-        // for ind in 0.. angle_to_value.len(){
+        // for ind in 0..angle_to_value.len(){
         //     let value = match angle_to_value[ind].clone() {
         //         None => {"None".to_string()}
         //         Some(value) => {
@@ -331,7 +450,11 @@ impl<T: Clone + Display> ZonesMapper<T> {
         // }
 
         Ok(Self {
-            angle_to_value: angle_to_value
+            angle_to_value,
+            angle_to_zone,
+            threshold,
+            prev_zone: None,
+            prev_value: None,
         })
     }
 
