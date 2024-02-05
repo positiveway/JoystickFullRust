@@ -294,7 +294,7 @@ pub struct PadsCoords {
 }
 
 impl PadsCoords {
-    pub fn new(jitter_threshold: &JitterThreshold, finger_rotation: &FingerRotation, debug: bool) -> Self {
+    pub fn new(jitter_threshold: &JitterThreshold, finger_rotation: &FingerRotation) -> Self {
         Self {
             left_pad: CoordsState::new(
                 jitter_threshold.left_pad, finger_rotation.left_pad, finger_rotation.use_rotation),
@@ -380,7 +380,7 @@ fn writing_thread(
     let is_gaming_mode = configs.buttons_layout.gaming_mode;
 
     let mut mouse_mode = MouseMode::default();
-    let mut pads_coords = PadsCoords::new(&configs.jitter_threshold, &configs.finger_rotation, configs.debug);
+    let mut pads_coords = PadsCoords::new(&configs.jitter_threshold, &configs.finger_rotation);
 
     loop {
         let start = Instant::now();
@@ -433,7 +433,7 @@ fn writing_thread(
             if !is_gaming_mode {
                 if pads_coords.left_pad.any_changes() {
                     let mut scroll_diff = pads_coords.left_pad.diff();
-                    if scroll_diff.x.abs() <= configs.horizontal_threshold_f32 {
+                    if scroll_diff.x.abs() <= configs.horizontal_threshold {
                         scroll_diff.x = 0.0;
                     }
 
