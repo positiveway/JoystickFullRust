@@ -59,6 +59,21 @@ impl ButtonsState {
             special_buttons,
         }
     }
+    pub fn press_keycodes(&mut self, key_codes: Vec<Button>) -> Result<()> {
+        if key_codes.len() == 1 {
+            let key_code = key_codes[0];
+            if key_code == KeyCodes::KEY_ESC as Button ||
+                key_code == KeyCodes::RELEASE_ALL as Button {
+                self.release_all()?;
+            }
+        }
+        for key_code in key_codes {
+            if !self.special_codes.contains(&key_code) {
+                self.button_sender.send(Pressed(key_code))?;
+            }
+        }
+        Ok(())
+    }
 
     pub fn press(&mut self, button_name: ButtonName) -> Result<()> {
         if self.special_buttons.contains(&button_name) {
@@ -67,21 +82,18 @@ impl ButtonsState {
 
         if !*get_or_err(&self.pressed, &button_name)? {
             self.pressed.insert(button_name, true);
-            let key_codes = get_or_err(&self.buttons_layout, &button_name)?.clone();
-
-            if key_codes.len() == 1 {
-                let key_code = key_codes[0];
-                if key_code == KeyCodes::KEY_ESC as Button ||
-                    key_code == KeyCodes::RELEASE_ALL as Button {
-                    self.release_all()?;
-                }
-            }
-            for key_code in key_codes {
-                if !self.special_codes.contains(&key_code) {
-                    self.button_sender.send(Pressed(key_code))?;
-                }
-            }
+            let key_codes = get_or_err(&self.buttons_layout, &button_name)?;
+            self.press_keycodes(key_codes.clone())?
         };
+        Ok(())
+    }
+
+    pub fn release_keycodes(&mut self, key_codes: Vec<Button>) -> Result<()> {
+        for key_code in key_codes.iter().rev() {
+            if !self.special_codes.contains(key_code) {
+                self.button_sender.send(Released(*key_code))?;
+            }
+        }
         Ok(())
     }
 
@@ -93,11 +105,7 @@ impl ButtonsState {
         if *get_or_err(&self.pressed, &button_name)? {
             self.pressed.insert(button_name, false);
             let key_codes = get_or_err(&self.buttons_layout, &button_name)?;
-            for key_code in key_codes.iter().rev() {
-                if !self.special_codes.contains(key_code) {
-                    self.button_sender.send(Released(*key_code))?;
-                }
-            }
+            self.release_keycodes(key_codes.clone())?;
         };
         Ok(())
     }
