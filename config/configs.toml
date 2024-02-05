@@ -4,10 +4,10 @@ typing_layout = "typing"
 triggers_threshold_pct = 30
 mouse_speed = 400
 scroll_speed = 600
-horizontal_threshold_pct = 35
+horizontal_threshold_pct = 8
 [finger_rotation]
 use_rotation = true
-left_pad = 8
+left_pad = -8
 right_pad = 8
 stick = -10
 [jitter_threshold]

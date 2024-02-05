@@ -432,7 +432,11 @@ fn writing_thread(
             }
             if !is_gaming_mode {
                 if pads_coords.left_pad.any_changes() {
-                    let scroll_diff = pads_coords.left_pad.diff();
+                    let mut scroll_diff = pads_coords.left_pad.diff();
+                    if scroll_diff.x.abs() <= configs.horizontal_threshold_f32 {
+                        scroll_diff.x = 0.0;
+                    }
+
                     let scroll_diff = scroll_diff.convert(configs.scroll_speed);
                     if scroll_diff.is_any_changes() {
                         exec_or_eyre!(virtual_device.scroll_x(scroll_diff.x))?;
