@@ -279,7 +279,7 @@ impl KeyCodes {
                         }
                         KeyCodes::SWITCH_MODE_BTN => {
                             return assign_special_button(switch_mode_btn, button_name);
-                        },
+                        }
                         _ => {}
                     }
                 }

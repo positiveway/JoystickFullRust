@@ -17,7 +17,7 @@ pub struct ButtonsState {
     buttons_layout: HashMap<ButtonName, Buttons>,
     button_sender: ButtonSender,
     special_codes: Buttons,
-    special_buttons: Vec<ButtonName>
+    special_buttons: Vec<ButtonName>,
 }
 
 pub fn get_or_err<'a, K: Hash + Eq + Sized + std::fmt::Display, V>(m: &'a HashMap<K, V>, key: &'a K) -> Result<&'a V>
@@ -56,13 +56,13 @@ impl ButtonsState {
                 KeyCodes::SWITCH_MODE_BTN as Button,
                 KeyCodes::RELEASE_ALL as Button,
             ],
-            special_buttons
+            special_buttons,
         }
     }
 
     pub fn press(&mut self, button_name: ButtonName) -> Result<()> {
         if self.special_buttons.contains(&button_name) {
-            return Ok(())
+            return Ok(());
         }
 
         if !*get_or_err(&self.pressed, &button_name)? {
@@ -87,7 +87,7 @@ impl ButtonsState {
 
     fn release_raw(&mut self, button_name: ButtonName) -> Result<()> {
         if self.special_buttons.contains(&button_name) {
-            return Ok(())
+            return Ok(());
         }
 
         if *get_or_err(&self.pressed, &button_name)? {

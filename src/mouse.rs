@@ -434,11 +434,11 @@ fn writing_thread(
             if !is_gaming_mode {
                 if pads_coords.left_pad.any_changes() {
                     let mut scroll_diff = pads_coords.left_pad.diff();
-                    if scroll_diff.x.abs() <= layout_configs.scroll_horizontal_threshold {
+                    if scroll_diff.x.abs() <= layout_configs.scroll.horizontal_threshold {
                         scroll_diff.x = 0.0;
                     }
 
-                    let scroll_diff = scroll_diff.convert(layout_configs.scroll_speed);
+                    let scroll_diff = scroll_diff.convert(layout_configs.scroll.speed);
                     if scroll_diff.is_any_changes() {
                         exec_or_eyre!(virtual_device.scroll_x(scroll_diff.x))?;
                         exec_or_eyre!(virtual_device.scroll_y(scroll_diff.y))?;

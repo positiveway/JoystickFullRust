@@ -20,19 +20,25 @@ lazy_static! {
 }
 
 
-#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[derive(Clone, Debug, Copy, Default, Serialize, Deserialize)]
 pub struct JitterThreshold {
     pub left_pad: f32,
     pub right_pad: f32,
     pub stick: f32,
 }
 
-#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[derive(Clone, Debug, Copy, Default, Serialize, Deserialize)]
 pub struct FingerRotation {
     pub use_rotation: bool,
     pub left_pad: i16,
     pub right_pad: i16,
     pub stick: i16,
+}
+
+#[derive(Clone, Debug, Copy, Default, Serialize, Deserialize)]
+pub struct ScrollConfigs {
+    pub speed: u16,
+    pub horizontal_threshold: f32,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -83,11 +89,10 @@ pub struct LayoutConfigs {
     #[serde(skip)]
     pub triggers_threshold: f32,
     pub mouse_speed: u16,
-    pub scroll_speed: u16,
-    #[serde(alias = "scroll_horizontal_threshold")]
-    _scroll_horizontal_threshold: Option<f32>,
+    #[serde(alias = "scroll")]
+    _scroll: Option<ScrollConfigs>,
     #[serde(skip)]
-    pub scroll_horizontal_threshold: f32,
+    pub scroll: ScrollConfigs,
     pub jitter_threshold: JitterThreshold,
 }
 
@@ -109,12 +114,12 @@ impl LayoutConfigs {
                 }
             }
             false => {
-                match layout_configs._scroll_horizontal_threshold {
+                match layout_configs._scroll {
                     None => {
-                        bail!("'scroll_horizontal_threshold' has to be specified in desktop mode")
+                        bail!("'scroll' has to be specified in desktop mode")
                     }
-                    Some(scroll_horizontal_threshold) => {
-                        layout_configs.scroll_horizontal_threshold = scroll_horizontal_threshold;
+                    Some(scroll) => {
+                        layout_configs.scroll = scroll;
                     }
                 }
             }
