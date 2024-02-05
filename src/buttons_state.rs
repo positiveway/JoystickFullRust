@@ -16,7 +16,8 @@ pub struct ButtonsState {
     RESET_BTN: ButtonName,
     buttons_layout: HashMap<ButtonName, Buttons>,
     button_sender: ButtonSender,
-    special_buttons: Buttons
+    special_codes: Buttons,
+    special_buttons: Vec<ButtonName>
 }
 
 pub fn get_or_err<'a, K: Hash + Eq + Sized + std::fmt::Display, V>(m: &'a HashMap<K, V>, key: &'a K) -> Result<&'a V>
@@ -27,13 +28,20 @@ pub fn get_or_err<'a, K: Hash + Eq + Sized + std::fmt::Display, V>(m: &'a HashMa
 impl ButtonsState {
     pub fn new(buttons_layout: ButtonsLayout, button_sender: ButtonSender) -> Self {
         let mut pressed: HashMap<ButtonName, bool> = HashMap::new();
+
+        let special_buttons = vec![
+            buttons_layout.reset_btn,
+            buttons_layout.switch_mode_btn,
+        ];
         for button_name in ButtonName::iter() {
             match button_name {
                 ButtonName::PadAsTouch_SideL => {}
                 ButtonName::PadAsTouch_SideR => {}
                 ButtonName::None => {}
                 _ => {
-                    pressed.insert(button_name, false);
+                    if !special_buttons.contains(&button_name) {
+                        pressed.insert(button_name, false);
+                    }
                 }
             }
         }
@@ -42,19 +50,20 @@ impl ButtonsState {
             RESET_BTN: buttons_layout.reset_btn,
             buttons_layout: buttons_layout.layout,
             button_sender,
-            special_buttons: vec![
+            special_codes: vec![
                 KeyCodes::None as Button,
                 KeyCodes::RESET_BTN as Button,
                 KeyCodes::SWITCH_MODE_BTN as Button,
                 KeyCodes::RELEASE_ALL as Button,
-            ]
+            ],
+            special_buttons
         }
     }
 
     pub fn press(&mut self, button_name: ButtonName) -> Result<()> {
-        if button_name == self.RESET_BTN {
-            return Ok(());
-        };
+        if self.special_buttons.contains(&button_name) {
+            return Ok(())
+        }
 
         if !*get_or_err(&self.pressed, &button_name)? {
             self.pressed.insert(button_name, true);
@@ -68,7 +77,7 @@ impl ButtonsState {
                 }
             }
             for key_code in key_codes {
-                if !self.special_buttons.contains(&key_code) {
+                if !self.special_codes.contains(&key_code) {
                     self.button_sender.send(Pressed(key_code))?;
                 }
             }
@@ -77,11 +86,15 @@ impl ButtonsState {
     }
 
     fn release_raw(&mut self, button_name: ButtonName) -> Result<()> {
+        if self.special_buttons.contains(&button_name) {
+            return Ok(())
+        }
+
         if *get_or_err(&self.pressed, &button_name)? {
             self.pressed.insert(button_name, false);
             let key_codes = get_or_err(&self.buttons_layout, &button_name)?;
             for key_code in key_codes.iter().rev() {
-                if !self.special_buttons.contains(key_code) {
+                if !self.special_codes.contains(key_code) {
                     self.button_sender.send(Released(*key_code))?;
                 }
             }
