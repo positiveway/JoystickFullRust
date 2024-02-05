@@ -2,8 +2,9 @@ gaming_mode = true
 WASD_threshold_pct = 30
 triggers_threshold_pct = 30
 mouse_speed = 400
-scroll_speed = 600
-scroll_horizontal_threshold = 0.08
+[scroll]
+speed = 600
+horizontal_threshold = 0.08
 [finger_rotation]
 use_rotation = true
 left_pad = 8 #important not to assign negative values
