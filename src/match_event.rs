@@ -9,6 +9,7 @@ use serde::de::Error;
 use strum::ParseError;
 use crate::configs::Configs;
 use crate::exec_or_eyre;
+use crate::process_event::TransformStatus;
 
 
 #[derive(EnumIter, EnumString, AsRefStr, Display, Default, Eq, Hash, PartialEq, Copy, Clone, Debug, Serialize, Deserialize)]
@@ -107,7 +108,6 @@ pub enum EventTypeName {
     AxisChanged,
     ButtonReleased,
     ButtonPressed,
-    Discarded,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -170,21 +170,21 @@ pub fn match_axis(code: u16) -> Result<AxisName> {
     })
 }
 
-pub fn match_event(event: &EventType, configs: &Configs) -> Result<TransformedEvent> {
+pub fn match_event(event: &EventType, RESET_BTN: ButtonName) -> Result<TransformStatus> {
     Ok(match event {
         AxisChanged(axis, value, code) => {
             let code_as_num = print_code(code)?;
 
-            TransformedEvent {
+            TransformStatus::Transformed(TransformedEvent {
                 event_type: EventTypeName::AxisChanged,
                 axis: match_axis(code_as_num)?,
                 value: *value,
                 button: ButtonName::None,
-            }
+            })
         }
         ButtonChanged(button, value, code) => {
             let code_as_num = print_code(code)?;
-            TransformedEvent {
+            TransformStatus::Transformed(TransformedEvent {
                 event_type: match *value {
                     0f32 => EventTypeName::ButtonReleased,
                     1f32 => EventTypeName::ButtonPressed,
@@ -193,23 +193,18 @@ pub fn match_event(event: &EventType, configs: &Configs) -> Result<TransformedEv
                 axis: AxisName::None,
                 value: *value,
                 button: match_button(code_as_num)?,
-            }
+            })
         }
         Disconnected => {
-            TransformedEvent {
+            TransformStatus::Transformed(TransformedEvent {
                 event_type: EventTypeName::ButtonReleased,
                 axis: AxisName::None,
-                button: configs.buttons_layout.reset_btn,
+                button: RESET_BTN,
                 value: 0.0,
-            }
+            })
         }
         _ => {
-            TransformedEvent {
-                event_type: EventTypeName::Discarded,
-                axis: AxisName::None,
-                button: ButtonName::None,
-                value: 0.0,
-            }
+            TransformStatus::Discarded
         }
     })
 }

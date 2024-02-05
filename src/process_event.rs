@@ -74,18 +74,27 @@ impl ControllerState {
 }
 
 
-enum TransformStatus {
+pub enum TransformStatus {
     Discarded,
     Unchanged,
     Transformed(TransformedEvent),
     Handled,
 }
 
-pub fn process_event(event: &EventType, controller_state: &mut ControllerState) -> Result<()> {
-    let mut event = match_event(event, &controller_state.configs)?;
-    if event.event_type == EventTypeName::Discarded {
-        return Ok(());
-    }
+pub fn process_event(orig_event: &EventType, controller_state: &mut ControllerState) -> Result<()> {
+    let mut event: TransformedEvent;
+    match match_event(orig_event, controller_state.RESET_BTN)? {
+        TransformStatus::Discarded => {
+            return Ok(());
+        }
+        TransformStatus::Transformed(transformed_event) => {
+            event = transformed_event;
+        }
+        TransformStatus::Unchanged | TransformStatus::Handled => {
+            bail!("Forbidden status")
+        }
+    };
+
 
     match transform_triggers(&mut event, &controller_state.configs) {
         TransformStatus::Discarded | TransformStatus::Handled => {
@@ -221,19 +230,26 @@ pub fn process_pad_stick(event: &TransformedEvent, controller_state: &Controller
 
 
 pub fn transform_left_pad(event: &TransformedEvent) -> TransformStatus {
-    match event.button {
-        ButtonName::PadDown_SideL |
-        ButtonName::PadRight_SideL |
-        ButtonName::PadUp_SideL |
-        ButtonName::PadLeft_SideL => {
-            TransformStatus::Transformed(TransformedEvent {
-                event_type: event.event_type,
-                axis: AxisName::None,
-                value: event.value,
-                button: ButtonName::PadAsBtn_SideL,
-            })
+    match event.event_type {
+        EventTypeName::ButtonReleased | EventTypeName::ButtonPressed => {
+            match event.button {
+                ButtonName::PadDown_SideL |
+                ButtonName::PadRight_SideL |
+                ButtonName::PadUp_SideL |
+                ButtonName::PadLeft_SideL => {
+                    TransformStatus::Transformed(TransformedEvent {
+                        event_type: event.event_type,
+                        axis: AxisName::None,
+                        value: event.value,
+                        button: ButtonName::PadAsBtn_SideL,
+                    })
+                }
+                _ => TransformStatus::Unchanged
+            }
         }
-        _ => TransformStatus::Unchanged
+        EventTypeName::AxisChanged => {
+            TransformStatus::Unchanged
+        }
     }
 }
 
