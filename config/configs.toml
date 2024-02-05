@@ -1,16 +1,3 @@
 debug = false
 buttons_layout = "desktop"
 typing_layout = "typing"
-triggers_threshold_pct = 30
-mouse_speed = 400
-scroll_speed = 600
-horizontal_threshold = 0.08
-[finger_rotation]
-use_rotation = true
-left_pad = 8 #important not to assign negative values
-right_pad = 8
-stick = 8
-[jitter_threshold]
-left_pad = 0.01
-right_pad = 0.01
-stick = 0.08

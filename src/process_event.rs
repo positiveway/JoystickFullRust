@@ -2,7 +2,7 @@ use gilrs::EventType;
 use color_eyre::eyre::{bail, OptionExt, Result};
 use serde::{Deserialize, Serialize};
 use crate::match_event::*;
-use crate::configs::{Configs};
+use crate::configs::{LayoutConfigs, MainConfigs};
 use crossbeam_channel::{Sender, Receiver, bounded};
 use lazy_static::lazy_static;
 use mouse_keyboard_input::Button;
@@ -53,22 +53,23 @@ pub struct ControllerState {
     //
     pub buttons_state: ButtonsState,
     //
-    pub configs: Configs,
+    pub layout_configs: LayoutConfigs,
 }
 
 impl ControllerState {
-    pub fn new(configs: Configs) -> Self {
+    pub fn new(configs: MainConfigs) -> Self {
         let (mouse_sender, mouse_receiver) = bounded(configs.channel_size);
         let (button_sender, button_receiver) = bounded(configs.channel_size);
+        let layout_configs = configs.layout_configs;
         Self {
             mouse_sender,
             mouse_receiver,
             button_sender: button_sender.clone(),
             button_receiver,
-            RESET_BTN: configs.buttons_layout.reset_btn,
-            SWITCH_MODE_BTN: configs.buttons_layout.switch_mode_btn,
-            buttons_state: ButtonsState::new(configs.buttons_layout.clone(), button_sender),
-            configs,
+            RESET_BTN: layout_configs.buttons_layout.reset_btn,
+            SWITCH_MODE_BTN: layout_configs.buttons_layout.switch_mode_btn,
+            buttons_state: ButtonsState::new(layout_configs.buttons_layout.clone(), button_sender),
+            layout_configs,
         }
     }
 }
@@ -96,7 +97,7 @@ pub fn process_event(orig_event: &EventType, controller_state: &mut ControllerSt
     };
 
 
-    match transform_triggers(&mut event, &controller_state.configs) {
+    match transform_triggers(&mut event, &controller_state.layout_configs) {
         TransformStatus::Discarded | TransformStatus::Handled => {
             return Ok(());
         }
@@ -106,7 +107,7 @@ pub fn process_event(orig_event: &EventType, controller_state: &mut ControllerSt
         TransformStatus::Unchanged => {}
     };
 
-    match transform_left_pad(&event) {
+    match transform_left_pad(&event, controller_state.layout_configs.gaming_mode) {
         TransformStatus::Discarded | TransformStatus::Handled => {
             return Ok(());
         }
@@ -229,7 +230,7 @@ pub fn process_pad_stick(event: &TransformedEvent, controller_state: &Controller
 }
 
 
-pub fn transform_left_pad(event: &TransformedEvent) -> TransformStatus {
+pub fn transform_left_pad(event: &TransformedEvent, gaming_mode: bool) -> TransformStatus {
     match event.event_type {
         EventTypeName::ButtonReleased | EventTypeName::ButtonPressed => {
             match event.button {
@@ -248,6 +249,7 @@ pub fn transform_left_pad(event: &TransformedEvent) -> TransformStatus {
             }
         }
         EventTypeName::AxisChanged => {
+            if gaming_mode {}
             TransformStatus::Unchanged
         }
     }
@@ -257,7 +259,7 @@ lazy_static! {
     pub static ref TRIGGERS_RANGE_CONVERTER: RangeConverterBuilder<f32>  = RangeConverterBuilder::build(-1.0, 1.0, 0.0, 1.0);
 }
 
-pub fn transform_triggers(event: &mut TransformedEvent, configs: &Configs) -> TransformStatus {
+pub fn transform_triggers(event: &mut TransformedEvent, layout_configs: &LayoutConfigs) -> TransformStatus {
     match event.button {
         ButtonName::LowerTriggerAsBtn_SideL | ButtonName::LowerTriggerAsBtn_SideR => {
             return TransformStatus::Discarded;
@@ -275,7 +277,7 @@ pub fn transform_triggers(event: &mut TransformedEvent, configs: &Configs) -> Tr
             return TransformStatus::Transformed({
                 event.value = TRIGGERS_RANGE_CONVERTER.convert(event.value);
 
-                if event.value > configs.triggers_threshold_f32 {
+                if event.value > layout_configs.triggers_threshold {
                     TransformedEvent {
                         event_type: EventTypeName::ButtonPressed,
                         axis: AxisName::None,

@@ -4,7 +4,7 @@ use std::time::Instant;
 use mouse_keyboard_input::{Coord, VirtualDevice};
 use serde::{Deserialize, Serialize};
 use strum_macros::Display;
-use crate::configs::{Configs, FingerRotation, JitterThreshold};
+use crate::configs::{MainConfigs, FingerRotation, JitterThreshold};
 use color_eyre::eyre::{bail, Result};
 use log::{debug, info};
 use crate::process_event::{MouseEvent, MouseReceiver, ButtonReceiver, PadStickEvent, ButtonEvent};
@@ -153,17 +153,17 @@ fn convert_diff(value: f32, multiplier: u16) -> Coord {
 pub struct CoordsState {
     prev: Coords,
     cur: Coords,
-    jitter_threshold: f32,
+    // jitter_threshold: f32,
     finger_rotation: i16,
     use_rotation: bool,
 }
 
 impl CoordsState {
-    pub fn new(jitter_threshold: f32, finger_rotation: i16, use_rotation: bool) -> Self {
+    pub fn new(finger_rotation: i16, use_rotation: bool) -> Self {
         Self {
             prev: Default::default(),
             cur: Default::default(),
-            jitter_threshold,
+            // jitter_threshold,
             finger_rotation,
             use_rotation,
         }
@@ -294,14 +294,14 @@ pub struct PadsCoords {
 }
 
 impl PadsCoords {
-    pub fn new(jitter_threshold: &JitterThreshold, finger_rotation: &FingerRotation) -> Self {
+    pub fn new(finger_rotation: &FingerRotation) -> Self {
         Self {
             left_pad: CoordsState::new(
-                jitter_threshold.left_pad, finger_rotation.left_pad, finger_rotation.use_rotation),
+                finger_rotation.left_pad, finger_rotation.use_rotation),
             right_pad: CoordsState::new(
-                jitter_threshold.right_pad, finger_rotation.right_pad, finger_rotation.use_rotation),
+                finger_rotation.right_pad, finger_rotation.use_rotation),
             stick: CoordsState::new(
-                jitter_threshold.stick, finger_rotation.stick, finger_rotation.use_rotation),
+                finger_rotation.stick, finger_rotation.use_rotation),
         }
     }
 
@@ -372,15 +372,16 @@ fn assign_pad_stick_event(coords_state: &mut CoordsState, jitter_threshold: f32,
 fn writing_thread(
     mouse_receiver: MouseReceiver,
     button_receiver: ButtonReceiver,
-    configs: Configs,
+    configs: MainConfigs,
 ) -> Result<()> {
     let mut virtual_device = exec_or_eyre!(VirtualDevice::default())?;
 
     let writing_interval = configs.mouse_interval;
-    let is_gaming_mode = configs.buttons_layout.gaming_mode;
+    let layout_configs = configs.layout_configs;
+    let is_gaming_mode = layout_configs.gaming_mode;
 
     let mut mouse_mode = MouseMode::default();
-    let mut pads_coords = PadsCoords::new(&configs.jitter_threshold, &configs.finger_rotation);
+    let mut pads_coords = PadsCoords::new(&layout_configs.finger_rotation);
 
     loop {
         let start = Instant::now();
@@ -404,17 +405,17 @@ fn writing_thread(
                 }
                 MouseEvent::LeftPad(pad_stick_event) => {
                     assign_pad_stick_event(&mut pads_coords.left_pad,
-                                           configs.jitter_threshold.left_pad,
+                                           layout_configs.jitter_threshold.left_pad,
                                            pad_stick_event)
                 }
                 MouseEvent::RightPad(pad_stick_event) => {
                     assign_pad_stick_event(&mut pads_coords.right_pad,
-                                           configs.jitter_threshold.right_pad,
+                                           layout_configs.jitter_threshold.right_pad,
                                            pad_stick_event)
                 }
                 MouseEvent::Stick(pad_stick_event) => {
                     assign_pad_stick_event(&mut pads_coords.stick,
-                                           configs.jitter_threshold.stick,
+                                           layout_configs.jitter_threshold.stick,
                                            pad_stick_event)
                 }
             }
@@ -425,7 +426,7 @@ fn writing_thread(
         if mouse_mode != MouseMode::Typing {
             if pads_coords.right_pad.any_changes() {
                 let mouse_diff = pads_coords.right_pad.diff();
-                let mouse_diff = mouse_diff.convert(configs.mouse_speed);
+                let mouse_diff = mouse_diff.convert(layout_configs.mouse_speed);
                 if mouse_diff.is_any_changes() {
                     exec_or_eyre!(virtual_device.move_mouse(mouse_diff.x, -mouse_diff.y))?;
                 }
@@ -433,11 +434,11 @@ fn writing_thread(
             if !is_gaming_mode {
                 if pads_coords.left_pad.any_changes() {
                     let mut scroll_diff = pads_coords.left_pad.diff();
-                    if scroll_diff.x.abs() <= configs.horizontal_threshold {
+                    if scroll_diff.x.abs() <= layout_configs.scroll_horizontal_threshold {
                         scroll_diff.x = 0.0;
                     }
 
-                    let scroll_diff = scroll_diff.convert(configs.scroll_speed);
+                    let scroll_diff = scroll_diff.convert(layout_configs.scroll_speed);
                     if scroll_diff.is_any_changes() {
                         exec_or_eyre!(virtual_device.scroll_x(scroll_diff.x))?;
                         exec_or_eyre!(virtual_device.scroll_y(scroll_diff.y))?;
@@ -476,7 +477,7 @@ fn writing_thread(
 pub fn create_writing_thread(
     mouse_receiver: MouseReceiver,
     button_receiver: ButtonReceiver,
-    configs: Configs,
+    configs: MainConfigs,
 ) -> JoinHandle<()> {
     thread::spawn(move || {
         writing_thread(mouse_receiver, button_receiver, configs).unwrap();

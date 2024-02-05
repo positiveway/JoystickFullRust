@@ -1,0 +1,44 @@
+gaming_mode = true
+WASD_threshold_pct = 30
+triggers_threshold_pct = 30
+mouse_speed = 400
+scroll_speed = 600
+scroll_horizontal_threshold = 0.08
+[finger_rotation]
+use_rotation = true
+left_pad = 8 #important not to assign negative values
+right_pad = 8
+stick = 8
+[jitter_threshold]
+left_pad = 0.01
+right_pad = 0.01
+stick = 0.08
+[buttons_layout]
+#BtnUp_SideL = ["BtnUp_SideL"]
+#BtnDown_SideL = ["BtnDown_SideL"]
+#BtnLeft_SideL = ["BtnLeft_SideL"]
+#BtnRight_SideL = ["BtnRight_SideL"]
+BtnUp_SideR = ["KEY_UP"]
+BtnDown_SideR = ["KEY_DOWN"]
+BtnLeft_SideR = ["KEY_LEFT"]
+BtnRight_SideR = ["KEY_RIGHT"]
+Wing_SideL = ["MOUSE_MIDDLE"]
+Wing_SideR = ["KEY_ENTER"]
+LowerTriggerAsBtn_SideL = ["MOUSE_RIGHT"]
+LowerTriggerAsBtn_SideR = ["MOUSE_LEFT"]
+UpperTrigger_SideL = ["KEY_LEFTCTRL", "KEY_Z"]
+UpperTrigger_SideR = ["KEY_LEFTCTRL", "KEY_LEFTSHIFT", "KEY_Z"]
+PadAsBtn_SideL = ["KEY_LEFTCTRL", "KEY_X"]
+PadAsBtn_SideR = ["KEY_LEFTCTRL", "KEY_V"]
+StickAsBtn = ["KEY_LEFTCTRL", "KEY_C"]
+#PadUp_SideL = ["PadUp_SideL"]
+#PadDown_SideL = ["PadDown_SideL"]
+#PadLeft_SideL = ["PadLeft_SideL"]
+#PadRight_SideL = ["PadRight_SideL"]
+#PadUp_SideR = ["PadUp_SideR"]
+#PadDown_SideR = ["PadDown_SideR"]
+#PadLeft_SideR = ["PadLeft_SideR"]
+#PadRight_SideR = ["PadRight_SideR"]
+ExtraBtn_SideL = ["KEY_ESC"]
+ExtraBtn_SideR = ["SWITCH_MODE_BTN"]
+ExtraBtnCentral = ["RESET_BTN"]

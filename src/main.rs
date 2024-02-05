@@ -15,7 +15,7 @@ use color_eyre::eyre::{Result};
 use env_logger::{builder};
 use gilrs::{Event, EventType::*, Gilrs};
 use log::debug;
-use crate::configs::{Configs};
+use crate::configs::{MainConfigs};
 use crate::deadzones::print_deadzones;
 use crate::match_event::print_event;
 use crate::mouse::{create_writing_thread};
@@ -47,7 +47,7 @@ fn init_gilrs() -> Result<Gilrs> {
 }
 
 fn init_controller() -> Result<()> {
-    let configs = Configs::load()?;
+    let configs = MainConfigs::load()?;
 
     if env::var("RUST_LOG").is_err() {
         env::set_var("RUST_LOG", match configs.debug {
