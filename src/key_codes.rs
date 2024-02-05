@@ -1,18 +1,20 @@
 use color_eyre::eyre::bail;
 use color_eyre::{Report, Result};
 use serde::{Deserialize, Serialize};
-use strum_macros::{AsRefStr, Display, EnumString};
+use strum_macros::{AsRefStr, Display, EnumIter, EnumString};
 use crate::exec_or_eyre;
 use mouse_keyboard_input::Button;
 use crate::match_event::{ButtonName};
 
+pub const KEY_CODES_MAX_VALUE: usize = 550;
 
-#[derive(EnumString, AsRefStr, Display, Eq, Hash, PartialEq, Copy, Clone, Debug, Serialize, Deserialize)]
+
+#[derive(EnumIter, EnumString, AsRefStr, Display, Eq, Hash, PartialEq, Copy, Clone, Debug, Serialize, Deserialize)]
 pub enum KeyCodes {
     None = 0,
-    RESET_BTN = 10000,
-    SWITCH_MODE_BTN = 10001,
-    RELEASE_ALL = 10002,
+    RESET_BTN = 500,
+    SWITCH_MODE_BTN = 501,
+    RELEASE_ALL = 502,
     KEY_ESC = 1,
     KEY_1 = 2,
     KEY_2 = 3,
@@ -237,11 +239,12 @@ pub enum KeyCodes {
     MOUSE_TASK = 0x117,
 }
 
-// impl KeyCodes {
-//     pub fn as_button(&self) -> Button{
-//         *self as Button
-//     }
-// }
+
+impl KeyCodes {
+    pub fn as_button(&self) -> Button {
+        *self as Button
+    }
+}
 
 fn assign_special_button(special_button: &mut ButtonName, value: ButtonName) -> Result<(Button)> {
     if *special_button != ButtonName::default() {
