@@ -5,11 +5,12 @@ use mouse_keyboard_input::{Coord, VirtualDevice};
 use serde::{Deserialize, Serialize};
 use strum_macros::Display;
 use crate::configs::{MainConfigs, FingerRotation, JitterThreshold};
-use color_eyre::eyre::{bail, Result};
+use color_eyre::eyre::{bail, OptionExt, Result};
 use log::{debug, info};
 use crate::process_event::{MouseEvent, MouseReceiver, ButtonReceiver, PadStickEvent, ButtonEvent};
 use crate::exec_or_eyre;
-use crate::math_ops::{hypot, rotate_around_center, Vector, NONE_VAL_ERR_MSG};
+use crate::key_codes::KeyCodes;
+use crate::math_ops::{rotate_around_center, Vector, NONE_VAL_ERR_MSG, calc_angle, distance, ZonesMapper, ZoneAllowedRange};
 
 
 #[derive(Display, Eq, Hash, PartialEq, Default, Copy, Clone, Debug, Serialize, Deserialize)]
@@ -65,12 +66,20 @@ impl Coords {
     //     Self::set_one_coord(&mut self.y, prev.y);
     // }
 
-    pub fn any_is_none(&self) -> bool {
+    pub fn any_is_not_init(&self) -> bool {
         self.x.is_none() || self.y.is_none()
     }
 
     pub fn any_changes(&self) -> bool {
         self.x.is_some() || self.y.is_some()
+    }
+
+    pub fn angle(&self) -> Result<f32> {
+        Ok(calc_angle(self.x.ok_or_eyre(NONE_VAL_ERR_MSG)?, self.y.ok_or_eyre(NONE_VAL_ERR_MSG)?))
+    }
+
+    pub fn distance(&self) -> Result<f32> {
+        Ok(distance(self.x.ok_or_eyre(NONE_VAL_ERR_MSG)?, self.y.ok_or_eyre(NONE_VAL_ERR_MSG)?))
     }
 }
 
@@ -108,10 +117,6 @@ impl CoordsDiff {
     pub fn is_any_changes(&self) -> bool {
         self.x != 0.0 || self.y != 0.0
     }
-
-    pub fn magnitude(&self) -> f64 {
-        hypot(self.x, self.y)
-    }
 }
 
 #[derive(PartialEq, Copy, Clone, Debug, Serialize, Deserialize)]
@@ -123,10 +128,6 @@ struct ConvertedCoordsDiff {
 impl ConvertedCoordsDiff {
     pub fn is_any_changes(&self) -> bool {
         self.x != 0 || self.y != 0
-    }
-
-    pub fn magnitude(&self) -> f64 {
-        hypot(self.x, self.y)
     }
 }
 
@@ -224,6 +225,19 @@ impl CoordsState {
 
     pub fn rotate_prev_coords(&self) -> Result<Coords> {
         Ok(rotate_around_center(Vector::from_coords(self.prev)?, self.finger_rotation as f32).as_coords())
+    }
+
+    pub fn cur_pos(&mut self) -> Coords {
+        Coords {
+            x: match self.cur.x {
+                None => { self.prev.x }
+                Some(value) => { Some(value) }
+            },
+            y: match self.cur.y {
+                None => { self.prev.y }
+                Some(value) => { Some(value) }
+            },
+        }
     }
 
     pub fn diff(&mut self) -> CoordsDiff {
@@ -378,10 +392,20 @@ fn writing_thread(
 
     let writing_interval = configs.mouse_interval;
     let layout_configs = configs.layout_configs;
-    let is_gaming_mode = layout_configs.gaming_mode;
+    let gaming_mode = layout_configs.gaming_mode;
+    let scroll_configs = layout_configs.scroll;
 
     let mut mouse_mode = MouseMode::default();
     let mut pads_coords = PadsCoords::new(&layout_configs.finger_rotation);
+
+    let _wasd_zones: [Vec<KeyCodes>; 4] = [
+        vec![KeyCodes::KEY_W],
+        vec![KeyCodes::KEY_A],
+        vec![KeyCodes::KEY_S],
+        vec![KeyCodes::KEY_D]
+    ];
+    let _wasd_zone_range = ZoneAllowedRange::new(22, 22, 22)?;
+    let wasd_zone_mapper = ZonesMapper::gen_from_4(_wasd_zones, 90, &_wasd_zone_range)?;
 
     loop {
         let start = Instant::now();
@@ -431,17 +455,29 @@ fn writing_thread(
                     exec_or_eyre!(virtual_device.move_mouse(mouse_diff.x, -mouse_diff.y))?;
                 }
             }
-            if !is_gaming_mode {
-                if pads_coords.left_pad.any_changes() {
-                    let mut scroll_diff = pads_coords.left_pad.diff();
-                    if scroll_diff.x.abs() <= layout_configs.scroll.horizontal_threshold {
-                        scroll_diff.x = 0.0;
-                    }
+            match gaming_mode {
+                false => {
+                    if pads_coords.left_pad.any_changes() {
+                        let mut scroll_diff = pads_coords.left_pad.diff();
+                        if scroll_diff.x.abs() <= scroll_configs.horizontal_threshold {
+                            scroll_diff.x = 0.0;
+                        }
 
-                    let scroll_diff = scroll_diff.convert(layout_configs.scroll.speed);
-                    if scroll_diff.is_any_changes() {
-                        exec_or_eyre!(virtual_device.scroll_x(scroll_diff.x))?;
-                        exec_or_eyre!(virtual_device.scroll_y(scroll_diff.y))?;
+                        let scroll_diff = scroll_diff.convert(scroll_configs.speed);
+                        if scroll_diff.is_any_changes() {
+                            exec_or_eyre!(virtual_device.scroll_x(scroll_diff.x))?;
+                            exec_or_eyre!(virtual_device.scroll_y(scroll_diff.y))?;
+                        }
+                    }
+                }
+                true => {
+                    if pads_coords.left_pad.any_changes() {
+                        let cur_pos = pads_coords.left_pad.cur_pos();
+                        if let Ok(angle) = cur_pos.angle() {
+                            if let Ok(distance) = cur_pos.distance() {
+                                if distance > layout_configs.wasd_threshold {}
+                            }
+                        }
                     }
                 }
             }

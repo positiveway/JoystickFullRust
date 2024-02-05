@@ -1,4 +1,7 @@
+use std::option::Option;
+use std::fmt::Display;
 use color_eyre::eyre::{bail, Result, OptionExt};
+use log::debug;
 use serde::{Deserialize, Serialize};
 use trait_set::trait_set;
 use crate::mouse::Coords;
@@ -83,6 +86,20 @@ pub fn resolve_angle(angle: f32) -> f32 {
     ((angle + 360.0) % 360.0).round()
 }
 
+pub fn resolve_angle_int(angle: u16) -> u16 {
+    (angle + 360) % 360
+}
+
+pub fn calc_angle(x: f32, y: f32) -> f32 {
+    let angle_in_radians = y.atan2(x);
+    let angle_in_degrees = angle_in_radians * RADIANS_TO_DEGREES;
+    resolve_angle(angle_in_degrees)
+}
+
+pub fn distance(x: f32, y: f32) -> f32 {
+    x.hypot(y)
+}
+
 
 #[derive(PartialEq, Copy, Clone, Default, Debug, Serialize, Deserialize)]
 pub struct Vector {
@@ -116,9 +133,7 @@ impl Vector {
     }
 
     pub fn angle(&self) -> f32 {
-        let angle_in_radians = self.y.atan2(self.x);
-        let angle_in_degrees = angle_in_radians * RADIANS_TO_DEGREES;
-        resolve_angle(angle_in_degrees)
+        calc_angle(self.x, self.y)
     }
 
     pub fn distance(&self) -> f32 {
@@ -223,6 +238,114 @@ impl<T: Numeric<T>> RangeConverterBuilder<T> {
     pub fn convert(&self, input: T) -> T {
         let output = self.slope * input + self.pre_calc;
         output
+    }
+}
+
+#[derive(PartialEq, Default, Copy, Clone, Debug, Serialize, Deserialize)]
+pub struct ZoneAllowedRange {
+    vertical: u16,
+    horizontal: u16,
+    diagonal: u16,
+}
+
+impl ZoneAllowedRange {
+    pub fn new(
+        vertical: u16,
+        horizontal: u16,
+        diagonal: u16,
+    ) -> Result<Self>
+    {
+        if vertical + horizontal + 2 * diagonal > 90 {
+            bail!("Incorrect zones allowed range")
+        }
+        Ok(Self {
+            vertical,
+            horizontal,
+            diagonal,
+        })
+    }
+}
+
+pub fn pivot_angle_to_allowed_range(angle: u16, zone_allowed_range: &ZoneAllowedRange) -> Result<u16> {
+    if angle % 180 == 0 {
+        return Ok(zone_allowed_range.horizontal);
+    } else if angle % 90 == 0 {
+        return Ok(zone_allowed_range.vertical);
+    } else if angle % 45 == 0 {
+        return Ok(zone_allowed_range.diagonal);
+    } else {
+        bail!("Such angle cannot be converted: '{}'", angle)
+    }
+}
+
+#[derive(PartialEq, Clone, Debug)]
+pub struct ZonesMapper<T: Clone + Display> {
+    angle_to_value: [Option<Vec<T>>; 360],
+}
+
+impl<T: Clone + Display> ZonesMapper<T> {
+    pub fn gen_from_4(values: [Vec<T>; 4], start_angle: u16, zone_allowed_range: &ZoneAllowedRange) -> Result<Self> {
+        let mut expanded_values: [Vec<T>; 8] = core::array::from_fn(|i| values[0].clone());
+        for ind in 0..values.len() {
+            expanded_values[ind * 2] = values[ind].clone();
+            expanded_values[ind * 2 + 1] = [
+                values[ind].clone(),
+                values[(ind + 1) % values.len()].clone()
+            ].concat();
+        }
+
+        Self::gen_from_8(expanded_values, start_angle, zone_allowed_range)
+    }
+
+    pub fn gen_from_8(values: [Vec<T>; 8], start_angle: u16, zone_allowed_range: &ZoneAllowedRange) -> Result<Self> {
+        let mut angle_to_value: [Option<Vec<T>>; 360] = std::array::from_fn(|_| None);
+
+        for ind in 0..values.len() {
+            let pivot_angle = start_angle + 45 * ind as u16;
+            let allowed_range = pivot_angle_to_allowed_range(pivot_angle, zone_allowed_range)?;
+            let range_to_value = Self::gen_range(pivot_angle, allowed_range, &values[ind]);
+            for (angle, value) in range_to_value {
+                if angle > 360 || angle < 0 {
+                    bail!("Incorrectly generated angle '{}'", angle)
+                }
+                let angle = angle as usize;
+                if angle_to_value[angle].is_some() {
+                    bail!("Duplicate angle '{}'", angle)
+                }
+                angle_to_value[angle] = Some(value.clone());
+            }
+        }
+
+        // for ind in 0.. angle_to_value.len(){
+        //     let value = match angle_to_value[ind].clone() {
+        //         None => {"None".to_string()}
+        //         Some(value) => {
+        //             let mut combined_str = String::new();
+        //             for val in value{
+        //                 combined_str = combined_str.add(format!("{} ", val).as_str());
+        //             }
+        //             combined_str
+        //         }
+        //     };
+        //     debug!("{}: {}", ind, value)
+        // }
+
+        Ok(Self {
+            angle_to_value: angle_to_value
+        })
+    }
+
+    pub fn gen_range(pivot_angle: u16, allowed_range: u16, value: &Vec<T>) -> Vec<(u16, &Vec<T>)> {
+        let range_start = 360 + pivot_angle - allowed_range;
+        // +1 to include end of range and close the gap between zones
+        let range_end = 360 + pivot_angle + allowed_range + 1;
+
+        let mut angle_to_value = vec![];
+        for angle in range_start..range_end {
+            let angle = angle % 360;
+            angle_to_value.push((angle, value))
+        }
+        angle_to_value
     }
 }
 
