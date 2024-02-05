@@ -9,10 +9,7 @@ use color_eyre::eyre::{bail, Result};
 use crate::exec_or_eyre;
 use crate::match_event::ButtonName;
 use mouse_keyboard_input::Button;
-use strum::IntoEnumIterator;
-use crate::buttons_state::ButtonsState;
 use crate::key_codes::KeyCodes;
-use crate::math_ops::Vector;
 
 
 const PROJECT_NAME: &str = "JoystickFullRust";
