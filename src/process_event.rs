@@ -7,10 +7,10 @@ use crossbeam_channel::{Sender, Receiver, bounded};
 use lazy_static::lazy_static;
 use mouse_keyboard_input::Button;
 use strum_macros::{Display};
-use crate::buttons_state::ButtonsState;
 use crate::exec_or_eyre;
 use crate::process_event::PadStickEvent::FingerLifted;
 use crate::math_ops::RangeConverterBuilder;
+use crate::process_event::ButtonEvent::{Pressed, Released};
 
 
 #[derive(Display, Copy, Clone, Debug, Serialize, Deserialize)]
@@ -31,8 +31,8 @@ pub enum MouseEvent {
 
 #[derive(Display, Copy, Clone, Debug, Serialize, Deserialize)]
 pub enum ButtonEvent {
-    Pressed(Button),
-    Released(Button),
+    Pressed(ButtonName),
+    Released(ButtonName),
 }
 
 pub type MouseSender = Sender<MouseEvent>;
@@ -51,8 +51,6 @@ pub struct ControllerState {
     pub RESET_BTN: ButtonName,
     pub SWITCH_MODE_BTN: ButtonName,
     //
-    pub buttons_state: ButtonsState,
-    //
     pub layout_configs: LayoutConfigs,
 }
 
@@ -64,11 +62,10 @@ impl ControllerState {
         Self {
             mouse_sender,
             mouse_receiver,
-            button_sender: button_sender.clone(),
+            button_sender: button_sender,
             button_receiver,
             RESET_BTN: layout_configs.buttons_layout.reset_btn,
             SWITCH_MODE_BTN: layout_configs.buttons_layout.switch_mode_btn,
-            buttons_state: ButtonsState::new(layout_configs.buttons_layout.clone(), button_sender),
             layout_configs,
         }
     }
@@ -142,12 +139,12 @@ pub fn process_event(orig_event: &EventType, controller_state: &mut ControllerSt
 
 pub fn process_buttons(event: &TransformedEvent, controller_state: &mut ControllerState) -> Result<TransformStatus> {
     match event.event_type {
-        EventTypeName::ButtonReleased => {
-            controller_state.buttons_state.release(event.button)?;
+        EventTypeName::ButtonPressed => {
+            controller_state.button_sender.send(Pressed(event.button))?;
             Ok(TransformStatus::Handled)
         }
-        EventTypeName::ButtonPressed => {
-            controller_state.buttons_state.press(event.button)?;
+        EventTypeName::ButtonReleased => {
+            controller_state.button_sender.send(Released(event.button))?;
             Ok(TransformStatus::Handled)
         }
         _ => {

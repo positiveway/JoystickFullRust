@@ -7,6 +7,7 @@ use strum_macros::Display;
 use crate::configs::{MainConfigs, FingerRotation, JitterThreshold};
 use color_eyre::eyre::{bail, OptionExt, Result};
 use log::{debug, info};
+use crate::buttons_state::{ButtonsState, Command};
 use crate::process_event::{MouseEvent, MouseReceiver, ButtonReceiver, PadStickEvent, ButtonEvent};
 use crate::exec_or_eyre;
 use crate::key_codes::{key_codes_to_buttons, KeyCodes};
@@ -392,6 +393,9 @@ fn writing_thread(
     let gaming_mode = layout_configs.gaming_mode;
     let scroll_configs = layout_configs.scroll;
 
+    let mut buttons_state = ButtonsState::new(layout_configs.buttons_layout);
+
+
     let mut mouse_mode = MouseMode::default();
     let mut pads_coords = PadsCoords::new(&layout_configs.finger_rotation);
 
@@ -484,20 +488,20 @@ fn writing_thread(
                     }
                 }
                 true => {
-                    if pads_coords.left_pad.any_changes() {
-                        let mut cur_pos = pads_coords.left_pad.cur_pos();
-                        cur_pos = match cur_pos.rotate(pads_coords.left_pad.finger_rotation) {
-                            Ok(rotated_coords) => { rotated_coords }
-                            Err(_) => { cur_pos }
-                        };
-                        let (to_release, to_press) = wasd_zone_mapper.get_commands_diff(cur_pos.x, cur_pos.y);
-                        // if !to_release.is_empty() || !to_press.is_empty() {
-                        //     println!("To release: '{:?}'; To press: '{:?}'", to_release, to_press)
-                        // }
-                        let to_release = key_codes_to_buttons(&to_release);
-                        let to_press = key_codes_to_buttons(&to_press);
-
-
+                    let mut cur_pos = pads_coords.left_pad.cur_pos();
+                    cur_pos = match cur_pos.rotate(pads_coords.left_pad.finger_rotation) {
+                        Ok(rotated_coords) => { rotated_coords }
+                        Err(_) => { cur_pos }
+                    };
+                    let (to_release, to_press) = wasd_zone_mapper.get_commands_diff(cur_pos.x, cur_pos.y);
+                    // if !to_release.is_empty() || !to_press.is_empty() {
+                    //     println!("To release: '{:?}'; To press: '{:?}'", to_release, to_press)
+                    // }
+                    for keycode in to_press {
+                        buttons_state.press_keycodes(vec![keycode as Button])?;
+                    }
+                    for keycode in to_release {
+                        buttons_state.release_keycodes(vec![keycode as Button])?;
                     }
                 }
             }
@@ -513,15 +517,29 @@ fn writing_thread(
         //BUTTONS
         for event in button_receiver.try_iter() {
             match event {
-                ButtonEvent::Pressed(button) => {
-                    exec_or_eyre!(virtual_device.press(button))?
+                ButtonEvent::Pressed(button_name) => {
+                    buttons_state.press(button_name)?;
                 }
-                ButtonEvent::Released(button) => {
-                    exec_or_eyre!(virtual_device.release(button))?
+                ButtonEvent::Released(button_name) => {
+                    buttons_state.release(button_name)?;
                 }
             }
         }
 
+        for command in &buttons_state.queue {
+            match command {
+                Command::Pressed(button) => {
+                    exec_or_eyre!(virtual_device.press(*button))?
+                }
+                Command::Released(button) => {
+                    exec_or_eyre!(virtual_device.release(*button))?
+                }
+            }
+        }
+        buttons_state.queue.clear();
+
+
+        //Scheduler
         let runtime = start.elapsed();
 
         if let Some(remaining) = writing_interval.checked_sub(runtime) {
