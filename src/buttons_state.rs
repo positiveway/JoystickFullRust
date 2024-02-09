@@ -20,7 +20,8 @@ pub type Commands = Vec<Command>;
 
 #[derive(Clone, Debug)]
 pub struct ButtonsState {
-    pressed: [bool; KEY_CODES_MAX_VALUE],
+    // pressed: [bool; KEY_CODES_MAX_VALUE],
+    pressed: HashMap<Button, bool>,
     RESET_BTN: ButtonName,
     buttons_layout: HashMap<ButtonName, Buttons>,
     special_codes: Buttons,
@@ -36,7 +37,11 @@ pub fn get_or_err<'a, K: Hash + Eq + Sized + std::fmt::Display, V>(m: &'a HashMa
 
 impl ButtonsState {
     pub fn new(buttons_layout: ButtonsLayout, repeat_keys: bool) -> Self {
-        let mut pressed: [bool; KEY_CODES_MAX_VALUE] = std::array::from_fn(|_| false);
+        // let mut pressed: [bool; KEY_CODES_MAX_VALUE] = std::array::from_fn(|_| false);
+        let mut pressed = HashMap::new();
+        for keycode in KeyCodes::iter() {
+            pressed.insert(keycode as Button, false);
+        }
 
         let special_codes = vec![
             KeyCodes::None as Button,
@@ -71,9 +76,11 @@ impl ButtonsState {
         }
         for key_code in key_codes {
             if !self.special_codes.contains(&key_code) {
-                if !self.pressed[key_code as usize] {
+                // if !self.pressed[key_code as usize] {
+                if !*get_or_err(&self.pressed, &key_code)? {
                     self.queue.push(Command::Pressed(key_code));
-                    self.pressed[key_code as usize] = true;
+                    // self.pressed[key_code as usize] = true;
+                    self.pressed.insert(key_code, true);
                 }
             }
         }
@@ -84,9 +91,11 @@ impl ButtonsState {
         for key_code in key_codes.iter().rev() {
             if !self.special_codes.contains(key_code) {
                 let key_code = *key_code;
-                if self.pressed[key_code as usize] {
+                // if self.pressed[key_code as usize] {
+                if *get_or_err(&self.pressed, &key_code)? {
                     self.queue.push(Command::Released(key_code));
-                    self.pressed[key_code as usize] = false;
+                    // self.pressed[key_code as usize] = false;
+                    self.pressed.insert(key_code, false);
                 }
             }
         }
@@ -116,8 +125,11 @@ impl ButtonsState {
     }
 
     pub fn release_all(&mut self) -> Result<()> {
-        for key_code in 0..KEY_CODES_MAX_VALUE {
-            self.release_keycodes(vec![key_code as Button])?;
+        // for key_code in 0..KEY_CODES_MAX_VALUE {
+        //     self.release_keycodes(vec![key_code as Button])?;
+        // }
+        for key_code in self.pressed.clone().keys() {
+            self.release_keycodes(vec![*key_code])?;
         }
         Ok(())
     }
