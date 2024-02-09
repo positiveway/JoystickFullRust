@@ -1,7 +1,8 @@
 build_clean=true
+use_nightly=true
 use_polonius=false
 new_trait_solver=false
-use_another_linker=false #can make things slower
+use_another_linker=true
 
 # exit when any command fails
 set -e
@@ -10,6 +11,10 @@ set -e
 sudo uname -r
 
 rust_version="stable"
+if $use_nightly
+then
+  rust_version="nightly"
+fi
 
 cd ..
 
@@ -36,7 +41,7 @@ fi
 
 if $use_another_linker
 then
-  build_flags="-C linker=clang-16 $build_flags"
+  build_flags="-C link-arg=-fuse-ld=lld $build_flags"
 fi
 
 rustup install $rust_version
