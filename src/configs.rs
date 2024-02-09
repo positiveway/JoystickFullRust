@@ -79,6 +79,7 @@ pub struct LayoutConfigs {
     _buttons_layout_raw: ButtonsLayoutRaw,
     #[serde(skip)]
     pub buttons_layout: ButtonsLayout,
+    pub repeat_keys: bool,
     pub finger_rotation: FingerRotation,
     #[serde(alias = "WASD_threshold_pct")]
     _wasd_threshold_pct: Option<u8>,

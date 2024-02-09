@@ -1,4 +1,5 @@
 gaming_mode = true
+repeat_keys = false
 WASD_threshold_pct = 30
 triggers_threshold_pct = 30
 mouse_speed = 400

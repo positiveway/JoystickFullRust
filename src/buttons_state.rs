@@ -25,6 +25,7 @@ pub struct ButtonsState {
     buttons_layout: HashMap<ButtonName, Buttons>,
     special_codes: Buttons,
     special_buttons: Vec<ButtonName>,
+    repeat_keys: bool,
     pub queue: Commands,
 }
 
@@ -34,7 +35,7 @@ pub fn get_or_err<'a, K: Hash + Eq + Sized + std::fmt::Display, V>(m: &'a HashMa
 }
 
 impl ButtonsState {
-    pub fn new(buttons_layout: ButtonsLayout) -> Self {
+    pub fn new(buttons_layout: ButtonsLayout, repeat_keys: bool) -> Self {
         let mut pressed: [bool; KEY_CODES_MAX_VALUE] = std::array::from_fn(|_| false);
 
         let special_codes = vec![
@@ -55,6 +56,7 @@ impl ButtonsState {
             buttons_layout: buttons_layout.layout,
             special_codes,
             special_buttons,
+            repeat_keys,
             queue: vec![],
         }
     }

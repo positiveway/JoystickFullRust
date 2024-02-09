@@ -393,8 +393,7 @@ fn writing_thread(
     let gaming_mode = layout_configs.gaming_mode;
     let scroll_configs = layout_configs.scroll;
 
-    let mut buttons_state = ButtonsState::new(layout_configs.buttons_layout);
-
+    let mut buttons_state = ButtonsState::new(layout_configs.buttons_layout, layout_configs.repeat_keys);
 
     let mut mouse_mode = MouseMode::default();
     let mut pads_coords = PadsCoords::new(&layout_configs.finger_rotation);
@@ -497,6 +496,8 @@ fn writing_thread(
                     // if !to_release.is_empty() || !to_press.is_empty() {
                     //     println!("To release: '{:?}'; To press: '{:?}'", to_release, to_press)
                     // }
+
+                    //Press goes first to check if already pressed
                     for keycode in to_press {
                         buttons_state.press_keycodes(vec![keycode as Button])?;
                     }
@@ -517,6 +518,7 @@ fn writing_thread(
         //BUTTONS
         for event in button_receiver.try_iter() {
             match event {
+                //Press goes first to check if already pressed
                 ButtonEvent::Pressed(button_name) => {
                     buttons_state.press(button_name)?;
                 }
@@ -529,9 +531,11 @@ fn writing_thread(
         for command in &buttons_state.queue {
             match command {
                 Command::Pressed(button) => {
+                    // println!("Send Pressed: {}", *button);
                     exec_or_eyre!(virtual_device.press(*button))?
                 }
                 Command::Released(button) => {
+                    // println!("Send Released: {}", *button);
                     exec_or_eyre!(virtual_device.release(*button))?
                 }
             }
