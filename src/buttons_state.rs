@@ -37,12 +37,6 @@ pub fn get_or_err<'a, K: Hash + Eq + Sized + std::fmt::Display, V>(m: &'a HashMa
 
 impl ButtonsState {
     pub fn new(buttons_layout: ButtonsLayout, repeat_keys: bool) -> Self {
-        // let mut pressed: [bool; KEY_CODES_MAX_VALUE] = std::array::from_fn(|_| false);
-        let mut pressed = HashMap::new();
-        for keycode in KeyCodes::iter() {
-            pressed.insert(keycode as Button, false);
-        }
-
         let special_codes = vec![
             KeyCodes::None as Button,
             KeyCodes::RESET_BTN as Button,
@@ -54,6 +48,16 @@ impl ButtonsState {
             buttons_layout.reset_btn,
             buttons_layout.switch_mode_btn,
         ];
+
+        // let mut pressed: [bool; KEY_CODES_MAX_VALUE] = std::array::from_fn(|_| false);
+        let mut pressed = HashMap::new();
+        for key_code in KeyCodes::iter() {
+            let key_code = key_code as Button;
+            if !special_codes.contains(&key_code) {
+                pressed.insert(key_code, false);
+            }
+        }
+
 
         Self {
             pressed,
