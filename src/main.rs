@@ -41,36 +41,11 @@ fn read_send_events(gilrs: &mut Gilrs, controller_state: &mut ControllerState) -
     }
 }
 
-
 fn init_gilrs() -> Result<Gilrs> {
     exec_or_eyre!(Gilrs::new())
 }
 
-fn init_controller() -> Result<()> {
-    let configs = MainConfigs::load()?;
-
-    if env::var("RUST_LOG").is_err() {
-        env::set_var("RUST_LOG", match configs.debug {
-            true => { "debug" }
-            false => { "warn" }
-        })
-    }
-    builder()
-        .format_module_path(false)
-        .format_target(false)
-        .format_indent(None)
-        .format_timestamp(None)
-        .init();
-
-    debug!("Layout: {}", configs.buttons_layout_name);
-
-    let mut controller_state = ControllerState::new(configs.clone());
-    let thread_handle = create_writing_thread(
-        controller_state.mouse_receiver.clone(),
-        controller_state.button_receiver.clone(),
-        configs,
-    );
-
+fn run_gilrs_loop(mut controller_state: ControllerState) -> Result<()> {
     let mut gilrs = init_gilrs()?;
 
     let mut is_wait_msg_printed = false;
@@ -97,12 +72,46 @@ fn init_controller() -> Result<()> {
     }
 }
 
+fn init_controller() -> Result<()> {
+    let (mut controller_state, configs) = load_configs()?;
+
+    let thread_handle = create_writing_thread(
+        controller_state.mouse_receiver.clone(),
+        controller_state.button_receiver.clone(),
+        configs,
+    );
+
+    run_gilrs_loop(controller_state)?;
+    Ok(())
+}
+
+fn load_configs() -> Result<(ControllerState, MainConfigs)> {
+    let configs = MainConfigs::load()?;
+
+    if env::var("RUST_LOG").is_err() {
+        env::set_var("RUST_LOG", match configs.debug {
+            true => { "debug" }
+            false => { "warn" }
+        })
+    }
+    builder()
+        .format_module_path(false)
+        .format_target(false)
+        .format_indent(None)
+        .format_timestamp(None)
+        .init();
+
+    debug!("Layout: {}", configs.buttons_layout_name);
+
+    let controller_state = ControllerState::new(configs.clone());
+    Ok((controller_state, configs))
+}
+
 // Don't use lazy_static with multiple threads.
 // Lock poisoning or CPU-level contention will occur.
 // One thread will stay in locked state
 fn main() -> Result<()> {
     color_eyre::install()?;
-
 
     init_controller()
 }
