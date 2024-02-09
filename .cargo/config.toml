@@ -1,5 +1,6 @@
 [build]
-rustflags = ["-C", "target-cpu=native"]
+rustflags = ["-C", "target-cpu=native", "-C", "link-arg=-fuse-ld=lld"]
+
 #"-Z", "polonius",
 #"-Z", "next-solver=coherence",
 #rustflags = ["-Zpolonius", "-Znext-solver=coherence", "-Ctarget-cpu=native"]

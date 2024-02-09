@@ -1,7 +1,7 @@
 use std::thread;
 use std::thread::{JoinHandle, sleep};
 use std::time::Instant;
-use mouse_keyboard_input::{Coord, VirtualDevice};
+use mouse_keyboard_input::{Button, Coord, VirtualDevice};
 use serde::{Deserialize, Serialize};
 use strum_macros::Display;
 use crate::configs::{MainConfigs, FingerRotation, JitterThreshold};
@@ -9,7 +9,7 @@ use color_eyre::eyre::{bail, OptionExt, Result};
 use log::{debug, info};
 use crate::process_event::{MouseEvent, MouseReceiver, ButtonReceiver, PadStickEvent, ButtonEvent};
 use crate::exec_or_eyre;
-use crate::key_codes::KeyCodes;
+use crate::key_codes::{key_codes_to_buttons, KeyCodes};
 use crate::math_ops::{rotate_around_center, Vector, NONE_VAL_ERR_MSG, calc_angle, distance, ZonesMapper, ZoneAllowedRange};
 
 
@@ -494,6 +494,10 @@ fn writing_thread(
                         // if !to_release.is_empty() || !to_press.is_empty() {
                         //     println!("To release: '{:?}'; To press: '{:?}'", to_release, to_press)
                         // }
+                        let to_release = key_codes_to_buttons(&to_release);
+                        let to_press = key_codes_to_buttons(&to_press);
+
+
                     }
                 }
             }

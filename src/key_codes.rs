@@ -240,10 +240,9 @@ pub enum KeyCodes {
 }
 
 
-impl KeyCodes {
-    pub fn as_button(&self) -> Button {
-        *self as Button
-    }
+pub fn key_codes_to_buttons(key_codes: &Vec<KeyCodes>) -> Vec<Button> {
+    let buttons: Vec<_> = key_codes.iter().map(|key_code| *key_code as Button).collect();
+    buttons
 }
 
 fn assign_special_button(special_button: &mut ButtonName, value: ButtonName) -> Result<(Button)> {
@@ -257,6 +256,10 @@ fn assign_special_button(special_button: &mut ButtonName, value: ButtonName) -> 
 }
 
 impl KeyCodes {
+    // pub fn as_button(&self) -> Button {
+    //     *self as Button
+    // }
+
     pub fn from_config(
         button_name: ButtonName,
         code_str: String,
