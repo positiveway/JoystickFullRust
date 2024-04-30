@@ -1,11 +1,9 @@
-use gilrs::EventType;
 use color_eyre::eyre::{bail, OptionExt, Result};
 use serde::{Deserialize, Serialize};
 use crate::match_event::*;
 use crate::configs::{LayoutConfigs, MainConfigs};
 use crossbeam_channel::{Sender, Receiver, bounded};
 use lazy_static::lazy_static;
-use mouse_keyboard_input::Button;
 use strum_macros::{Display};
 use crate::exec_or_eyre;
 use crate::process_event::PadStickEvent::FingerLifted;
@@ -71,17 +69,9 @@ impl ControllerState {
     }
 }
 
-
-pub enum TransformStatus {
-    Discarded,
-    Unchanged,
-    Transformed(TransformedEvent),
-    Handled,
-}
-
-pub fn process_event(orig_event: &EventType, controller_state: &mut ControllerState) -> Result<()> {
+pub fn process_event(normalized_event: TransformStatus, controller_state: &mut ControllerState) -> Result<()> {
     let mut event: TransformedEvent;
-    match match_event(orig_event, controller_state.RESET_BTN)? {
+    match normalized_event {
         TransformStatus::Discarded => {
             return Ok(());
         }
