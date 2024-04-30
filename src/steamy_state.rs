@@ -78,37 +78,37 @@ impl SteamyState {
 
             steamy_base::State::Input { buttons, trigger, pad, orientation, acceleration, .. } => {
                 button_converter!(events, self.buttons, buttons, {
-					steamy_base::button::A => SteamyButton::A,
-					steamy_base::button::B => SteamyButton::B,
-					steamy_base::button::X => SteamyButton::X,
-					steamy_base::button::Y => SteamyButton::Y,
+					steamy_base::Button::A => SteamyButton::A,
+					steamy_base::Button::B => SteamyButton::B,
+					steamy_base::Button::X => SteamyButton::X,
+					steamy_base::Button::Y => SteamyButton::Y,
 
-					steamy_base::button::PAD_DOWN  => SteamyButton::Down,
-					steamy_base::button::PAD_LEFT  => SteamyButton::Left,
-					steamy_base::button::PAD_RIGHT => SteamyButton::Right,
-					steamy_base::button::PAD_UP    => SteamyButton::Up,
+					steamy_base::Button::PAD_DOWN  => SteamyButton::Down,
+					steamy_base::Button::PAD_LEFT  => SteamyButton::Left,
+					steamy_base::Button::PAD_RIGHT => SteamyButton::Right,
+					steamy_base::Button::PAD_UP    => SteamyButton::Up,
 
-					steamy_base::button::PAD        => SteamyButton::LeftPadPressed,
-					steamy_base::button::PAD_TOUCH  => SteamyButton::LeftPadTouch,
+					steamy_base::Button::PAD        => SteamyButton::LeftPadPressed,
+					steamy_base::Button::PAD_TOUCH  => SteamyButton::LeftPadTouch,
 
-					steamy_base::button::STICK       => SteamyButton::StickPressed,
-					steamy_base::button::STICK_TOUCH => SteamyButton::StickTouch,
+					steamy_base::Button::STICK       => SteamyButton::StickPressed,
+					steamy_base::Button::STICK_TOUCH => SteamyButton::StickTouch,
 
-					steamy_base::button::TRACK       => SteamyButton::RightPadPressed,
-					steamy_base::button::TRACK_TOUCH => SteamyButton::RightPadTouch,
+					steamy_base::Button::TRACK       => SteamyButton::RightPadPressed,
+					steamy_base::Button::TRACK_TOUCH => SteamyButton::RightPadTouch,
 
-					steamy_base::button::BACK    => SteamyButton::Back,
-					steamy_base::button::HOME    => SteamyButton::Home,
-					steamy_base::button::FORWARD => SteamyButton::Forward,
+					steamy_base::Button::BACK    => SteamyButton::Back,
+					steamy_base::Button::HOME    => SteamyButton::Home,
+					steamy_base::Button::FORWARD => SteamyButton::Forward,
 
-					steamy_base::button::LEFT_BUMPER  => SteamyButton::BumperLeft,
-					steamy_base::button::RIGHT_BUMPER => SteamyButton::BumperRight,
+					steamy_base::Button::LEFT_BUMPER  => SteamyButton::BumperLeft,
+					steamy_base::Button::RIGHT_BUMPER => SteamyButton::BumperRight,
 
-					steamy_base::button::LEFT_GRIP  => SteamyButton::GripLeft,
-					steamy_base::button::RIGHT_GRIP => SteamyButton::GripRight,
+					steamy_base::Button::LEFT_GRIP  => SteamyButton::GripLeft,
+					steamy_base::Button::RIGHT_GRIP => SteamyButton::GripRight,
 
-					steamy_base::button::LEFT_TRIGGER  => SteamyButton::TriggerLeft,
-					steamy_base::button::RIGHT_TRIGGER => SteamyButton::TriggerRight,
+					steamy_base::Button::LEFT_TRIGGER  => SteamyButton::TriggerLeft,
+					steamy_base::Button::RIGHT_TRIGGER => SteamyButton::TriggerRight,
 				});
 
                 if self.trigger.left != trigger.left {
