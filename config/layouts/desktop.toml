@@ -2,19 +2,19 @@ gaming_mode = false
 repeat_keys = false
 triggers_threshold_pct = 30
 mouse_speed = 400
-[scroll]
+[Scroll]
 speed = 600
 horizontal_threshold = 0.08
-[finger_rotation]
+[FingerRotation]
 use_rotation = true
 left_pad = -20
 right_pad = 8
 stick = -8
-[jitter_threshold]
+[JitterThreshold]
 left_pad = 0.01
 right_pad = 0.01
 stick = 0.08
-[buttons_layout]
+[ButtonsLayout]
 #BtnUp_SideL = ["BtnUp_SideL"]
 #BtnDown_SideL = ["BtnDown_SideL"]
 #BtnLeft_SideL = ["BtnLeft_SideL"]

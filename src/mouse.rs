@@ -11,6 +11,7 @@ use crate::buttons_state::{ButtonsState, Command};
 use crate::process_event::{MouseEvent, MouseReceiver, ButtonReceiver, PadStickEvent, ButtonEvent};
 use crate::exec_or_eyre;
 use crate::key_codes::{key_codes_to_buttons, KeyCodes};
+use crate::key_codes::KeyCodes::KEY_LEFTSHIFT;
 use crate::math_ops::{rotate_around_center, Vector, NONE_VAL_ERR_MSG, calc_angle, distance, ZonesMapper, ZoneAllowedRange};
 
 
@@ -77,6 +78,15 @@ impl Coords {
 
     pub fn rotate(&self, rotation: i16) -> Result<Self> {
         Ok(rotate_around_center(Vector::from_coords(*self)?, rotation as f32).as_coords())
+    }
+
+    pub fn magnitude(&self) -> f32 {
+        match (self.x, self.y) {
+            (Some(x), Some(y)) => {
+                x.hypot(y)
+            }
+            (_, _) => 0.0
+        }
     }
 }
 
@@ -412,7 +422,7 @@ fn writing_thread(
     let mut wasd_zone_mapper = ZonesMapper::gen_from_4(
         _wasd_zones, 90,
         &_wasd_zone_range,
-        layout_configs.wasd_threshold,
+        layout_configs.movement.start_threshold,
     )?;
 
     loop {
@@ -495,6 +505,12 @@ fn writing_thread(
                     }
                     for keycode in to_release {
                         buttons_state.release_keycodes(vec![keycode as Button])?;
+                    }
+
+                    if cur_pos.magnitude() >= layout_configs.movement.shift_threshold {
+                        buttons_state.press_keycodes(vec![KEY_LEFTSHIFT as Button])?;
+                    } else {
+                        buttons_state.release_keycodes(vec![KEY_LEFTSHIFT as Button])?;
                     }
                 }
             }

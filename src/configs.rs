@@ -74,27 +74,54 @@ impl MainConfigs {
 }
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
+pub struct MovementConfigs {
+    #[serde(alias = "start_threshold_pct")]
+    _start_threshold_pct: u8,
+    #[serde(skip)]
+    pub start_threshold: f32,
+
+    #[serde(alias = "shift_threshold_pct")]
+    _shift_threshold_pct: u8,
+    #[serde(skip)]
+    pub shift_threshold: f32,
+}
+
+impl MovementConfigs {
+    pub fn load(&self) -> Self {
+        Self {
+            start_threshold: convert_pct(self._start_threshold_pct),
+            shift_threshold: convert_pct(self._shift_threshold_pct),
+
+            _start_threshold_pct: self._start_threshold_pct,
+            _shift_threshold_pct: self._shift_threshold_pct,
+        }
+    }
+}
+
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct LayoutConfigs {
     pub gaming_mode: bool,
-    #[serde(alias = "buttons_layout")]
+    #[serde(alias = "ButtonsLayout")]
     _buttons_layout_raw: ButtonsLayoutRaw,
     #[serde(skip)]
     pub buttons_layout: ButtonsLayout,
     pub repeat_keys: bool,
+    #[serde(alias = "FingerRotation")]
     pub finger_rotation: FingerRotation,
-    #[serde(alias = "WASD_threshold_pct")]
-    _wasd_threshold_pct: Option<u8>,
+    #[serde(alias = "Movement")]
+    _movement: Option<MovementConfigs>,
     #[serde(skip)]
-    pub wasd_threshold: f32,
+    pub movement: MovementConfigs,
     #[serde(alias = "triggers_threshold_pct")]
     _triggers_threshold_pct: u8,
     #[serde(skip)]
     pub triggers_threshold: f32,
     pub mouse_speed: u16,
-    #[serde(alias = "scroll")]
+    #[serde(alias = "Scroll")]
     _scroll: Option<ScrollConfigs>,
     #[serde(skip)]
     pub scroll: ScrollConfigs,
+    #[serde(alias = "JitterThreshold")]
     pub jitter_threshold: JitterThreshold,
 }
 
@@ -104,21 +131,22 @@ impl LayoutConfigs {
 
         layout_configs.triggers_threshold = convert_pct(layout_configs._triggers_threshold_pct);
 
+
         match layout_configs.gaming_mode {
             true => {
-                match layout_configs._wasd_threshold_pct {
+                match layout_configs._movement {
                     None => {
-                        bail!("'wasd_threshold_pct' has to be specified in gaming mode")
+                        bail!("'Movement' has to be specified in desktop mode")
                     }
-                    Some(wasd_threshold_pct) => {
-                        layout_configs.wasd_threshold = convert_pct(wasd_threshold_pct);
+                    Some(ref movement) => {
+                        layout_configs.movement = movement.load();
                     }
                 }
             }
             false => {
                 match layout_configs._scroll {
                     None => {
-                        bail!("'scroll' has to be specified in desktop mode")
+                        bail!("'Scroll' has to be specified in desktop mode")
                     }
                     Some(scroll) => {
                         layout_configs.scroll = scroll;
