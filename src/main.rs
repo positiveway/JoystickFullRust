@@ -28,11 +28,17 @@ fn init_controller() -> Result<()> {
         controller_state.button_receiver.clone(),
         configs.clone(),
     );
-    use crate::steamy_specific::run_steamy_loop;
-    run_steamy_loop(controller_state, configs)?;
+    match configs.is_steamy {
+        true => {
+            use crate::steamy_specific::run_steamy_loop;
+            run_steamy_loop(controller_state, configs)?;
+        }
+        false => {
+            use crate::gilrs_specific::run_gilrs_loop;
+            run_gilrs_loop(controller_state)?;
+        }
+    }
 
-    use crate::gilrs_specific::run_gilrs_loop;
-    // run_gilrs_loop(controller_state)?;
     Ok(())
 }
 

@@ -22,14 +22,14 @@ pub enum SteamyButton {
     Right,
     Up,
 
-    Pad,
-    PadTouch,
+    LeftPadPressed,
+    LeftPadTouch,
 
-    Stick,
+    StickPressed,
     StickTouch,
 
-    Track,
-    TrackTouch,
+    RightPadPressed,
+    RightPadTouch,
 
     Back,
     Home,

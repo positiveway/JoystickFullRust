@@ -436,14 +436,6 @@ fn writing_thread(
                     pads_coords.reset();
                 }
                 MouseEvent::LeftPad(pad_stick_event) => {
-                    //SUPER Important: Steam Controller's Left pad inverts Y axis and thus
-                    // makes angles negative (angles go clockwise instead of counter-clockwise)
-                    // need to invert it back
-                    let pad_stick_event = match pad_stick_event {
-                        PadStickEvent::FingerLifted => { PadStickEvent::FingerLifted }
-                        PadStickEvent::MovedX(x) => { PadStickEvent::MovedX(x) }
-                        PadStickEvent::MovedY(y) => { PadStickEvent::MovedY(-y) }
-                    };
                     assign_pad_stick_event(&mut pads_coords.left_pad,
                                            layout_configs.jitter_threshold.left_pad,
                                            pad_stick_event)

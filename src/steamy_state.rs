@@ -88,14 +88,14 @@ impl SteamyState {
 					steamy_base::button::PAD_RIGHT => SteamyButton::Right,
 					steamy_base::button::PAD_UP    => SteamyButton::Up,
 
-					steamy_base::button::PAD        => SteamyButton::Pad,
-					steamy_base::button::PAD_TOUCH  => SteamyButton::PadTouch,
+					steamy_base::button::PAD        => SteamyButton::LeftPadPressed,
+					steamy_base::button::PAD_TOUCH  => SteamyButton::LeftPadTouch,
 
-					steamy_base::button::STICK       => SteamyButton::Stick,
+					steamy_base::button::STICK       => SteamyButton::StickPressed,
 					steamy_base::button::STICK_TOUCH => SteamyButton::StickTouch,
 
-					steamy_base::button::TRACK       => SteamyButton::Track,
-					steamy_base::button::TRACK_TOUCH => SteamyButton::TrackTouch,
+					steamy_base::button::TRACK       => SteamyButton::RightPadPressed,
+					steamy_base::button::TRACK_TOUCH => SteamyButton::RightPadTouch,
 
 					steamy_base::button::BACK    => SteamyButton::Back,
 					steamy_base::button::HOME    => SteamyButton::Home,

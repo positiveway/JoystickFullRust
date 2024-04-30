@@ -25,12 +25,12 @@ pub fn match_button(button: &SteamyButton) -> color_eyre::Result<ButtonName> {
         SteamyButton::Left => ButtonName::PadLeft_SideL,
         SteamyButton::Right => ButtonName::PadRight_SideL,
         SteamyButton::Up => ButtonName::PadUp_SideL,
-        SteamyButton::Pad => ButtonName::None, //unreliable: triggered for both stick and left pad
-        SteamyButton::PadTouch => ButtonName::PadAsTouch_SideL,
-        SteamyButton::Stick => ButtonName::StickAsBtn,
+        SteamyButton::LeftPadPressed => ButtonName::PadAsBtn_SideL, //unreliable: triggered for both stick and left pad
+        SteamyButton::LeftPadTouch => ButtonName::PadAsTouch_SideL,
+        SteamyButton::StickPressed => ButtonName::StickAsBtn,
         SteamyButton::StickTouch => ButtonName::None,
-        SteamyButton::Track => ButtonName::None,
-        SteamyButton::TrackTouch => ButtonName::PadAsTouch_SideR,
+        SteamyButton::RightPadPressed => ButtonName::PadAsBtn_SideR,
+        SteamyButton::RightPadTouch => ButtonName::PadAsTouch_SideR,
         SteamyButton::Back => ButtonName::ExtraBtn_SideL,
         SteamyButton::Home => ButtonName::ExtraBtnCentral,
         SteamyButton::Forward => ButtonName::ExtraBtn_SideR,
@@ -38,8 +38,8 @@ pub fn match_button(button: &SteamyButton) -> color_eyre::Result<ButtonName> {
         SteamyButton::BumperRight => ButtonName::UpperTrigger_SideR,
         SteamyButton::GripLeft => ButtonName::Wing_SideL,
         SteamyButton::GripRight => ButtonName::Wing_SideR,
-        SteamyButton::TriggerLeft => ButtonName::None,
-        SteamyButton::TriggerRight => ButtonName::None,
+        SteamyButton::TriggerLeft => ButtonName::LowerTriggerAsBtn_SideL,
+        SteamyButton::TriggerRight => ButtonName::LowerTriggerAsBtn_SideR,
     })
 }
 

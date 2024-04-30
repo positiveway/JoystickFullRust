@@ -44,6 +44,7 @@ pub struct ScrollConfigs {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct MainConfigs {
     pub debug: bool,
+    pub is_steamy: bool,
     #[serde(alias = "typing_layout")]
     pub typing_layout_name: String,
     #[serde(alias = "buttons_layout")]

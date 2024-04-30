@@ -114,6 +114,8 @@ fn init_gilrs() -> color_eyre::Result<Gilrs> {
 }
 
 pub fn run_gilrs_loop(mut controller_state: ControllerState) -> color_eyre::Result<()> {
+    // let usb_holder = find_usb_device()?;
+
     let mut gilrs = init_gilrs()?;
 
     let mut wait_msg_is_printed = false;
@@ -137,7 +139,6 @@ pub fn run_gilrs_loop(mut controller_state: ControllerState) -> color_eyre::Resu
             }
             1 => {
                 wait_msg_is_printed = false;
-                let usb_holder = find_usb_device()?;
                 read_events(&mut gilrs, &mut controller_state)?;
             }
             _ => {
@@ -207,11 +208,19 @@ pub fn normalize_event(
     Ok(match event {
         AxisChanged(axis, value, code) => {
             let code_as_num = print_code(code)?;
+            let axis = match_axis(code_as_num)?;
+            let value = *value;
 
             TransformStatus::Transformed(TransformedEvent {
                 event_type: EventTypeName::AxisChanged,
-                axis: match_axis(code_as_num)?,
-                value: *value,
+                axis,
+                //SUPER Important: Steam Controller's Left pad inverts Y axis and thus
+                // makes angles negative (angles go clockwise instead of counter-clockwise)
+                // need to invert it back
+                value: match axis {
+                    AxisName::PadY_SideL => { -value }
+                    _ => { value }
+                },
                 button: ButtonName::None,
             })
         }
