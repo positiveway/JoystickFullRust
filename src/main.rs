@@ -11,6 +11,7 @@ mod gilrs_specific;
 mod steamy_specific;
 mod steamy_state;
 mod steamy_event;
+mod steamy_debug;
 
 use std::env;
 use color_eyre::eyre::{Result};

@@ -1,15 +1,14 @@
-use color_eyre::eyre::{bail, OptionExt, Result};
-use serde::{Deserialize, Serialize};
-use crate::match_event::*;
 use crate::configs::{LayoutConfigs, MainConfigs};
-use crossbeam_channel::{Sender, Receiver, bounded};
-use lazy_static::lazy_static;
-use strum_macros::{Display};
 use crate::exec_or_eyre;
-use crate::process_event::PadStickEvent::FingerLifted;
+use crate::match_event::*;
 use crate::math_ops::RangeConverterBuilder;
 use crate::process_event::ButtonEvent::{Pressed, Released};
-
+use crate::process_event::PadStickEvent::FingerLifted;
+use color_eyre::eyre::{bail, OptionExt, Result};
+use crossbeam_channel::{bounded, Receiver, Sender};
+use lazy_static::lazy_static;
+use serde::{Deserialize, Serialize};
+use strum_macros::Display;
 
 #[derive(Display, Copy, Clone, Debug, Serialize, Deserialize)]
 pub enum PadStickEvent {
@@ -60,7 +59,7 @@ impl ControllerState {
         Self {
             mouse_sender,
             mouse_receiver,
-            button_sender: button_sender,
+            button_sender,
             button_receiver,
             RESET_BTN: layout_configs.buttons_layout.reset_btn,
             SWITCH_MODE_BTN: layout_configs.buttons_layout.switch_mode_btn,
@@ -69,7 +68,29 @@ impl ControllerState {
     }
 }
 
-pub fn process_event(normalized_event: TransformStatus, controller_state: &mut ControllerState) -> Result<()> {
+#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
+pub struct ImplementationSpecificCfg {
+    triggers_range_converter: RangeConverterBuilder<f32>,
+}
+
+impl ImplementationSpecificCfg {
+    pub fn new(trigger_input_min: f32, trigger_input_max: f32) -> Self {
+        Self {
+            triggers_range_converter: RangeConverterBuilder::build(
+                trigger_input_min,
+                trigger_input_max,
+                0.0,
+                1.0,
+            ),
+        }
+    }
+}
+
+pub fn process_event(
+    normalized_event: TransformStatus,
+    controller_state: &mut ControllerState,
+    impl_cfg: &ImplementationSpecificCfg,
+) -> Result<()> {
     let mut event: TransformedEvent;
     match normalized_event {
         TransformStatus::Discarded => {
@@ -83,8 +104,7 @@ pub fn process_event(normalized_event: TransformStatus, controller_state: &mut C
         }
     };
 
-
-    match transform_triggers(&mut event, &controller_state.layout_configs) {
+    match transform_triggers(&mut event, &controller_state.layout_configs, impl_cfg) {
         TransformStatus::Discarded | TransformStatus::Handled => {
             return Ok(());
         }
@@ -127,24 +147,29 @@ pub fn process_event(normalized_event: TransformStatus, controller_state: &mut C
     Ok(())
 }
 
-pub fn process_buttons(event: &TransformedEvent, controller_state: &mut ControllerState) -> Result<TransformStatus> {
+pub fn process_buttons(
+    event: &TransformedEvent,
+    controller_state: &mut ControllerState,
+) -> Result<TransformStatus> {
     match event.event_type {
         EventTypeName::ButtonPressed => {
             controller_state.button_sender.send(Pressed(event.button))?;
             Ok(TransformStatus::Handled)
         }
         EventTypeName::ButtonReleased => {
-            controller_state.button_sender.send(Released(event.button))?;
+            controller_state
+                .button_sender
+                .send(Released(event.button))?;
             Ok(TransformStatus::Handled)
         }
-        _ => {
-            Ok(TransformStatus::Unchanged)
-        }
+        _ => Ok(TransformStatus::Unchanged),
     }
 }
 
-
-pub fn process_pad_stick(event: &TransformedEvent, controller_state: &ControllerState) -> Result<TransformStatus> {
+pub fn process_pad_stick(
+    event: &TransformedEvent,
+    controller_state: &ControllerState,
+) -> Result<TransformStatus> {
     let send_mouse_event = |mouse_event: MouseEvent| -> Result<()> {
         exec_or_eyre!(controller_state.mouse_sender.send(mouse_event))
     };
@@ -183,31 +208,15 @@ pub fn process_pad_stick(event: &TransformedEvent, controller_state: &Controller
             return Ok(TransformStatus::Discarded);
         };
 
-        if let Some(event_to_send) =
-            match event.axis {
-                AxisName::PadX_SideL => {
-                    Some(MouseEvent::LeftPad(PadStickEvent::MovedX(event.value)))
-                }
-                AxisName::PadY_SideL => {
-                    Some(MouseEvent::LeftPad(PadStickEvent::MovedY(event.value)))
-                }
-                AxisName::PadX_SideR => {
-                    Some(MouseEvent::RightPad(PadStickEvent::MovedX(event.value)))
-                }
-                AxisName::PadY_SideR => {
-                    Some(MouseEvent::RightPad(PadStickEvent::MovedY(event.value)))
-                }
-                AxisName::StickX => {
-                    Some(MouseEvent::Stick(PadStickEvent::MovedX(event.value)))
-                }
-                AxisName::StickY => {
-                    Some(MouseEvent::Stick(PadStickEvent::MovedY(event.value)))
-                }
-                _ => {
-                    None
-                }
-            }
-        {
+        if let Some(event_to_send) = match event.axis {
+            AxisName::PadX_SideL => Some(MouseEvent::LeftPad(PadStickEvent::MovedX(event.value))),
+            AxisName::PadY_SideL => Some(MouseEvent::LeftPad(PadStickEvent::MovedY(event.value))),
+            AxisName::PadX_SideR => Some(MouseEvent::RightPad(PadStickEvent::MovedX(event.value))),
+            AxisName::PadY_SideR => Some(MouseEvent::RightPad(PadStickEvent::MovedY(event.value))),
+            AxisName::StickX => Some(MouseEvent::Stick(PadStickEvent::MovedX(event.value))),
+            AxisName::StickY => Some(MouseEvent::Stick(PadStickEvent::MovedY(event.value))),
+            _ => None,
+        } {
             send_mouse_event(event_to_send)?;
             return Ok(TransformStatus::Handled);
         };
@@ -216,29 +225,26 @@ pub fn process_pad_stick(event: &TransformedEvent, controller_state: &Controller
     Ok(TransformStatus::Unchanged)
 }
 
-
 pub fn transform_left_pad(event: &TransformedEvent) -> TransformStatus {
     match event.button {
-        ButtonName::PadDown_SideL |
-        ButtonName::PadRight_SideL |
-        ButtonName::PadUp_SideL |
-        ButtonName::PadLeft_SideL => {
-            TransformStatus::Transformed(TransformedEvent {
-                event_type: event.event_type,
-                axis: AxisName::None,
-                value: event.value,
-                button: ButtonName::PadAsBtn_SideL,
-            })
-        }
-        _ => TransformStatus::Unchanged
+        ButtonName::PadDown_SideL
+        | ButtonName::PadRight_SideL
+        | ButtonName::PadUp_SideL
+        | ButtonName::PadLeft_SideL => TransformStatus::Transformed(TransformedEvent {
+            event_type: event.event_type,
+            axis: AxisName::None,
+            value: event.value,
+            button: ButtonName::PadAsBtn_SideL,
+        }),
+        _ => TransformStatus::Unchanged,
     }
 }
 
-lazy_static! {
-    pub static ref TRIGGERS_RANGE_CONVERTER: RangeConverterBuilder<f32>  = RangeConverterBuilder::build(-1.0, 1.0, 0.0, 1.0);
-}
-
-pub fn transform_triggers(event: &mut TransformedEvent, layout_configs: &LayoutConfigs) -> TransformStatus {
+pub fn transform_triggers(
+    event: &mut TransformedEvent,
+    layout_configs: &LayoutConfigs,
+    impl_cfg: &ImplementationSpecificCfg,
+) -> TransformStatus {
     match event.button {
         ButtonName::LowerTriggerAsBtn_SideL | ButtonName::LowerTriggerAsBtn_SideR => {
             return TransformStatus::Discarded;
@@ -249,12 +255,12 @@ pub fn transform_triggers(event: &mut TransformedEvent, layout_configs: &LayoutC
     match event.axis {
         AxisName::LowerTrigger_SideL | AxisName::LowerTrigger_SideR => {
             let button = match event.axis {
-                AxisName::LowerTrigger_SideL => { ButtonName::LowerTriggerAsBtn_SideL }
-                AxisName::LowerTrigger_SideR => { ButtonName::LowerTriggerAsBtn_SideR }
-                _ => { ButtonName::None }
+                AxisName::LowerTrigger_SideL => ButtonName::LowerTriggerAsBtn_SideL,
+                AxisName::LowerTrigger_SideR => ButtonName::LowerTriggerAsBtn_SideR,
+                _ => ButtonName::None,
             };
             return TransformStatus::Transformed({
-                event.value = TRIGGERS_RANGE_CONVERTER.convert(event.value);
+                event.value = impl_cfg.triggers_range_converter.convert(event.value);
 
                 if event.value > layout_configs.triggers_threshold {
                     TransformedEvent {

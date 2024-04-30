@@ -4,6 +4,7 @@ use std::ops::Add;
 use color_eyre::eyre::{bail, Result, OptionExt};
 use log::debug;
 use serde::{Deserialize, Serialize};
+use strum_macros::Display;
 use trait_set::trait_set;
 use crate::mouse::Coords;
 
@@ -236,6 +237,7 @@ pub fn convert_range<T: Numeric<T>>(input: T, input_start: T, input_end: T, outp
     output
 }
 
+#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 pub struct RangeConverterBuilder<T: Numeric<T>> {
     slope: T,
     pre_calc: T,

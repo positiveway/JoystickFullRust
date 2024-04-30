@@ -1,7 +1,7 @@
 use crate::deadzones::print_deadzones;
 use crate::exec_or_eyre;
 use crate::match_event::{AxisName, ButtonName, EventTypeName, TransformStatus, TransformedEvent};
-use crate::process_event::{process_event, ControllerState};
+use crate::process_event::{process_event, ControllerState, ImplementationSpecificCfg};
 use color_eyre::eyre::bail;
 use gilrs::ev::Code;
 use gilrs::EventType::Disconnected;
@@ -15,6 +15,11 @@ fn read_events(
     gilrs: &mut Gilrs,
     controller_state: &mut ControllerState,
 ) -> color_eyre::Result<()> {
+    let impl_cfg = ImplementationSpecificCfg::new(
+        -1.0,
+        1.0,
+    );
+
     // gilrs.next_event().filter_ev()
     print_deadzones(gilrs, 0)?;
 
@@ -25,7 +30,7 @@ fn read_events(
             debug!("{}", print_event(&event)?);
 
             let event = normalize_event(&event, controller_state.RESET_BTN)?;
-            process_event(event, controller_state)?;
+            process_event(event, controller_state, &impl_cfg)?;
 
             if is_disconnected {
                 println!("Gamepad disconnected");
@@ -218,8 +223,8 @@ pub fn normalize_event(
                 // makes angles negative (angles go clockwise instead of counter-clockwise)
                 // need to invert it back
                 value: match axis {
-                    AxisName::PadY_SideL => { -value }
-                    _ => { value }
+                    AxisName::PadY_SideL => -value,
+                    _ => value,
                 },
                 button: ButtonName::None,
             })
