@@ -1,4 +1,3 @@
-mod deadzones;
 mod match_event;
 mod utils;
 mod configs;
@@ -35,8 +34,8 @@ fn init_controller() -> Result<()> {
             run_steamy_loop(controller_state, configs)?;
         }
         false => {
-            use crate::gilrs_specific::run_gilrs_loop;
-            run_gilrs_loop(controller_state)?;
+            // use crate::gilrs_specific::run_gilrs_loop;
+            // run_gilrs_loop(controller_state)?;
         }
     }
 
