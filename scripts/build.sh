@@ -1,8 +1,8 @@
-build_clean=true
-use_nightly=true
+build_clean=false
+use_nightly=false
 use_polonius=false
 new_trait_solver=false
-use_another_linker=true
+use_another_linker=false
 
 # exit when any command fails
 set -e
