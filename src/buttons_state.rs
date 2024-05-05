@@ -84,7 +84,6 @@ impl ButtonsState {
         }
         for key_code in &key_codes {
             if !self.special_codes.contains(key_code) {
-                // if always_press || !*get_or_err(&self.pressed, key_code)? {
                 if always_press || !get_or_default(&self.pressed, key_code) {
                     self.queue.push(Command::Pressed(*key_code));
                     self.pressed.insert(*key_code, true);
@@ -97,7 +96,6 @@ impl ButtonsState {
     pub fn release_keycodes(&mut self, key_codes: KeyCodes, always_release: bool) -> Result<()> {
         for key_code in key_codes.iter().rev() {
             if !self.special_codes.contains(key_code) {
-                // if always_release || *get_or_err(&self.pressed, key_code)? {
                 if always_release || get_or_default(&self.pressed, key_code) {
                     self.queue.push(Command::Released(*key_code));
                     self.pressed.insert(*key_code, false);

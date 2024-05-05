@@ -376,10 +376,6 @@ impl<T: Clone + Display + PartialEq> ZonesMapper<T> {
         // debug!("Changed: {}", zone_changed);
         self.prev_zone = zone;
         let value = angle.and_then(|angle| self.angle_to_value[angle].clone());
-        // let value = match angle {
-        //     None => None,
-        //     Some(angle) => self.angle_to_value[angle].clone(),
-        // };
         (zone_changed, value)
     }
 

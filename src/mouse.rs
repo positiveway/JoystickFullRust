@@ -142,13 +142,6 @@ fn calc_diff_one_coord(prev_coord: Option<f32>, cur_coord: Option<f32>) -> f32 {
         (Some(prev_value), Some(cur_value)) => cur_value - prev_value,
         _ => 0.0,
     }
-    // match prev_coord {
-    //     None => 0.0,
-    //     Some(prev_value) => match cur_coord {
-    //         None => 0.0,
-    //         Some(cur_value) => cur_value - prev_value,
-    //     },
-    // }
 }
 
 fn convert_diff(value: f32, multiplier: u16) -> Coord {
@@ -159,7 +152,6 @@ fn convert_diff(value: f32, multiplier: u16) -> Coord {
 pub struct CoordsState {
     prev: Coords,
     cur: Coords,
-    // jitter_threshold: f32,
     finger_rotation: i16,
     use_rotation: bool,
 }
@@ -169,7 +161,6 @@ impl CoordsState {
         Self {
             prev: Default::default(),
             cur: Default::default(),
-            // jitter_threshold,
             finger_rotation,
             use_rotation,
         }
@@ -200,33 +191,7 @@ impl CoordsState {
         self.prev.update_if_not_init(&self.cur);
     }
 
-    // fn get_cur_or_prev(prev: Option<f32>, cur: Option<f32>) -> Option<f32> {
-    //     cur.or(prev)
-    //
-    //     // match (prev, cur) {
-    //     //     (_, Some(value)) => Ok(value),
-    //     //     (Some(value), _) => Ok(value),
-    //     //     (None, None) => bail!(NONE_VAL_ERR_MSG)
-    //     // }
-    //
-    //     // Ok(match cur {
-    //     //     None => match prev {
-    //     //         None => bail!(NONE_VAL_ERR_MSG),
-    //     //         Some(value) => value,
-    //     //     },
-    //     //     Some(value) => value,
-    //     // })
-    // }
-
     pub fn rotate_cur_coords(&self) -> Option<Coords> {
-        // match (
-        //     Self::get_cur_or_prev(self.prev.x, self.cur.x),
-        //     Self::get_cur_or_prev(self.prev.y, self.cur.y),
-        // ) {
-        // match (
-        //     self.cur.x.or(self.prev.x),
-        //     self.cur.y.or(self.prev.y),
-        // ) {
         let cur_pos = self.cur_pos();
         match (
             cur_pos.x,
@@ -257,10 +222,6 @@ impl CoordsState {
 
     pub fn rotate_prev_coords(&self) -> Option<Coords> {
         self.prev.rotate(self.finger_rotation)
-        // Vector::from_coords(self.prev).and_then(|vector: Vector| {
-        //     Some(rotate_around_center(vector, self.finger_rotation as f32)
-        //         .as_coords())
-        // })
     }
 
     pub fn cur_pos(&self) -> Coords {
@@ -268,39 +229,15 @@ impl CoordsState {
             x: self.cur.x.or(self.prev.x),
             y: self.cur.y.or(self.prev.y),
         }
-        // Coords {
-        //     x: match self.cur.x {
-        //         None => self.prev.x,
-        //         Some(value) => Some(value),
-        //     },
-        //     y: match self.cur.y {
-        //         None => self.prev.y,
-        //         Some(value) => Some(value),
-        //     },
-        // }
     }
 
     pub fn diff(&mut self) -> CoordsDiff {
         let cur_coords = match self.use_rotation {
             true => self.rotate_cur_coords().unwrap_or(self.cur),
-            // true => match self.rotate_cur_coords() {
-            //     Ok(rotated_coords) => rotated_coords,
-            //     Err(error) => {
-            //         info!("{}", error);
-            //         self.cur
-            //     }
-            // },
             false => self.cur,
         };
         let prev_coords = match self.use_rotation {
             true => self.rotate_prev_coords().unwrap_or(self.prev),
-            // true => match self.rotate_prev_coords() {
-            //     Ok(value) => value,
-            //     Err(error) => {
-            //         info!("{}", error);
-            //         self.prev
-            //     }
-            // },
             false => self.prev,
         };
 
