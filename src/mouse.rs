@@ -192,32 +192,34 @@ impl CoordsState {
     }
 
     pub fn rotate_cur_coords(&self) -> Option<Coords> {
-        let cur_pos = self.cur_pos();
-        match (
-            cur_pos.x,
-            cur_pos.y,
-        ) {
-            (Some(x), Some(y)) => {
-                let point = Vector { x, y };
+        self.cur_pos().rotate(self.finger_rotation)
 
-                let orig_angle = point.angle();
-                let rotated_vector = rotate_around_center(point, self.finger_rotation as f32);
-
-                let rotated_coords = rotated_vector.as_coords();
-                debug!("Origin: {}", self.cur);
-                debug!("Filled: {}", self.cur_pos());
-                debug!("Rotated: {}", rotated_coords);
-                debug!(
-                    "Angle: [Orig: {}, Shifted: {}; Rotation: {}]",
-                    orig_angle,
-                    rotated_vector.angle(),
-                    self.finger_rotation
-                );
-                debug!("");
-                Some(rotated_coords)
-            }
-            _ => None,
-        }
+        // let cur_pos = self.cur_pos();
+        // match (
+        //     cur_pos.x,
+        //     cur_pos.y,
+        // ) {
+        //     (Some(x), Some(y)) => {
+        //         let point = Vector { x, y };
+        //
+        //         let orig_angle = point.angle();
+        //         let rotated_vector = rotate_around_center(point, self.finger_rotation as f32);
+        //
+        //         let rotated_coords = rotated_vector.as_coords();
+        //         debug!("Origin: {}", self.cur);
+        //         debug!("Filled: {}", self.cur_pos());
+        //         debug!("Rotated: {}", rotated_coords);
+        //         debug!(
+        //             "Angle: [Orig: {}, Shifted: {}; Rotation: {}]",
+        //             orig_angle,
+        //             rotated_vector.angle(),
+        //             self.finger_rotation
+        //         );
+        //         debug!("");
+        //         Some(rotated_coords)
+        //     }
+        //     _ => None,
+        // }
     }
 
     pub fn rotate_prev_coords(&self) -> Option<Coords> {
