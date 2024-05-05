@@ -392,6 +392,7 @@ fn writing_thread(
     let gaming_mode = layout_configs.general.gaming_mode;
     let scroll_configs = layout_configs.scroll;
     let mouse_speed = layout_configs.general.mouse_speed;
+    let use_shift_movement = layout_configs.movement.use_shift;
 
     let mut buttons_state = ButtonsState::new(
         layout_configs.buttons_layout,
@@ -496,10 +497,12 @@ fn writing_thread(
                         buttons_state.release_keycodes(vec![keycode], false)?;
                     }
 
-                    if cur_pos.magnitude() >= layout_configs.movement.shift_threshold {
-                        buttons_state.press_keycodes(vec![KEY_LEFTSHIFT], true)?;
-                    } else {
-                        buttons_state.release_keycodes(vec![KEY_LEFTSHIFT], false)?;
+                    if use_shift_movement {
+                        if cur_pos.magnitude() > layout_configs.movement.shift_threshold {
+                            buttons_state.press_keycodes(vec![KEY_LEFTSHIFT], true)?;
+                        } else {
+                            buttons_state.release_keycodes(vec![KEY_LEFTSHIFT], false)?;
+                        }
                     }
                 }
             }

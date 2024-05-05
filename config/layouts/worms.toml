@@ -4,7 +4,7 @@ BtnDown_SideR = ["KEY_ENTER"]
 BtnLeft_SideR = ["KEY_E"]
 BtnRight_SideR = ["KEY_BACKSPACE"]
 Wing_SideL = ["KEY_TAB"]
-Wing_SideR = ["KEY_C"]
+Wing_SideR = ["KEY_LEFTSHIFT"]
 LowerTriggerAsBtn_SideL = ["MOUSE_RIGHT"]
 LowerTriggerAsBtn_SideR = ["KEY_SPACE"]
 UpperTrigger_SideL = ["KEY_SCROLLDOWN"]
@@ -34,7 +34,7 @@ triggers_threshold_pct = 30
 mouse_speed = 400
 [Movement]
 start_threshold_pct = 30
-shift_threshold_pct = 80
+shift_threshold_pct = 0
 [Scroll]
 speed = 600
 horizontal_threshold = 0.08

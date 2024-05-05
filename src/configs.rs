@@ -85,6 +85,8 @@ pub struct MovementConfigs {
     _shift_threshold_pct: u8,
     #[serde(skip)]
     pub shift_threshold: f32,
+    #[serde(skip)]
+    pub use_shift: bool,
 }
 
 impl MovementConfigs {
@@ -95,6 +97,12 @@ impl MovementConfigs {
 
             _start_threshold_pct: self._start_threshold_pct,
             _shift_threshold_pct: self._shift_threshold_pct,
+
+            use_shift: if self._shift_threshold_pct <= 0 || self._shift_threshold_pct >= 100 {
+                false
+            } else {
+                true
+            },
         }
     }
 }
