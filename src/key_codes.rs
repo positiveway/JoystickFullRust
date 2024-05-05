@@ -6,20 +6,7 @@ use mouse_keyboard_input::{key_codes, Button};
 use serde::{Deserialize, Serialize};
 use strum_macros::{AsRefStr, Display, EnumIter, EnumString};
 
-#[derive(
-EnumIter,
-EnumString,
-AsRefStr,
-Display,
-Eq,
-Hash,
-PartialEq,
-Copy,
-Clone,
-Debug,
-Serialize,
-Deserialize,
-)]
+#[derive(EnumIter, EnumString, AsRefStr, Display, Eq, Hash, PartialEq, Copy, Clone, Debug, Serialize, Deserialize, )]
 pub enum KeyCode {
     None,
     RESET_BTN,

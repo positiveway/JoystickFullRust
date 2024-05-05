@@ -2,21 +2,7 @@ use color_eyre::eyre::{bail, Result};
 use serde::{Deserialize, Serialize};
 use strum_macros::{AsRefStr, Display, EnumIter, EnumString};
 
-#[derive(
-EnumIter,
-EnumString,
-AsRefStr,
-Display,
-Default,
-Eq,
-Hash,
-PartialEq,
-Copy,
-Clone,
-Debug,
-Serialize,
-Deserialize,
-)]
+#[derive(EnumIter, EnumString, AsRefStr, Display, Default, Eq, Hash, PartialEq, Copy, Clone, Debug, Serialize, Deserialize, )]
 // #[strum(serialize_all = "snake_case")]
 pub enum ButtonName {
     BtnUp_SideL,
@@ -87,20 +73,7 @@ impl ButtonName {
     // }
 }
 
-#[derive(
-EnumString,
-AsRefStr,
-Display,
-Default,
-Eq,
-Hash,
-PartialEq,
-Copy,
-Clone,
-Debug,
-Serialize,
-Deserialize,
-)]
+#[derive(EnumString, AsRefStr, Display, Default, Eq, Hash, PartialEq, Copy, Clone, Debug, Serialize, Deserialize, )]
 // #[strum(serialize_all = "snake_case")]
 pub enum AxisName {
     PadX_SideL,
@@ -119,9 +92,7 @@ pub enum AxisName {
     None,
 }
 
-#[derive(
-EnumString, AsRefStr, Display, Eq, Hash, PartialEq, Copy, Clone, Debug, Serialize, Deserialize,
-)]
+#[derive(EnumString, AsRefStr, Display, Eq, Hash, PartialEq, Copy, Clone, Debug, Serialize, Deserialize, )]
 // #[strum(serialize_all = "snake_case")]
 pub enum EventTypeName {
     AxisChanged,
