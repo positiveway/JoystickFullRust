@@ -493,13 +493,13 @@ fn writing_thread(
                         buttons_state.press_keycodes(vec![keycode], true)?;
                     }
                     for keycode in to_release {
-                        buttons_state.release_keycodes(vec![keycode])?;
+                        buttons_state.release_keycodes(vec![keycode], false)?;
                     }
 
                     if cur_pos.magnitude() >= layout_configs.movement.shift_threshold {
                         buttons_state.press_keycodes(vec![KEY_LEFTSHIFT], true)?;
                     } else {
-                        buttons_state.release_keycodes(vec![KEY_LEFTSHIFT])?;
+                        buttons_state.release_keycodes(vec![KEY_LEFTSHIFT], false)?;
                     }
                 }
             }

@@ -44,7 +44,10 @@ impl ButtonsState {
             KeyCode::RELEASE_ALL,
         ];
 
-        let special_buttons = vec![buttons_layout.reset_btn, buttons_layout.switch_mode_btn];
+        let special_buttons = vec![
+            buttons_layout.reset_btn,
+            buttons_layout.switch_mode_btn,
+        ];
 
         let mut pressed = HashMap::new();
         for key_code in KeyCode::iter() {
@@ -68,7 +71,7 @@ impl ButtonsState {
         if key_codes.len() == 1 {
             let key_code = key_codes[0];
             if key_code == KeyCode::KEY_ESC || key_code == KeyCode::RELEASE_ALL {
-                self.release_all()?;
+                self.release_all_soft()?;
             }
         }
         for key_code in &key_codes {
@@ -82,10 +85,10 @@ impl ButtonsState {
         Ok(())
     }
 
-    pub fn release_keycodes(&mut self, key_codes: KeyCodes) -> Result<()> {
+    pub fn release_keycodes(&mut self, key_codes: KeyCodes, always_release: bool) -> Result<()> {
         for key_code in key_codes.iter().rev() {
             if !self.special_codes.contains(key_code) {
-                if *get_or_err(&self.pressed, key_code)? {
+                if always_release || *get_or_err(&self.pressed, key_code)? {
                     self.queue.push(Command::Released(*key_code));
                     self.pressed.insert(*key_code, false);
                 }
@@ -111,21 +114,29 @@ impl ButtonsState {
         }
 
         let key_codes = get_or_err(&self.buttons_layout, &button_name)?;
-        self.release_keycodes(key_codes.clone())?;
+        self.release_keycodes(key_codes.clone(), false)?;
 
         Ok(())
     }
 
-    pub fn release_all(&mut self) -> Result<()> {
+    pub fn _release_all(&mut self, always_release: bool) -> Result<()> {
         for key_code in self.pressed.clone().keys() {
-            self.release_keycodes(vec![*key_code])?;
+            self.release_keycodes(vec![*key_code], always_release)?;
         }
         Ok(())
     }
 
+    pub fn release_all_soft(&mut self) -> Result<()> {
+        self._release_all(false)
+    }
+
+    pub fn release_all_hard(&mut self) -> Result<()> {
+        self._release_all(true)
+    }
+
     pub fn release(&mut self, button_name: ButtonName) -> Result<()> {
         if button_name == self.RESET_BTN {
-            self.release_all()?;
+            self.release_all_hard()?;
             return Ok(());
         };
         self.release_raw(button_name)?;

@@ -64,6 +64,11 @@ impl ControllerState {
             layout_configs,
         }
     }
+
+    pub fn release_all_hard(&self) -> Result<()> {
+        self.button_sender.send(Released(self.RESET_BTN))?;
+        Ok(())
+    }
 }
 
 #[derive(Copy, Clone, Debug, Serialize, Deserialize)]

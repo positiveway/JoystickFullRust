@@ -67,6 +67,7 @@
 //             process_event(event, controller_state, &impl_cfg)?;
 //
 //             if is_disconnected {
+//                 controller_state.release_all_hard()?;
 //                 println!("Gamepad disconnected");
 //                 return Ok(());
 //             }
