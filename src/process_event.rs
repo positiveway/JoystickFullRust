@@ -262,7 +262,7 @@ pub fn transform_triggers(
             return TransformStatus::Transformed({
                 event.value = impl_cfg.triggers_range_converter.convert(event.value);
 
-                if event.value > layout_configs.triggers_threshold {
+                if event.value > layout_configs.general.triggers_threshold {
                     TransformedEvent {
                         event_type: EventTypeName::ButtonPressed,
                         axis: AxisName::None,

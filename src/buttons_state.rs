@@ -2,13 +2,13 @@ use std::borrow::Borrow;
 use std::collections::HashMap;
 use std::hash::Hash;
 use color_eyre::eyre::{OptionExt, Result};
-use mouse_keyboard_input::Button;
 use serde::{Deserialize, Serialize};
 use strum::IntoEnumIterator;
 use strum_macros::Display;
-use crate::configs::{Buttons, ButtonsLayout};
-use crate::key_codes::{KEY_CODES_MAX_VALUE, KeyCodes};
+use crate::configs::{ButtonsLayout, KeyCodes};
+use crate::key_codes::{KeyCode};
 use crate::match_event::ButtonName;
+use mouse_keyboard_input::Button;
 
 #[derive(Display, Copy, Clone, Debug, Serialize, Deserialize)]
 pub enum Command {
@@ -20,11 +20,10 @@ pub type Commands = Vec<Command>;
 
 #[derive(Clone, Debug)]
 pub struct ButtonsState {
-    // pressed: [bool; KEY_CODES_MAX_VALUE],
-    pressed: HashMap<Button, bool>,
+    pressed: HashMap<KeyCode, bool>,
     RESET_BTN: ButtonName,
-    buttons_layout: HashMap<ButtonName, Buttons>,
-    special_codes: Buttons,
+    buttons_layout: HashMap<ButtonName, KeyCodes>,
+    special_codes: KeyCodes,
     special_buttons: Vec<ButtonName>,
     repeat_keys: bool,
     pub queue: Commands,
@@ -38,10 +37,10 @@ pub fn get_or_err<'a, K: Hash + Eq + Sized + std::fmt::Display, V>(m: &'a HashMa
 impl ButtonsState {
     pub fn new(buttons_layout: ButtonsLayout, repeat_keys: bool) -> Self {
         let special_codes = vec![
-            KeyCodes::None as Button,
-            KeyCodes::RESET_BTN as Button,
-            KeyCodes::SWITCH_MODE_BTN as Button,
-            KeyCodes::RELEASE_ALL as Button,
+            KeyCode::None,
+            KeyCode::RESET_BTN,
+            KeyCode::SWITCH_MODE_BTN,
+            KeyCode::RELEASE_ALL,
         ];
 
         let special_buttons = vec![
@@ -49,15 +48,12 @@ impl ButtonsState {
             buttons_layout.switch_mode_btn,
         ];
 
-        // let mut pressed: [bool; KEY_CODES_MAX_VALUE] = std::array::from_fn(|_| false);
         let mut pressed = HashMap::new();
-        for key_code in KeyCodes::iter() {
-            let key_code = key_code as Button;
+        for key_code in KeyCode::iter() {
             if !special_codes.contains(&key_code) {
                 pressed.insert(key_code, false);
             }
         }
-
 
         Self {
             pressed,
@@ -70,36 +66,31 @@ impl ButtonsState {
         }
     }
 
-    pub fn press_keycodes(&mut self, key_codes: Vec<Button>) -> Result<()> {
+    pub fn press_keycodes(&mut self, key_codes: KeyCodes) -> Result<()> {
         if key_codes.len() == 1 {
             let key_code = key_codes[0];
-            if key_code == KeyCodes::KEY_ESC as Button ||
-                key_code == KeyCodes::RELEASE_ALL as Button {
+            if key_code == KeyCode::KEY_ESC ||
+                key_code == KeyCode::RELEASE_ALL {
                 self.release_all()?;
             }
         }
-        for key_code in key_codes {
-            if !self.special_codes.contains(&key_code) {
-                // if !self.pressed[key_code as usize] {
-                if !*get_or_err(&self.pressed, &key_code)? {
-                    self.queue.push(Command::Pressed(key_code));
-                    // self.pressed[key_code as usize] = true;
-                    self.pressed.insert(key_code, true);
+        for key_code in &key_codes {
+            if !self.special_codes.contains(key_code) {
+                if !*get_or_err(&self.pressed, key_code)? {
+                    self.queue.push(Command::Pressed(key_code.as_button()?));
+                    self.pressed.insert(*key_code, true);
                 }
             }
         }
         Ok(())
     }
 
-    pub fn release_keycodes(&mut self, key_codes: Vec<Button>) -> Result<()> {
+    pub fn release_keycodes(&mut self, key_codes: KeyCodes) -> Result<()> {
         for key_code in key_codes.iter().rev() {
             if !self.special_codes.contains(key_code) {
-                let key_code = *key_code;
-                // if self.pressed[key_code as usize] {
-                if *get_or_err(&self.pressed, &key_code)? {
-                    self.queue.push(Command::Released(key_code));
-                    // self.pressed[key_code as usize] = false;
-                    self.pressed.insert(key_code, false);
+                if *get_or_err(&self.pressed, key_code)? {
+                    self.queue.push(Command::Released(key_code.as_button()?));
+                    self.pressed.insert(*key_code, false);
                 }
             }
         }
@@ -129,9 +120,6 @@ impl ButtonsState {
     }
 
     pub fn release_all(&mut self) -> Result<()> {
-        // for key_code in 0..KEY_CODES_MAX_VALUE {
-        //     self.release_keycodes(vec![key_code as Button])?;
-        // }
         for key_code in self.pressed.clone().keys() {
             self.release_keycodes(vec![*key_code])?;
         }

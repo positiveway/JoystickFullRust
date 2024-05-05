@@ -40,7 +40,6 @@ pub fn match_button(button: &SteamyButton) -> color_eyre::Result<ButtonName> {
 
 pub fn normalize_event(
     event: &SteamyEvent,
-    buffer: Vec<u8>,
     RESET_BTN: ButtonName,
 ) -> color_eyre::Result<TransformStatus> {
     Ok(match event {
@@ -129,15 +128,14 @@ fn read_events(
     controller_state: &mut ControllerState,
     configs: MainConfigs,
 ) -> color_eyre::Result<()> {
+    let impl_cfg = ImplementationSpecificCfg::new(0.0, 1.0);
+    let usb_input_refresh_interval = configs.usb_input_refresh_interval;
+    let mut state = SteamyState::default();
+
     //DEBUG
     let (mut subject_file, mut subject_endings_file, mut cmp_file) = init_debug_files()?;
-
     let mut msg_counter: u32 = 0;
     //DEBUG
-
-    let impl_cfg = ImplementationSpecificCfg::new(0.0, 1.0);
-
-    let mut state = SteamyState::default();
 
     loop {
         msg_counter += 1;
@@ -167,7 +165,7 @@ fn read_events(
                 }
             }
 
-            let event = normalize_event(&event, buffer.clone(), controller_state.RESET_BTN)?;
+            let event = normalize_event(&event, controller_state.RESET_BTN)?;
             process_event(event, controller_state, &impl_cfg)?;
 
             if is_disconnected {
@@ -176,7 +174,7 @@ fn read_events(
             }
         }
 
-        sleep(Duration::from_millis(4)); //4 = USB min latency
+        sleep(usb_input_refresh_interval);
     }
 }
 

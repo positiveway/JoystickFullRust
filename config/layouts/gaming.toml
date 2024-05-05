@@ -1,3 +1,4 @@
+[General]
 gaming_mode = true
 repeat_keys = false
 triggers_threshold_pct = 30

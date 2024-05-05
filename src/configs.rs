@@ -9,7 +9,7 @@ use color_eyre::eyre::{bail, Result};
 use crate::exec_or_eyre;
 use crate::match_event::ButtonName;
 use mouse_keyboard_input::Button;
-use crate::key_codes::KeyCodes;
+use crate::key_codes::KeyCode;
 
 
 const PROJECT_NAME: &str = "JoystickFullRust";
@@ -52,7 +52,9 @@ pub struct MainConfigs {
     #[serde(skip)]
     pub channel_size: usize,
     #[serde(skip)]
-    pub mouse_interval: Duration,
+    pub usb_input_refresh_interval: Duration,
+    #[serde(skip)]
+    pub mouse_refresh_interval: Duration,
     #[serde(skip)]
     pub layout_configs: LayoutConfigs,
 }
@@ -65,7 +67,8 @@ impl MainConfigs {
     pub fn load() -> Result<Self> {
         let mut main_configs: Self = read_toml(CONFIGS_DIR.as_path(), "configs")?;
         main_configs.channel_size = 100;
-        main_configs.mouse_interval = Duration::from_millis(1);
+        main_configs.usb_input_refresh_interval = Duration::from_millis(1);
+        main_configs.mouse_refresh_interval = Duration::from_millis(1);
 
         main_configs.layout_configs = LayoutConfigs::load(main_configs.buttons_layout_name.as_str())?;
 
@@ -99,28 +102,46 @@ impl MovementConfigs {
 }
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
-pub struct LayoutConfigs {
+pub struct GeneralConfigs {
     pub gaming_mode: bool,
-    #[serde(alias = "ButtonsLayout")]
-    _buttons_layout_raw: ButtonsLayoutRaw,
-    #[serde(skip)]
-    pub buttons_layout: ButtonsLayout,
     pub repeat_keys: bool,
-    #[serde(alias = "FingerRotation")]
-    pub finger_rotation: FingerRotation,
-    #[serde(alias = "Movement")]
-    _movement: Option<MovementConfigs>,
-    #[serde(skip)]
-    pub movement: MovementConfigs,
     #[serde(alias = "triggers_threshold_pct")]
     _triggers_threshold_pct: u8,
     #[serde(skip)]
     pub triggers_threshold: f32,
     pub mouse_speed: u16,
+}
+
+impl GeneralConfigs {
+    pub fn load(&mut self) -> Result<()> {
+        self.triggers_threshold = convert_pct(self._triggers_threshold_pct);
+        Ok(())
+    }
+}
+
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+pub struct LayoutConfigs {
+    #[serde(alias = "ButtonsLayout")]
+    _buttons_layout_raw: ButtonsLayoutRaw,
+    #[serde(skip)]
+    pub buttons_layout: ButtonsLayout,
+
+    #[serde(alias = "General")]
+    pub general: GeneralConfigs,
+
+    #[serde(alias = "FingerRotation")]
+    pub finger_rotation: FingerRotation,
+
+    #[serde(alias = "Movement")]
+    _movement: Option<MovementConfigs>,
+    #[serde(skip)]
+    pub movement: MovementConfigs,
+
     #[serde(alias = "Scroll")]
     _scroll: Option<ScrollConfigs>,
     #[serde(skip)]
     pub scroll: ScrollConfigs,
+
     #[serde(alias = "JitterThreshold")]
     pub jitter_threshold: JitterThreshold,
 }
@@ -128,11 +149,9 @@ pub struct LayoutConfigs {
 impl LayoutConfigs {
     pub fn load<S: AsRef<str>>(layout_name: S) -> Result<Self> {
         let mut layout_configs: Self = read_toml(LAYOUTS_DIR.as_path(), layout_name)?;
+        layout_configs.general.load()?;
 
-        layout_configs.triggers_threshold = convert_pct(layout_configs._triggers_threshold_pct);
-
-
-        match layout_configs.gaming_mode {
+        match layout_configs.general.gaming_mode {
             true => {
                 match layout_configs._movement {
                     None => {
@@ -161,14 +180,14 @@ impl LayoutConfigs {
 }
 
 
-pub type Buttons = Vec<Button>;
+pub type KeyCodes = Vec<KeyCode>;
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct ButtonsLayout {
     pub reset_btn: ButtonName,
     pub switch_mode_btn: ButtonName,
     //
-    pub layout: HashMap<ButtonName, Buttons>,
+    pub layout: HashMap<ButtonName, KeyCodes>,
 }
 
 impl ButtonsLayout {
@@ -176,56 +195,56 @@ impl ButtonsLayout {
         let mut switch_mode_btn: ButtonName = Default::default();
         let mut reset_btn: ButtonName = Default::default();
 
-        let mut layout: HashMap<ButtonName, Buttons> = HashMap::new();
+        let mut layout: HashMap<ButtonName, KeyCodes> = HashMap::new();
 
-        let mut key_code_to_button = |button_name: ButtonName, codes: Vec<String>| -> Result<()>{
-            let mut buttons = Buttons::new();
+        let mut string_to_key_code = |button_name: ButtonName, codes: Vec<String>| -> Result<()>{
+            let mut key_codes = KeyCodes::new();
 
             let detect_special = codes.len() == 1;
 
             for code_as_str in codes {
-                let button = KeyCodes::from_config(
+                let key_code = KeyCode::from_config(
                     button_name,
                     code_as_str,
                     &mut reset_btn,
                     &mut switch_mode_btn,
                     detect_special,
                 )?;
-                buttons.push(button)
+                key_codes.push(key_code)
             }
-            layout.insert(button_name, buttons);
+            layout.insert(button_name, key_codes);
 
             Ok(())
         };
 
-        key_code_to_button(ButtonName::BtnUp_SideL, layout_raw.BtnUp_SideL)?;
-        key_code_to_button(ButtonName::BtnDown_SideL, layout_raw.BtnDown_SideL)?;
-        key_code_to_button(ButtonName::BtnLeft_SideL, layout_raw.BtnLeft_SideL)?;
-        key_code_to_button(ButtonName::BtnRight_SideL, layout_raw.BtnRight_SideL)?;
-        key_code_to_button(ButtonName::BtnUp_SideR, layout_raw.BtnUp_SideR)?;
-        key_code_to_button(ButtonName::BtnDown_SideR, layout_raw.BtnDown_SideR)?;
-        key_code_to_button(ButtonName::BtnLeft_SideR, layout_raw.BtnLeft_SideR)?;
-        key_code_to_button(ButtonName::BtnRight_SideR, layout_raw.BtnRight_SideR)?;
-        key_code_to_button(ButtonName::Wing_SideL, layout_raw.Wing_SideL)?;
-        key_code_to_button(ButtonName::Wing_SideR, layout_raw.Wing_SideR)?;
-        key_code_to_button(ButtonName::LowerTriggerAsBtn_SideL, layout_raw.LowerTriggerAsBtn_SideL)?;
-        key_code_to_button(ButtonName::LowerTriggerAsBtn_SideR, layout_raw.LowerTriggerAsBtn_SideR)?;
-        key_code_to_button(ButtonName::UpperTrigger_SideL, layout_raw.UpperTrigger_SideL)?;
-        key_code_to_button(ButtonName::UpperTrigger_SideR, layout_raw.UpperTrigger_SideR)?;
-        key_code_to_button(ButtonName::PadAsBtn_SideL, layout_raw.PadAsBtn_SideL)?;
-        key_code_to_button(ButtonName::PadAsBtn_SideR, layout_raw.PadAsBtn_SideR)?;
-        key_code_to_button(ButtonName::StickAsBtn, layout_raw.StickAsBtn)?;
-        key_code_to_button(ButtonName::PadUp_SideL, layout_raw.PadUp_SideL)?;
-        key_code_to_button(ButtonName::PadDown_SideL, layout_raw.PadDown_SideL)?;
-        key_code_to_button(ButtonName::PadLeft_SideL, layout_raw.PadLeft_SideL)?;
-        key_code_to_button(ButtonName::PadRight_SideL, layout_raw.PadRight_SideL)?;
-        key_code_to_button(ButtonName::PadUp_SideR, layout_raw.PadUp_SideR)?;
-        key_code_to_button(ButtonName::PadDown_SideR, layout_raw.PadDown_SideR)?;
-        key_code_to_button(ButtonName::PadLeft_SideR, layout_raw.PadLeft_SideR)?;
-        key_code_to_button(ButtonName::PadRight_SideR, layout_raw.PadRight_SideR)?;
-        key_code_to_button(ButtonName::ExtraBtn_SideL, layout_raw.ExtraBtn_SideL)?;
-        key_code_to_button(ButtonName::ExtraBtn_SideR, layout_raw.ExtraBtn_SideR)?;
-        key_code_to_button(ButtonName::ExtraBtnCentral, layout_raw.ExtraBtnCentral)?;
+        string_to_key_code(ButtonName::BtnUp_SideL, layout_raw.BtnUp_SideL)?;
+        string_to_key_code(ButtonName::BtnDown_SideL, layout_raw.BtnDown_SideL)?;
+        string_to_key_code(ButtonName::BtnLeft_SideL, layout_raw.BtnLeft_SideL)?;
+        string_to_key_code(ButtonName::BtnRight_SideL, layout_raw.BtnRight_SideL)?;
+        string_to_key_code(ButtonName::BtnUp_SideR, layout_raw.BtnUp_SideR)?;
+        string_to_key_code(ButtonName::BtnDown_SideR, layout_raw.BtnDown_SideR)?;
+        string_to_key_code(ButtonName::BtnLeft_SideR, layout_raw.BtnLeft_SideR)?;
+        string_to_key_code(ButtonName::BtnRight_SideR, layout_raw.BtnRight_SideR)?;
+        string_to_key_code(ButtonName::Wing_SideL, layout_raw.Wing_SideL)?;
+        string_to_key_code(ButtonName::Wing_SideR, layout_raw.Wing_SideR)?;
+        string_to_key_code(ButtonName::LowerTriggerAsBtn_SideL, layout_raw.LowerTriggerAsBtn_SideL)?;
+        string_to_key_code(ButtonName::LowerTriggerAsBtn_SideR, layout_raw.LowerTriggerAsBtn_SideR)?;
+        string_to_key_code(ButtonName::UpperTrigger_SideL, layout_raw.UpperTrigger_SideL)?;
+        string_to_key_code(ButtonName::UpperTrigger_SideR, layout_raw.UpperTrigger_SideR)?;
+        string_to_key_code(ButtonName::PadAsBtn_SideL, layout_raw.PadAsBtn_SideL)?;
+        string_to_key_code(ButtonName::PadAsBtn_SideR, layout_raw.PadAsBtn_SideR)?;
+        string_to_key_code(ButtonName::StickAsBtn, layout_raw.StickAsBtn)?;
+        string_to_key_code(ButtonName::PadUp_SideL, layout_raw.PadUp_SideL)?;
+        string_to_key_code(ButtonName::PadDown_SideL, layout_raw.PadDown_SideL)?;
+        string_to_key_code(ButtonName::PadLeft_SideL, layout_raw.PadLeft_SideL)?;
+        string_to_key_code(ButtonName::PadRight_SideL, layout_raw.PadRight_SideL)?;
+        string_to_key_code(ButtonName::PadUp_SideR, layout_raw.PadUp_SideR)?;
+        string_to_key_code(ButtonName::PadDown_SideR, layout_raw.PadDown_SideR)?;
+        string_to_key_code(ButtonName::PadLeft_SideR, layout_raw.PadLeft_SideR)?;
+        string_to_key_code(ButtonName::PadRight_SideR, layout_raw.PadRight_SideR)?;
+        string_to_key_code(ButtonName::ExtraBtn_SideL, layout_raw.ExtraBtn_SideL)?;
+        string_to_key_code(ButtonName::ExtraBtn_SideR, layout_raw.ExtraBtn_SideR)?;
+        string_to_key_code(ButtonName::ExtraBtnCentral, layout_raw.ExtraBtnCentral)?;
 
         reset_btn.bail_if_not_init()?;
 

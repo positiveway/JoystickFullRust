@@ -10,8 +10,8 @@ use log::{debug, info};
 use crate::buttons_state::{ButtonsState, Command};
 use crate::process_event::{MouseEvent, MouseReceiver, ButtonReceiver, PadStickEvent, ButtonEvent};
 use crate::exec_or_eyre;
-use crate::key_codes::{key_codes_to_buttons, KeyCodes};
-use crate::key_codes::KeyCodes::KEY_LEFTSHIFT;
+use crate::key_codes::{key_codes_to_buttons, KeyCode};
+use crate::key_codes::KeyCode::KEY_LEFTSHIFT;
 use crate::math_ops::{rotate_around_center, Vector, NONE_VAL_ERR_MSG, calc_angle, distance, ZonesMapper, ZoneAllowedRange};
 
 
@@ -398,21 +398,22 @@ fn writing_thread(
 ) -> Result<()> {
     let mut virtual_device = exec_or_eyre!(VirtualDevice::default())?;
 
-    let writing_interval = configs.mouse_interval;
+    let writing_interval = configs.mouse_refresh_interval;
     let layout_configs = configs.layout_configs;
-    let gaming_mode = layout_configs.gaming_mode;
+    let gaming_mode = layout_configs.general.gaming_mode;
     let scroll_configs = layout_configs.scroll;
+    let mouse_speed = layout_configs.general.mouse_speed;
 
-    let mut buttons_state = ButtonsState::new(layout_configs.buttons_layout, layout_configs.repeat_keys);
+    let mut buttons_state = ButtonsState::new(layout_configs.buttons_layout, layout_configs.general.repeat_keys);
 
     let mut mouse_mode = MouseMode::default();
     let mut pads_coords = PadsCoords::new(&layout_configs.finger_rotation);
 
-    let _wasd_zones: [Vec<KeyCodes>; 4] = [
-        vec![KeyCodes::KEY_W],
-        vec![KeyCodes::KEY_A],
-        vec![KeyCodes::KEY_S],
-        vec![KeyCodes::KEY_D]
+    let _wasd_zones: [Vec<KeyCode>; 4] = [
+        vec![KeyCode::KEY_W],
+        vec![KeyCode::KEY_A],
+        vec![KeyCode::KEY_S],
+        vec![KeyCode::KEY_D]
     ];
     let _wasd_zone_range = ZoneAllowedRange::new(
         22,
@@ -468,7 +469,7 @@ fn writing_thread(
         if mouse_mode != MouseMode::Typing {
             if pads_coords.right_pad.any_changes() {
                 let mouse_diff = pads_coords.right_pad.diff();
-                let mouse_diff = mouse_diff.convert(layout_configs.mouse_speed);
+                let mouse_diff = mouse_diff.convert(mouse_speed);
                 if mouse_diff.is_any_changes() {
                     exec_or_eyre!(virtual_device.move_mouse(mouse_diff.x, -mouse_diff.y))?;
                 }
@@ -501,16 +502,16 @@ fn writing_thread(
 
                     //Press goes first to check if already pressed
                     for keycode in to_press {
-                        buttons_state.press_keycodes(vec![keycode as Button])?;
+                        buttons_state.press_keycodes(vec![keycode])?;
                     }
                     for keycode in to_release {
-                        buttons_state.release_keycodes(vec![keycode as Button])?;
+                        buttons_state.release_keycodes(vec![keycode])?;
                     }
 
                     if cur_pos.magnitude() >= layout_configs.movement.shift_threshold {
-                        buttons_state.press_keycodes(vec![KEY_LEFTSHIFT as Button])?;
+                        buttons_state.press_keycodes(vec![KEY_LEFTSHIFT])?;
                     } else {
-                        buttons_state.release_keycodes(vec![KEY_LEFTSHIFT as Button])?;
+                        buttons_state.release_keycodes(vec![KEY_LEFTSHIFT])?;
                     }
                 }
             }
