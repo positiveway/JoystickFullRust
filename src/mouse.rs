@@ -482,22 +482,22 @@ fn writing_thread(
                         Ok(rotated_coords) => rotated_coords,
                         Err(_) => cur_pos,
                     };
-                    let (to_release, to_press) =
+                    let (to_release, to_press, to_press_full) =
                         wasd_zone_mapper.get_commands_diff(cur_pos.x, cur_pos.y);
                     // if !to_release.is_empty() || !to_press.is_empty() {
                     //     println!("To release: '{:?}'; To press: '{:?}'", to_release, to_press)
                     // }
 
                     //Press goes first to check if already pressed
-                    for keycode in to_press {
-                        buttons_state.press_keycodes(vec![keycode])?;
+                    for keycode in to_press_full {
+                        buttons_state.press_keycodes(vec![keycode], true)?;
                     }
                     for keycode in to_release {
                         buttons_state.release_keycodes(vec![keycode])?;
                     }
 
                     if cur_pos.magnitude() >= layout_configs.movement.shift_threshold {
-                        buttons_state.press_keycodes(vec![KEY_LEFTSHIFT])?;
+                        buttons_state.press_keycodes(vec![KEY_LEFTSHIFT], true)?;
                     } else {
                         buttons_state.release_keycodes(vec![KEY_LEFTSHIFT])?;
                     }
@@ -516,7 +516,7 @@ fn writing_thread(
             match event {
                 //Press goes first to check if already pressed
                 ButtonEvent::Pressed(button_name) => {
-                    buttons_state.press(button_name)?;
+                    buttons_state.press(button_name, false)?;
                 }
                 ButtonEvent::Released(button_name) => {
                     buttons_state.release(button_name)?;

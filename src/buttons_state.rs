@@ -64,7 +64,7 @@ impl ButtonsState {
         }
     }
 
-    pub fn press_keycodes(&mut self, key_codes: KeyCodes) -> Result<()> {
+    pub fn press_keycodes(&mut self, key_codes: KeyCodes, always_press: bool) -> Result<()> {
         if key_codes.len() == 1 {
             let key_code = key_codes[0];
             if key_code == KeyCode::KEY_ESC || key_code == KeyCode::RELEASE_ALL {
@@ -73,7 +73,7 @@ impl ButtonsState {
         }
         for key_code in &key_codes {
             if !self.special_codes.contains(key_code) {
-                if !*get_or_err(&self.pressed, key_code)? {
+                if always_press || !*get_or_err(&self.pressed, key_code)? {
                     self.queue.push(Command::Pressed(*key_code));
                     self.pressed.insert(*key_code, true);
                 }
@@ -94,13 +94,13 @@ impl ButtonsState {
         Ok(())
     }
 
-    pub fn press(&mut self, button_name: ButtonName) -> Result<()> {
+    pub fn press(&mut self, button_name: ButtonName, always_press: bool) -> Result<()> {
         if self.special_buttons.contains(&button_name) {
             return Ok(());
         }
 
         let key_codes = get_or_err(&self.buttons_layout, &button_name)?;
-        self.press_keycodes(key_codes.clone())?;
+        self.press_keycodes(key_codes.clone(), always_press)?;
 
         Ok(())
     }

@@ -320,7 +320,7 @@ pub struct ZonesMapper<T: Clone + Display + PartialEq> {
 }
 
 impl<T: Clone + Display + PartialEq> ZonesMapper<T> {
-    pub fn get_commands_diff(&mut self, x: Option<f32>, y: Option<f32>) -> (Vec<T>, Vec<T>) {
+    pub fn get_commands_diff(&mut self, x: Option<f32>, y: Option<f32>) -> (Vec<T>, Vec<T>, Vec<T>) {
         let (zone_changed, cur_value) = self.detect_zone(x, y);
         let prev_value = self.prev_value.clone();
         self.prev_value = cur_value.clone();
@@ -340,13 +340,14 @@ impl<T: Clone + Display + PartialEq> ZonesMapper<T> {
                             to_press.push(cur_element_val.clone());
                         }
                     }
-                    (to_release, to_press)
+                    let to_press_full = cur_value.clone();
+                    (to_release, to_press, to_press_full)
                 }
-                (Some(prev_value), None) => (prev_value.clone(), vec![]),
-                (None, Some(cur_value)) => (vec![], cur_value.clone()),
-                (None, None) => (vec![], vec![]),
+                (Some(prev_value), None) => (prev_value.clone(), vec![], vec![]),
+                (None, Some(cur_value)) => (vec![], cur_value.clone(), cur_value.clone()),
+                (None, None) => (vec![], vec![], vec![]),
             },
-            false => (vec![], vec![]),
+            false => (vec![], vec![], vec![]),
         }
     }
     pub fn detect_zone(&mut self, x: Option<f32>, y: Option<f32>) -> (bool, Option<Vec<T>>) {
