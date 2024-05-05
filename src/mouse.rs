@@ -3,12 +3,9 @@ use crate::configs::{FingerRotation, JitterThreshold, MainConfigs};
 use crate::exec_or_eyre;
 use crate::key_codes::KeyCode::KEY_LEFTSHIFT;
 use crate::key_codes::{key_codes_to_buttons, KeyCode};
-use crate::math_ops::{
-    calc_angle, distance, rotate_around_center, Vector, ZoneAllowedRange, ZonesMapper,
-    NONE_VAL_ERR_MSG,
-};
+use crate::math_ops::{rotate_around_center, Vector, ZoneAllowedRange, ZonesMapper};
 use crate::process_event::{ButtonEvent, ButtonReceiver, MouseEvent, MouseReceiver, PadStickEvent};
-use color_eyre::eyre::{bail, OptionExt, Result};
+use color_eyre::eyre::{bail, eyre, Result};
 use log::{debug, info};
 use mouse_keyboard_input::{Button, Coord, VirtualDevice};
 use serde::{Deserialize, Serialize};
@@ -77,8 +74,10 @@ impl Coords {
         self.x.is_some() || self.y.is_some()
     }
 
-    pub fn rotate(&self, rotation: i16) -> Result<Self> {
-        Ok(rotate_around_center(Vector::from_coords(*self)?, rotation as f32).as_coords())
+    pub fn rotate(&self, rotation: i16) -> Option<Self> {
+        Vector::from_coords(*self).and_then(|vector: Vector| {
+            Some(rotate_around_center(vector, rotation as f32).as_coords())
+        })
     }
 
     pub fn magnitude(&self) -> f32 {
@@ -139,13 +138,17 @@ impl ConvertedCoordsDiff {
 }
 
 fn calc_diff_one_coord(prev_coord: Option<f32>, cur_coord: Option<f32>) -> f32 {
-    match prev_coord {
-        None => 0.0,
-        Some(prev_value) => match cur_coord {
-            None => 0.0,
-            Some(cur_value) => cur_value - prev_value,
-        },
+    match (prev_coord, cur_coord) {
+        (Some(prev_value), Some(cur_value)) => cur_value - prev_value,
+        _ => 0.0,
     }
+    // match prev_coord {
+    //     None => 0.0,
+    //     Some(prev_value) => match cur_coord {
+    //         None => 0.0,
+    //         Some(cur_value) => cur_value - prev_value,
+    //     },
+    // }
 }
 
 fn convert_diff(value: f32, multiplier: u16) -> Coord {
@@ -197,78 +200,107 @@ impl CoordsState {
         self.prev.update_if_not_init(&self.cur);
     }
 
-    fn get_cur_or_prev(prev: Option<f32>, cur: Option<f32>) -> Result<f32> {
-        Ok(match cur {
-            None => match prev {
-                None => bail!(NONE_VAL_ERR_MSG),
-                Some(value) => value,
-            },
-            Some(value) => value,
-        })
+    // fn get_cur_or_prev(prev: Option<f32>, cur: Option<f32>) -> Option<f32> {
+    //     cur.or(prev)
+    //
+    //     // match (prev, cur) {
+    //     //     (_, Some(value)) => Ok(value),
+    //     //     (Some(value), _) => Ok(value),
+    //     //     (None, None) => bail!(NONE_VAL_ERR_MSG)
+    //     // }
+    //
+    //     // Ok(match cur {
+    //     //     None => match prev {
+    //     //         None => bail!(NONE_VAL_ERR_MSG),
+    //     //         Some(value) => value,
+    //     //     },
+    //     //     Some(value) => value,
+    //     // })
+    // }
+
+    pub fn rotate_cur_coords(&self) -> Option<Coords> {
+        // match (
+        //     Self::get_cur_or_prev(self.prev.x, self.cur.x),
+        //     Self::get_cur_or_prev(self.prev.y, self.cur.y),
+        // ) {
+        // match (
+        //     self.cur.x.or(self.prev.x),
+        //     self.cur.y.or(self.prev.y),
+        // ) {
+        let cur_pos = self.cur_pos();
+        match (
+            cur_pos.x,
+            cur_pos.y,
+        ) {
+            (Some(x), Some(y)) => {
+                let point = Vector { x, y };
+
+                let orig_angle = point.angle();
+                let rotated_vector = rotate_around_center(point, self.finger_rotation as f32);
+
+                let rotated_coords = rotated_vector.as_coords();
+                debug!("Origin: {}", self.cur);
+                debug!("Filled: {}", self.cur_pos());
+                debug!("Rotated: {}", rotated_coords);
+                debug!(
+                    "Angle: [Orig: {}, Shifted: {}; Rotation: {}]",
+                    orig_angle,
+                    rotated_vector.angle(),
+                    self.finger_rotation
+                );
+                debug!("");
+                Some(rotated_coords)
+            }
+            _ => None,
+        }
     }
 
-    pub fn rotate_cur_coords(&self) -> Result<Coords> {
-        let point = Vector {
-            x: Self::get_cur_or_prev(self.prev.x, self.cur.x)?,
-            y: Self::get_cur_or_prev(self.prev.y, self.cur.y)?,
-        };
-
-        let orig_angle = point.angle();
-        let rotated_vector = rotate_around_center(point, self.finger_rotation as f32);
-
-        let rotated_coords = rotated_vector.as_coords();
-        debug!("Origin: {}", self.cur);
-        debug!("Filled: {}", self.cur_pos());
-        debug!("Rotated: {}", rotated_coords);
-        debug!(
-            "Angle: [Orig: {}, Shifted: {}; Rotation: {}]",
-            orig_angle,
-            rotated_vector.angle(),
-            self.finger_rotation
-        );
-        debug!("");
-        Ok(rotated_coords)
-    }
-
-    pub fn rotate_prev_coords(&self) -> Result<Coords> {
-        Ok(
-            rotate_around_center(Vector::from_coords(self.prev)?, self.finger_rotation as f32)
-                .as_coords(),
-        )
+    pub fn rotate_prev_coords(&self) -> Option<Coords> {
+        self.prev.rotate(self.finger_rotation)
+        // Vector::from_coords(self.prev).and_then(|vector: Vector| {
+        //     Some(rotate_around_center(vector, self.finger_rotation as f32)
+        //         .as_coords())
+        // })
     }
 
     pub fn cur_pos(&self) -> Coords {
         Coords {
-            x: match self.cur.x {
-                None => self.prev.x,
-                Some(value) => Some(value),
-            },
-            y: match self.cur.y {
-                None => self.prev.y,
-                Some(value) => Some(value),
-            },
+            x: self.cur.x.or(self.prev.x),
+            y: self.cur.y.or(self.prev.y),
         }
+        // Coords {
+        //     x: match self.cur.x {
+        //         None => self.prev.x,
+        //         Some(value) => Some(value),
+        //     },
+        //     y: match self.cur.y {
+        //         None => self.prev.y,
+        //         Some(value) => Some(value),
+        //     },
+        // }
     }
 
     pub fn diff(&mut self) -> CoordsDiff {
         let cur_coords = match self.use_rotation {
-            true => match self.rotate_cur_coords() {
-                Err(error) => {
-                    info!("{}", error);
-                    self.cur
-                }
-                Ok(rotated_coords) => rotated_coords,
-            },
+            true => self.rotate_cur_coords().unwrap_or(self.cur),
+            // true => match self.rotate_cur_coords() {
+            //     Ok(rotated_coords) => rotated_coords,
+            //     Err(error) => {
+            //         info!("{}", error);
+            //         self.cur
+            //     }
+            // },
             false => self.cur,
         };
         let prev_coords = match self.use_rotation {
-            true => match self.rotate_prev_coords() {
-                Ok(value) => value,
-                Err(error) => {
-                    info!("{}", error);
-                    self.prev
-                }
-            },
+            true => self.rotate_prev_coords().unwrap_or(self.prev),
+            // true => match self.rotate_prev_coords() {
+            //     Ok(value) => value,
+            //     Err(error) => {
+            //         info!("{}", error);
+            //         self.prev
+            //     }
+            // },
             false => self.prev,
         };
 
@@ -479,10 +511,9 @@ fn writing_thread(
                 }
                 true => {
                     let mut cur_pos = pads_coords.left_pad.cur_pos();
-                    cur_pos = match cur_pos.rotate(pads_coords.left_pad.finger_rotation) {
-                        Ok(rotated_coords) => rotated_coords,
-                        Err(_) => cur_pos,
-                    };
+                    cur_pos = cur_pos
+                        .rotate(pads_coords.left_pad.finger_rotation)
+                        .unwrap_or(cur_pos);
                     let (to_release, to_press, to_press_full) =
                         wasd_zone_mapper.get_commands_diff(cur_pos.x, cur_pos.y);
                     // if !to_release.is_empty() || !to_press.is_empty() {

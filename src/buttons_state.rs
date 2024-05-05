@@ -1,7 +1,7 @@
 use crate::configs::{ButtonsLayout, KeyCodes};
 use crate::key_codes::KeyCode;
 use crate::match_event::ButtonName;
-use color_eyre::eyre::{OptionExt, Result};
+use color_eyre::Result;
 use serde::{Deserialize, Serialize};
 use std::borrow::Borrow;
 use std::collections::HashMap;
@@ -28,11 +28,22 @@ pub struct ButtonsState {
     pub queue: Commands,
 }
 
+pub fn get_or_default<'a, K: Hash + Eq + Sized + std::fmt::Display, V: Default + Copy>(
+    m: &'a HashMap<K, V>,
+    key: &'a K,
+) -> V {
+    match m.get(key) {
+        None => V::default(),
+        Some(value) => *value,
+    }
+}
+
 pub fn get_or_err<'a, K: Hash + Eq + Sized + std::fmt::Display, V>(
     m: &'a HashMap<K, V>,
     key: &'a K,
 ) -> Result<&'a V> {
-    m.get(&key).ok_or_eyre(format!("No mapping for '{}'", &key))
+    m.get(key)
+        .ok_or_else(|| color_eyre::eyre::Report::msg(format!("No mapping for '{}'", key)))
 }
 
 impl ButtonsState {
@@ -44,10 +55,7 @@ impl ButtonsState {
             KeyCode::RELEASE_ALL,
         ];
 
-        let special_buttons = vec![
-            buttons_layout.reset_btn,
-            buttons_layout.switch_mode_btn,
-        ];
+        let special_buttons = vec![buttons_layout.reset_btn, buttons_layout.switch_mode_btn];
 
         let mut pressed = HashMap::new();
         for key_code in KeyCode::iter() {
@@ -76,7 +84,8 @@ impl ButtonsState {
         }
         for key_code in &key_codes {
             if !self.special_codes.contains(key_code) {
-                if always_press || !*get_or_err(&self.pressed, key_code)? {
+                // if always_press || !*get_or_err(&self.pressed, key_code)? {
+                if always_press || !get_or_default(&self.pressed, key_code) {
                     self.queue.push(Command::Pressed(*key_code));
                     self.pressed.insert(*key_code, true);
                 }
@@ -88,7 +97,8 @@ impl ButtonsState {
     pub fn release_keycodes(&mut self, key_codes: KeyCodes, always_release: bool) -> Result<()> {
         for key_code in key_codes.iter().rev() {
             if !self.special_codes.contains(key_code) {
-                if always_release || *get_or_err(&self.pressed, key_code)? {
+                // if always_release || *get_or_err(&self.pressed, key_code)? {
+                if always_release || get_or_default(&self.pressed, key_code) {
                     self.queue.push(Command::Released(*key_code));
                     self.pressed.insert(*key_code, false);
                 }

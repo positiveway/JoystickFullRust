@@ -12,8 +12,8 @@ opt-level = 3
 incremental = false
 
 #color-eyre Backtrace
-#[profile.dev.package.backtrace]
-#opt-level = 3
+[profile.dev.package.backtrace]
+opt-level = 3
 
 # Enable high optimizations for dependencies, but not for our code:
 [profile.dev.package."*"]

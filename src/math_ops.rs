@@ -1,10 +1,9 @@
 use crate::mouse::Coords;
-use color_eyre::eyre::{bail, OptionExt, Result};
+use color_eyre::eyre::{bail, Result};
 use log::debug;
 use serde::{Deserialize, Serialize};
-use std::fmt::Display;
+use std::fmt::{Display};
 use std::ops::Add;
-use std::option::Option;
 use strum_macros::Display;
 use trait_set::trait_set;
 
@@ -139,18 +138,22 @@ impl Vector {
             y: Some(self.y),
         }
     }
-    pub fn from_2_coords(point1: Coords, point2: Coords) -> Result<Vector> {
-        Ok(Self {
-            x: point2.x.ok_or_eyre(CONVERT_ERR_MSG)? - point1.x.ok_or_eyre(CONVERT_ERR_MSG)?,
-            y: point2.y.ok_or_eyre(CONVERT_ERR_MSG)? - point1.y.ok_or_eyre(CONVERT_ERR_MSG)?,
-        })
+    pub fn from_2_coords(point1: Coords, point2: Coords) -> Option<Vector> {
+        match (point1.x, point1.y, point2.x, point2.y) {
+            (Some(point1_x), Some(point1_y), Some(point2_x), Some(point2_y)) => Some(Self {
+                x: point2_x - point1_x,
+                y: point2_y - point1_y,
+            }),
+            _ => None
+        }
     }
 
-    pub fn from_coords(coords: Coords) -> Result<Self> {
-        Ok(Self {
-            x: coords.x.ok_or_eyre(CONVERT_ERR_MSG)?,
-            y: coords.y.ok_or_eyre(CONVERT_ERR_MSG)?,
-        })
+    //color-eyre takes a lot of CPU when frequently constructing error messages
+    pub fn from_coords(coords: Coords) -> Option<Self> {
+        match (coords.x, coords.y) {
+            (Some(x), Some(y)) => Some(Self { x, y }),
+            _ => None
+        }
     }
 
     pub fn angle(&self) -> f32 {
@@ -320,7 +323,11 @@ pub struct ZonesMapper<T: Clone + Display + PartialEq> {
 }
 
 impl<T: Clone + Display + PartialEq> ZonesMapper<T> {
-    pub fn get_commands_diff(&mut self, x: Option<f32>, y: Option<f32>) -> (Vec<T>, Vec<T>, Vec<T>) {
+    pub fn get_commands_diff(
+        &mut self,
+        x: Option<f32>,
+        y: Option<f32>,
+    ) -> (Vec<T>, Vec<T>, Vec<T>) {
         let (zone_changed, cur_value) = self.detect_zone(x, y);
         let prev_value = self.prev_value.clone();
         self.prev_value = cur_value.clone();
@@ -368,10 +375,11 @@ impl<T: Clone + Display + PartialEq> ZonesMapper<T> {
         let zone_changed = are_options_different(self.prev_zone, zone);
         // debug!("Changed: {}", zone_changed);
         self.prev_zone = zone;
-        let value = match angle {
-            None => None,
-            Some(angle) => self.angle_to_value[angle].clone(),
-        };
+        let value = angle.and_then(|angle| self.angle_to_value[angle].clone());
+        // let value = match angle {
+        //     None => None,
+        //     Some(angle) => self.angle_to_value[angle].clone(),
+        // };
         (zone_changed, value)
     }
 
