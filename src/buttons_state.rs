@@ -8,12 +8,11 @@ use strum_macros::Display;
 use crate::configs::{ButtonsLayout, KeyCodes};
 use crate::key_codes::{KeyCode};
 use crate::match_event::ButtonName;
-use mouse_keyboard_input::Button;
 
 #[derive(Display, Copy, Clone, Debug, Serialize, Deserialize)]
 pub enum Command {
-    Pressed(Button),
-    Released(Button),
+    Pressed(KeyCode),
+    Released(KeyCode),
 }
 
 pub type Commands = Vec<Command>;
@@ -77,7 +76,7 @@ impl ButtonsState {
         for key_code in &key_codes {
             if !self.special_codes.contains(key_code) {
                 if !*get_or_err(&self.pressed, key_code)? {
-                    self.queue.push(Command::Pressed(key_code.as_button()?));
+                    self.queue.push(Command::Pressed(*key_code));
                     self.pressed.insert(*key_code, true);
                 }
             }
@@ -89,7 +88,7 @@ impl ButtonsState {
         for key_code in key_codes.iter().rev() {
             if !self.special_codes.contains(key_code) {
                 if *get_or_err(&self.pressed, key_code)? {
-                    self.queue.push(Command::Released(key_code.as_button()?));
+                    self.queue.push(Command::Released(*key_code));
                     self.pressed.insert(*key_code, false);
                 }
             }
