@@ -539,13 +539,15 @@ fn writing_thread(
 
         for command in &buttons_state.queue {
             match command {
-                Command::Pressed(button) => {
-                    // println!("Send Pressed: {}", *button);
-                    exec_or_eyre!(virtual_device.press(*button))?
+                Command::Pressed(key_code) => {
+                    let button = key_code.as_button()?;
+                    // println!("Send Pressed: {}", button);
+                    exec_or_eyre!(virtual_device.press(button))?
                 }
-                Command::Released(button) => {
-                    // println!("Send Released: {}", *button);
-                    exec_or_eyre!(virtual_device.release(*button))?
+                Command::Released(key_code) => {
+                    let button = key_code.as_button()?;
+                    // println!("Send Released: {}", button);
+                    exec_or_eyre!(virtual_device.release(button))?
                 }
             }
         }
