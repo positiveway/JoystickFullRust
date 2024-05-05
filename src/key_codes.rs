@@ -1,14 +1,25 @@
+use crate::configs::KeyCodes;
+use crate::match_event::ButtonName;
 use color_eyre::eyre::bail;
 use color_eyre::{Report, Result};
+use mouse_keyboard_input::{key_codes, Button};
 use serde::{Deserialize, Serialize};
 use strum_macros::{AsRefStr, Display, EnumIter, EnumString};
-use crate::exec_or_eyre;
-use mouse_keyboard_input::{Button, key_codes};
-use crate::configs::KeyCodes;
-use crate::match_event::{ButtonName};
 
-
-#[derive(EnumIter, EnumString, AsRefStr, Display, Eq, Hash, PartialEq, Copy, Clone, Debug, Serialize, Deserialize)]
+#[derive(
+EnumIter,
+EnumString,
+AsRefStr,
+Display,
+Eq,
+Hash,
+PartialEq,
+Copy,
+Clone,
+Debug,
+Serialize,
+Deserialize,
+)]
 pub enum KeyCode {
     None,
     RESET_BTN,
@@ -136,7 +147,6 @@ pub enum KeyCode {
     KEY_PAUSE,
     KEY_SCALE,
     /* AL Compiz Scale  = Expose */
-
     KEY_KPCOMMA,
     KEY_HANGEUL,
     KEY_HANJA,
@@ -226,7 +236,6 @@ pub enum KeyCode {
     /* AC New */
     KEY_REDO,
     /* AC Redo/Repeat */
-
     //Mouse
     MOUSE_LEFT,
     MOUSE_RIGHT,
@@ -238,7 +247,6 @@ pub enum KeyCode {
     MOUSE_TASK,
 }
 
-
 pub fn key_codes_to_buttons(key_codes: &KeyCodes) -> Result<Vec<Button>> {
     let mut buttons = vec![];
     for key_code in key_codes {
@@ -249,8 +257,11 @@ pub fn key_codes_to_buttons(key_codes: &KeyCodes) -> Result<Vec<Button>> {
 
 fn assign_special_button(special_button: &mut ButtonName, value: ButtonName) -> Result<KeyCode> {
     if *special_button != ButtonName::None {
-        bail!("Duplicate of special button: '{}'. Value already exists: '{}'",
-            value, *special_button)
+        bail!(
+            "Duplicate of special button: '{}'. Value already exists: '{}'",
+            value,
+            *special_button
+        )
     } else {
         *special_button = value;
         Ok(KeyCode::None)
@@ -449,7 +460,7 @@ impl KeyCode {
             KeyCode::MOUSE_FORWARD => Ok(key_codes::BTN_FORWARD),
             KeyCode::MOUSE_BACK => Ok(key_codes::BTN_BACK),
             KeyCode::MOUSE_TASK => Ok(key_codes::BTN_TASK),
-            value => bail!("No such key code: {value}")
+            value => bail!("No such key code: {value}"),
         }
     }
 
@@ -459,17 +470,14 @@ impl KeyCode {
         reset_btn: &mut ButtonName,
         switch_mode_btn: &mut ButtonName,
         detect_special: bool,
-    ) -> Result<Self>
-    {
+    ) -> Result<Self> {
         if code_str == "" {
             return Ok(Self::None);
         };
 
         let key_code = Self::try_from(code_str.as_str());
         match key_code {
-            Err(err) => {
-                Err(Report::new(err).wrap_err(format!("'{button_name}'")))
-            }
+            Err(err) => Err(Report::new(err).wrap_err(format!("'{button_name}'"))),
             Ok(key_code) => {
                 if detect_special {
                     match key_code {

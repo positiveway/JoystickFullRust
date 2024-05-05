@@ -1,12 +1,12 @@
-use std::option::Option;
-use std::fmt::Display;
-use std::ops::Add;
-use color_eyre::eyre::{bail, Result, OptionExt};
+use crate::mouse::Coords;
+use color_eyre::eyre::{bail, OptionExt, Result};
 use log::debug;
 use serde::{Deserialize, Serialize};
+use std::fmt::Display;
+use std::ops::Add;
+use std::option::Option;
 use strum_macros::Display;
 use trait_set::trait_set;
-use crate::mouse::Coords;
 
 fn smoothing_factor(t_e: f64, cutoff: f64) -> f64 {
     let r = 2.0 * std::f64::consts::PI * cutoff * t_e;
@@ -76,8 +76,7 @@ trait_set! {
     core::ops::Neg<Output=T>;
 }
 
-pub fn hypot<T: Numeric<T>>(a: T, b: T) -> f64
-{
+pub fn hypot<T: Numeric<T>>(a: T, b: T) -> f64 {
     (a * a + b * b).into().sqrt()
 }
 
@@ -133,7 +132,6 @@ pub struct Vector {
 pub const NONE_VAL_ERR_MSG: &str = "Value is None";
 pub const CONVERT_ERR_MSG: &str = "Could not convert";
 
-
 impl Vector {
     pub fn as_coords(&self) -> Coords {
         Coords {
@@ -164,10 +162,7 @@ impl Vector {
     }
 
     pub fn zero() -> Self {
-        Self {
-            x: 0.0,
-            y: 0.0,
-        }
+        Self { x: 0.0, y: 0.0 }
     }
 }
 
@@ -228,10 +223,16 @@ pub fn rotate_around_center(point: Vector, rotation_angle: f32) -> Vector {
     rotate_by_angle(Vector::zero(), point, rotation_angle)
 }
 
-pub fn convert_range<T: Numeric<T>>(input: T, input_start: T, input_end: T, output_start: T, output_end: T) -> T {
+pub fn convert_range<T: Numeric<T>>(
+    input: T,
+    input_start: T,
+    input_end: T,
+    output_start: T,
+    output_end: T,
+) -> T {
     /* Note, "slope" below is a constant for given numbers, so if you are calculating
-   a lot of output values, it makes sense to calculate it once.  It also makes
-   understanding the code easier */
+    a lot of output values, it makes sense to calculate it once.  It also makes
+    understanding the code easier */
     let slope = (output_end - output_start) / (input_end - input_start);
     let output = output_start + slope * (input - input_start);
     output
@@ -253,10 +254,7 @@ impl<T: Numeric<T>> RangeConverterBuilder<T> {
         let pre_calc = output_start - slope * input_start;
         // let output = slope * input + pre_calc;
 
-        Self {
-            slope,
-            pre_calc,
-        }
+        Self { slope, pre_calc }
     }
 
     pub fn convert(&self, input: T) -> T {
@@ -273,12 +271,7 @@ pub struct ZoneAllowedRange {
 }
 
 impl ZoneAllowedRange {
-    pub fn new(
-        vertical: u16,
-        horizontal: u16,
-        diagonal: u16,
-    ) -> Result<Self>
-    {
+    pub fn new(vertical: u16, horizontal: u16, diagonal: u16) -> Result<Self> {
         if vertical + horizontal + 2 * diagonal > 90 {
             bail!("Incorrect zones allowed range")
         }
@@ -290,7 +283,10 @@ impl ZoneAllowedRange {
     }
 }
 
-pub fn pivot_angle_to_allowed_range(angle: u16, zone_allowed_range: &ZoneAllowedRange) -> Result<u16> {
+pub fn pivot_angle_to_allowed_range(
+    angle: u16,
+    zone_allowed_range: &ZoneAllowedRange,
+) -> Result<u16> {
     if angle % 180 == 0 {
         return Ok(zone_allowed_range.horizontal);
     } else if angle % 90 == 0 {
@@ -304,9 +300,9 @@ pub fn pivot_angle_to_allowed_range(angle: u16, zone_allowed_range: &ZoneAllowed
 
 pub fn are_options_equal<T: PartialEq>(value1: Option<T>, value2: Option<T>) -> bool {
     match (value1, value2) {
-        (Some(value1), Some(value2)) => { value1 == value2 }
+        (Some(value1), Some(value2)) => value1 == value2,
         (None, None) => true,
-        _ => false
+        _ => false,
     }
 }
 
@@ -330,35 +326,27 @@ impl<T: Clone + Display + PartialEq> ZonesMapper<T> {
         self.prev_value = cur_value.clone();
 
         match zone_changed {
-            true => {
-                match (prev_value, cur_value) {
-                    (Some(prev_value), Some(cur_value)) => {
-                        let mut to_release = vec![];
-                        for prev_element_val in &prev_value {
-                            if !cur_value.contains(prev_element_val) {
-                                to_release.push(prev_element_val.clone());
-                            }
-                        };
-                        let mut to_press = vec![];
-                        for cur_element_val in &cur_value {
-                            if !prev_value.contains(cur_element_val) {
-                                to_press.push(cur_element_val.clone());
-                            }
-                        };
-                        (to_release, to_press)
+            true => match (prev_value, cur_value) {
+                (Some(prev_value), Some(cur_value)) => {
+                    let mut to_release = vec![];
+                    for prev_element_val in &prev_value {
+                        if !cur_value.contains(prev_element_val) {
+                            to_release.push(prev_element_val.clone());
+                        }
                     }
-                    (Some(prev_value), None) => {
-                        (prev_value.clone(), vec![])
+                    let mut to_press = vec![];
+                    for cur_element_val in &cur_value {
+                        if !prev_value.contains(cur_element_val) {
+                            to_press.push(cur_element_val.clone());
+                        }
                     }
-                    (None, Some(cur_value)) => {
-                        (vec![], cur_value.clone())
-                    }
-                    (None, None) => (vec![], vec![])
+                    (to_release, to_press)
                 }
-            }
-            false => {
-                (vec![], vec![])
-            }
+                (Some(prev_value), None) => (prev_value.clone(), vec![]),
+                (None, Some(cur_value)) => (vec![], cur_value.clone()),
+                (None, None) => (vec![], vec![]),
+            },
+            false => (vec![], vec![]),
         }
     }
     pub fn detect_zone(&mut self, x: Option<f32>, y: Option<f32>) -> (bool, Option<Vec<T>>) {
@@ -372,7 +360,7 @@ impl<T: Clone + Display + PartialEq> ZonesMapper<T> {
                     (None, None)
                 }
             }
-            _ => (None, None)
+            _ => (None, None),
         };
         // debug!("Prev zone: '{:?}'; Cur zone: '{:?}'", self.prev_zone, zone);
 
@@ -380,28 +368,37 @@ impl<T: Clone + Display + PartialEq> ZonesMapper<T> {
         // debug!("Changed: {}", zone_changed);
         self.prev_zone = zone;
         let value = match angle {
-            None => { None }
-            Some(angle) => {
-                self.angle_to_value[angle].clone()
-            }
+            None => None,
+            Some(angle) => self.angle_to_value[angle].clone(),
         };
         (zone_changed, value)
     }
 
-    pub fn gen_from_4(values: [Vec<T>; 4], start_angle: u16, zone_allowed_range: &ZoneAllowedRange, threshold: f32) -> Result<Self> {
+    pub fn gen_from_4(
+        values: [Vec<T>; 4],
+        start_angle: u16,
+        zone_allowed_range: &ZoneAllowedRange,
+        threshold: f32,
+    ) -> Result<Self> {
         let mut expanded_values: [Vec<T>; 8] = core::array::from_fn(|i| values[0].clone());
         for ind in 0..values.len() {
             expanded_values[ind * 2] = values[ind].clone();
             expanded_values[ind * 2 + 1] = [
                 values[ind].clone(),
-                values[(ind + 1) % values.len()].clone()
-            ].concat();
+                values[(ind + 1) % values.len()].clone(),
+            ]
+                .concat();
         }
 
         Self::gen_from_8(expanded_values, start_angle, zone_allowed_range, threshold)
     }
 
-    pub fn gen_from_8(values: [Vec<T>; 8], start_angle: u16, zone_allowed_range: &ZoneAllowedRange, threshold: f32) -> Result<Self> {
+    pub fn gen_from_8(
+        values: [Vec<T>; 8],
+        start_angle: u16,
+        zone_allowed_range: &ZoneAllowedRange,
+        threshold: f32,
+    ) -> Result<Self> {
         let mut angle_to_value: [Option<Vec<T>>; 360] = std::array::from_fn(|_| None);
         let mut angle_to_zone: [u8; 360] = std::array::from_fn(|_| 0);
 
@@ -458,4 +455,3 @@ impl<T: Clone + Display + PartialEq> ZonesMapper<T> {
         angle_to_value
     }
 }
-

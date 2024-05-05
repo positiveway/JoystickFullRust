@@ -76,40 +76,47 @@ impl SteamyState {
                 events.push(SteamyEvent::Disconnected);
             }
 
-            steamy_base::State::Input { buttons, trigger, pad, orientation, acceleration, .. } => {
+            steamy_base::State::Input {
+                buttons,
+                trigger,
+                pad,
+                orientation,
+                acceleration,
+                ..
+            } => {
                 button_converter!(events, self.buttons, buttons, {
-					steamy_base::Button::A => SteamyButton::A,
-					steamy_base::Button::B => SteamyButton::B,
-					steamy_base::Button::X => SteamyButton::X,
-					steamy_base::Button::Y => SteamyButton::Y,
+                    steamy_base::Button::A => SteamyButton::A,
+                    steamy_base::Button::B => SteamyButton::B,
+                    steamy_base::Button::X => SteamyButton::X,
+                    steamy_base::Button::Y => SteamyButton::Y,
 
-					steamy_base::Button::PAD_DOWN  => SteamyButton::Down,
-					steamy_base::Button::PAD_LEFT  => SteamyButton::Left,
-					steamy_base::Button::PAD_RIGHT => SteamyButton::Right,
-					steamy_base::Button::PAD_UP    => SteamyButton::Up,
+                    steamy_base::Button::PAD_DOWN  => SteamyButton::Down,
+                    steamy_base::Button::PAD_LEFT  => SteamyButton::Left,
+                    steamy_base::Button::PAD_RIGHT => SteamyButton::Right,
+                    steamy_base::Button::PAD_UP    => SteamyButton::Up,
 
-					steamy_base::Button::PAD        => SteamyButton::LeftPadPressed,
-					steamy_base::Button::PAD_TOUCH  => SteamyButton::LeftPadTouch,
+                    steamy_base::Button::PAD        => SteamyButton::LeftPadPressed,
+                    steamy_base::Button::PAD_TOUCH  => SteamyButton::LeftPadTouch,
 
-					steamy_base::Button::STICK       => SteamyButton::StickPressed,
-					steamy_base::Button::STICK_TOUCH => SteamyButton::StickTouch,
+                    steamy_base::Button::STICK       => SteamyButton::StickPressed,
+                    steamy_base::Button::STICK_TOUCH => SteamyButton::StickTouch,
 
-					steamy_base::Button::TRACK       => SteamyButton::RightPadPressed,
-					steamy_base::Button::TRACK_TOUCH => SteamyButton::RightPadTouch,
+                    steamy_base::Button::TRACK       => SteamyButton::RightPadPressed,
+                    steamy_base::Button::TRACK_TOUCH => SteamyButton::RightPadTouch,
 
-					steamy_base::Button::BACK    => SteamyButton::Back,
-					steamy_base::Button::HOME    => SteamyButton::Home,
-					steamy_base::Button::FORWARD => SteamyButton::Forward,
+                    steamy_base::Button::BACK    => SteamyButton::Back,
+                    steamy_base::Button::HOME    => SteamyButton::Home,
+                    steamy_base::Button::FORWARD => SteamyButton::Forward,
 
-					steamy_base::Button::LEFT_BUMPER  => SteamyButton::BumperLeft,
-					steamy_base::Button::RIGHT_BUMPER => SteamyButton::BumperRight,
+                    steamy_base::Button::LEFT_BUMPER  => SteamyButton::BumperLeft,
+                    steamy_base::Button::RIGHT_BUMPER => SteamyButton::BumperRight,
 
-					steamy_base::Button::LEFT_GRIP  => SteamyButton::GripLeft,
-					steamy_base::Button::RIGHT_GRIP => SteamyButton::GripRight,
+                    steamy_base::Button::LEFT_GRIP  => SteamyButton::GripLeft,
+                    steamy_base::Button::RIGHT_GRIP => SteamyButton::GripRight,
 
-					steamy_base::Button::LEFT_TRIGGER  => SteamyButton::TriggerLeft,
-					steamy_base::Button::RIGHT_TRIGGER => SteamyButton::TriggerRight,
-				});
+                    steamy_base::Button::LEFT_TRIGGER  => SteamyButton::TriggerLeft,
+                    steamy_base::Button::RIGHT_TRIGGER => SteamyButton::TriggerRight,
+                });
 
                 if self.trigger.left != trigger.left {
                     events.push(SteamyEvent::Trigger(SteamyTrigger::Left(trigger.left)));
@@ -123,27 +130,39 @@ impl SteamyState {
 
                 if is_left_pad {
                     if self.pad_stick.left_pad.x != pad.left.x {
-                        events.push(SteamyEvent::PadStickF32(SteamyPadStickF32::LeftPadX(i16_to_f32(pad.left.x))));
+                        events.push(SteamyEvent::PadStickF32(SteamyPadStickF32::LeftPadX(
+                            i16_to_f32(pad.left.x),
+                        )));
                     }
                     if self.pad_stick.left_pad.y != pad.left.y {
-                        events.push(SteamyEvent::PadStickF32(SteamyPadStickF32::LeftPadY(i16_to_f32(pad.left.y))));
+                        events.push(SteamyEvent::PadStickF32(SteamyPadStickF32::LeftPadY(
+                            i16_to_f32(pad.left.y),
+                        )));
                     }
                     self.pad_stick.left_pad = pad.left;
                 } else {
                     if self.pad_stick.stick.x != pad.left.x {
-                        events.push(SteamyEvent::PadStickF32(SteamyPadStickF32::StickX(i16_to_f32(pad.left.x))));
+                        events.push(SteamyEvent::PadStickF32(SteamyPadStickF32::StickX(
+                            i16_to_f32(pad.left.x),
+                        )));
                     }
                     if self.pad_stick.stick.y != pad.left.y {
-                        events.push(SteamyEvent::PadStickF32(SteamyPadStickF32::StickY(i16_to_f32(pad.left.y))));
+                        events.push(SteamyEvent::PadStickF32(SteamyPadStickF32::StickY(
+                            i16_to_f32(pad.left.y),
+                        )));
                     }
                     self.pad_stick.stick = pad.left;
                 }
 
                 if self.pad_stick.right_pad.x != pad.right.x {
-                    events.push(SteamyEvent::PadStickF32(SteamyPadStickF32::RightPadX(i16_to_f32(pad.right.x))));
+                    events.push(SteamyEvent::PadStickF32(SteamyPadStickF32::RightPadX(
+                        i16_to_f32(pad.right.x),
+                    )));
                 }
                 if self.pad_stick.right_pad.y != pad.right.y {
-                    events.push(SteamyEvent::PadStickF32(SteamyPadStickF32::RightPadY(i16_to_f32(pad.right.y))));
+                    events.push(SteamyEvent::PadStickF32(SteamyPadStickF32::RightPadY(
+                        i16_to_f32(pad.right.y),
+                    )));
                 }
 
                 if self.orientation != orientation {
@@ -161,11 +180,9 @@ impl SteamyState {
                 self.acceleration = acceleration;
             }
 
-            steamy_base::State::Idle { .. } =>
-                (),
+            steamy_base::State::Idle { .. } => (),
         }
 
         events
     }
 }
-

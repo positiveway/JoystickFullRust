@@ -326,12 +326,13 @@
 // }
 //
 // fn print_code(code: &Code) -> color_eyre::Result<u16> {
-//     let re = exec_or_eyre!(Regex::new(r"\(([0-9]+)\)"))?;
+//     let re = Regex::new(r"\(([0-9]+)\)")?;
 //     let binding = code.to_string();
 //     let Some(caps) = re.captures(binding.as_str()) else {
 //         bail!("Can't extract code: {}", code.to_string())
 //     };
-//     exec_or_eyre!(str::parse::<u16>(&caps[1]))
+//     let code = str::parse::<u16>(&caps[1])?;
+//     Ok(code)
 // }
 //
 // pub fn print_event(event: &EventType) -> color_eyre::Result<String> {

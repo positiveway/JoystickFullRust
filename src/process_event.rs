@@ -1,12 +1,10 @@
 use crate::configs::{LayoutConfigs, MainConfigs};
-use crate::exec_or_eyre;
 use crate::match_event::*;
 use crate::math_ops::RangeConverterBuilder;
 use crate::process_event::ButtonEvent::{Pressed, Released};
 use crate::process_event::PadStickEvent::FingerLifted;
-use color_eyre::eyre::{bail, OptionExt, Result};
+use color_eyre::eyre::{bail, Result};
 use crossbeam_channel::{bounded, Receiver, Sender};
-use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use strum_macros::Display;
 
@@ -171,7 +169,8 @@ pub fn process_pad_stick(
     controller_state: &ControllerState,
 ) -> Result<TransformStatus> {
     let send_mouse_event = |mouse_event: MouseEvent| -> Result<()> {
-        exec_or_eyre!(controller_state.mouse_sender.send(mouse_event))
+        controller_state.mouse_sender.send(mouse_event)?;
+        Ok(())
     };
 
     match event.button {

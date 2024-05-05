@@ -1,16 +1,14 @@
+use crate::key_codes::KeyCode;
+use crate::match_event::ButtonName;
+use color_eyre::eyre::{bail, Result};
+use lazy_static::lazy_static;
+use mouse_keyboard_input::Button;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::env::current_dir;
 use std::fs::read_to_string;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
-use lazy_static::lazy_static;
-use serde::{Deserialize, Serialize};
-use color_eyre::eyre::{bail, Result};
-use crate::exec_or_eyre;
-use crate::match_event::ButtonName;
-use mouse_keyboard_input::Button;
-use crate::key_codes::KeyCode;
-
 
 const PROJECT_NAME: &str = "JoystickFullRust";
 
@@ -18,7 +16,6 @@ lazy_static! {
     pub static ref CONFIGS_DIR: PathBuf = get_project_dir().join("config");
     pub static ref LAYOUTS_DIR: PathBuf = CONFIGS_DIR.join("layouts");
 }
-
 
 #[derive(Clone, Debug, Copy, Default, Serialize, Deserialize)]
 pub struct JitterThreshold {
@@ -70,7 +67,8 @@ impl MainConfigs {
         main_configs.usb_input_refresh_interval = Duration::from_millis(1);
         main_configs.mouse_refresh_interval = Duration::from_millis(1);
 
-        main_configs.layout_configs = LayoutConfigs::load(main_configs.buttons_layout_name.as_str())?;
+        main_configs.layout_configs =
+            LayoutConfigs::load(main_configs.buttons_layout_name.as_str())?;
 
         Ok(main_configs)
     }
@@ -152,33 +150,29 @@ impl LayoutConfigs {
         layout_configs.general.load()?;
 
         match layout_configs.general.gaming_mode {
-            true => {
-                match layout_configs._movement {
-                    None => {
-                        bail!("'Movement' has to be specified in desktop mode")
-                    }
-                    Some(ref movement) => {
-                        layout_configs.movement = movement.load();
-                    }
+            true => match layout_configs._movement {
+                None => {
+                    bail!("'Movement' has to be specified in desktop mode")
                 }
-            }
-            false => {
-                match layout_configs._scroll {
-                    None => {
-                        bail!("'Scroll' has to be specified in desktop mode")
-                    }
-                    Some(scroll) => {
-                        layout_configs.scroll = scroll;
-                    }
+                Some(ref movement) => {
+                    layout_configs.movement = movement.load();
                 }
-            }
+            },
+            false => match layout_configs._scroll {
+                None => {
+                    bail!("'Scroll' has to be specified in desktop mode")
+                }
+                Some(scroll) => {
+                    layout_configs.scroll = scroll;
+                }
+            },
         }
-        layout_configs.buttons_layout = ButtonsLayout::load(layout_configs._buttons_layout_raw.clone())?;
+        layout_configs.buttons_layout =
+            ButtonsLayout::load(layout_configs._buttons_layout_raw.clone())?;
 
         Ok(layout_configs)
     }
 }
-
 
 pub type KeyCodes = Vec<KeyCode>;
 
@@ -197,7 +191,7 @@ impl ButtonsLayout {
 
         let mut layout: HashMap<ButtonName, KeyCodes> = HashMap::new();
 
-        let mut string_to_key_code = |button_name: ButtonName, codes: Vec<String>| -> Result<()>{
+        let mut string_to_key_code = |button_name: ButtonName, codes: Vec<String>| -> Result<()> {
             let mut key_codes = KeyCodes::new();
 
             let detect_special = codes.len() == 1;
@@ -227,10 +221,22 @@ impl ButtonsLayout {
         string_to_key_code(ButtonName::BtnRight_SideR, layout_raw.BtnRight_SideR)?;
         string_to_key_code(ButtonName::Wing_SideL, layout_raw.Wing_SideL)?;
         string_to_key_code(ButtonName::Wing_SideR, layout_raw.Wing_SideR)?;
-        string_to_key_code(ButtonName::LowerTriggerAsBtn_SideL, layout_raw.LowerTriggerAsBtn_SideL)?;
-        string_to_key_code(ButtonName::LowerTriggerAsBtn_SideR, layout_raw.LowerTriggerAsBtn_SideR)?;
-        string_to_key_code(ButtonName::UpperTrigger_SideL, layout_raw.UpperTrigger_SideL)?;
-        string_to_key_code(ButtonName::UpperTrigger_SideR, layout_raw.UpperTrigger_SideR)?;
+        string_to_key_code(
+            ButtonName::LowerTriggerAsBtn_SideL,
+            layout_raw.LowerTriggerAsBtn_SideL,
+        )?;
+        string_to_key_code(
+            ButtonName::LowerTriggerAsBtn_SideR,
+            layout_raw.LowerTriggerAsBtn_SideR,
+        )?;
+        string_to_key_code(
+            ButtonName::UpperTrigger_SideL,
+            layout_raw.UpperTrigger_SideL,
+        )?;
+        string_to_key_code(
+            ButtonName::UpperTrigger_SideR,
+            layout_raw.UpperTrigger_SideR,
+        )?;
         string_to_key_code(ButtonName::PadAsBtn_SideL, layout_raw.PadAsBtn_SideL)?;
         string_to_key_code(ButtonName::PadAsBtn_SideR, layout_raw.PadAsBtn_SideR)?;
         string_to_key_code(ButtonName::StickAsBtn, layout_raw.StickAsBtn)?;
@@ -257,7 +263,6 @@ impl ButtonsLayout {
         })
     }
 }
-
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct ButtonsLayoutRaw {
@@ -327,9 +332,13 @@ pub struct ButtonsLayoutRaw {
     pub ExtraBtnCentral: Vec<String>,
 }
 
-
 pub fn last_path_component(path: &Path) -> &str {
-    path.components().last().unwrap().as_os_str().to_str().unwrap()
+    path.components()
+        .last()
+        .unwrap()
+        .as_os_str()
+        .to_str()
+        .unwrap()
 }
 
 pub fn get_project_dir() -> PathBuf {
@@ -344,7 +353,7 @@ pub fn read_toml<T, P, S>(folder: P, filename: S) -> Result<T>
     where
         T: serde::de::DeserializeOwned,
         P: AsRef<Path>,
-        S: AsRef<str>
+        S: AsRef<str>,
 {
     const EXTENSION: &str = ".toml";
     let mut filename = filename.as_ref().to_string();
@@ -354,6 +363,6 @@ pub fn read_toml<T, P, S>(folder: P, filename: S) -> Result<T>
 
     let filepath = folder.as_ref().join(filename);
     let file_content = read_to_string(filepath)?;
-    let decoded_obj = exec_or_eyre!(toml::from_str(file_content.as_str()));
-    decoded_obj
+    let decoded_obj = toml::from_str(file_content.as_str())?;
+    Ok(decoded_obj)
 }

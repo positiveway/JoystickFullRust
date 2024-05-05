@@ -1,19 +1,21 @@
-use std::thread;
-use std::thread::{JoinHandle, sleep};
-use std::time::Instant;
-use mouse_keyboard_input::{Button, Coord, VirtualDevice};
-use serde::{Deserialize, Serialize};
-use strum_macros::Display;
-use crate::configs::{MainConfigs, FingerRotation, JitterThreshold};
+use crate::buttons_state::{ButtonsState, Command};
+use crate::configs::{FingerRotation, JitterThreshold, MainConfigs};
+use crate::exec_or_eyre;
+use crate::key_codes::KeyCode::KEY_LEFTSHIFT;
+use crate::key_codes::{key_codes_to_buttons, KeyCode};
+use crate::math_ops::{
+    calc_angle, distance, rotate_around_center, Vector, ZoneAllowedRange, ZonesMapper,
+    NONE_VAL_ERR_MSG,
+};
+use crate::process_event::{ButtonEvent, ButtonReceiver, MouseEvent, MouseReceiver, PadStickEvent};
 use color_eyre::eyre::{bail, OptionExt, Result};
 use log::{debug, info};
-use crate::buttons_state::{ButtonsState, Command};
-use crate::process_event::{MouseEvent, MouseReceiver, ButtonReceiver, PadStickEvent, ButtonEvent};
-use crate::exec_or_eyre;
-use crate::key_codes::{key_codes_to_buttons, KeyCode};
-use crate::key_codes::KeyCode::KEY_LEFTSHIFT;
-use crate::math_ops::{rotate_around_center, Vector, NONE_VAL_ERR_MSG, calc_angle, distance, ZonesMapper, ZoneAllowedRange};
-
+use mouse_keyboard_input::{Button, Coord, VirtualDevice};
+use serde::{Deserialize, Serialize};
+use std::thread;
+use std::thread::{sleep, JoinHandle};
+use std::time::Instant;
+use strum_macros::Display;
 
 #[derive(Display, Eq, Hash, PartialEq, Default, Copy, Clone, Debug, Serialize, Deserialize)]
 pub enum MouseMode {
@@ -27,7 +29,6 @@ pub struct Coords {
     pub x: Option<f32>,
     pub y: Option<f32>,
 }
-
 
 impl Coords {
     pub fn reset(&mut self) {
@@ -82,28 +83,27 @@ impl Coords {
 
     pub fn magnitude(&self) -> f32 {
         match (self.x, self.y) {
-            (Some(x), Some(y)) => {
-                x.hypot(y)
-            }
-            (_, _) => 0.0
+            (Some(x), Some(y)) => x.hypot(y),
+            (_, _) => 0.0,
         }
     }
 }
 
 fn option_to_string(value: Option<f32>) -> String {
     match value {
-        None => {
-            "None".to_string()
-        }
-        Some(value) => {
-            value.to_string()
-        }
+        None => "None".to_string(),
+        Some(value) => value.to_string(),
     }
 }
 
 impl std::fmt::Display for Coords {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "[x: {}, y: {}]", option_to_string(self.x), option_to_string(self.y))
+        write!(
+            f,
+            "[x: {}, y: {}]",
+            option_to_string(self.x),
+            option_to_string(self.y)
+        )
     }
 }
 
@@ -140,22 +140,17 @@ impl ConvertedCoordsDiff {
 
 fn calc_diff_one_coord(prev_coord: Option<f32>, cur_coord: Option<f32>) -> f32 {
     match prev_coord {
-        None => { 0.0 }
-        Some(prev_value) => {
-            match cur_coord {
-                None => { 0.0 }
-                Some(cur_value) => {
-                    cur_value - prev_value
-                }
-            }
-        }
+        None => 0.0,
+        Some(prev_value) => match cur_coord {
+            None => 0.0,
+            Some(cur_value) => cur_value - prev_value,
+        },
     }
 }
 
 fn convert_diff(value: f32, multiplier: u16) -> Coord {
     (value * multiplier as f32).round() as Coord
 }
-
 
 #[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 pub struct CoordsState {
@@ -206,9 +201,9 @@ impl CoordsState {
         Ok(match cur {
             None => match prev {
                 None => bail!(NONE_VAL_ERR_MSG),
-                Some(value) => { value }
+                Some(value) => value,
             },
-            Some(value) => { value }
+            Some(value) => value,
         })
     }
 
@@ -225,59 +220,56 @@ impl CoordsState {
         debug!("Origin: {}", self.cur);
         debug!("Filled: {}", self.cur_pos());
         debug!("Rotated: {}", rotated_coords);
-        debug!("Angle: [Orig: {}, Shifted: {}; Rotation: {}]",
-                 orig_angle, rotated_vector.angle(), self.finger_rotation);
+        debug!(
+            "Angle: [Orig: {}, Shifted: {}; Rotation: {}]",
+            orig_angle,
+            rotated_vector.angle(),
+            self.finger_rotation
+        );
         debug!("");
         Ok(rotated_coords)
     }
 
     pub fn rotate_prev_coords(&self) -> Result<Coords> {
-        Ok(rotate_around_center(Vector::from_coords(self.prev)?, self.finger_rotation as f32).as_coords())
+        Ok(
+            rotate_around_center(Vector::from_coords(self.prev)?, self.finger_rotation as f32)
+                .as_coords(),
+        )
     }
 
     pub fn cur_pos(&self) -> Coords {
         Coords {
             x: match self.cur.x {
-                None => { self.prev.x }
-                Some(value) => { Some(value) }
+                None => self.prev.x,
+                Some(value) => Some(value),
             },
             y: match self.cur.y {
-                None => { self.prev.y }
-                Some(value) => { Some(value) }
+                None => self.prev.y,
+                Some(value) => Some(value),
             },
         }
     }
 
     pub fn diff(&mut self) -> CoordsDiff {
         let cur_coords = match self.use_rotation {
-            true => {
-                match self.rotate_cur_coords() {
-                    Err(error) => {
-                        info!("{}", error);
-                        self.cur
-                    }
-                    Ok(rotated_coords) => {
-                        rotated_coords
-                    }
+            true => match self.rotate_cur_coords() {
+                Err(error) => {
+                    info!("{}", error);
+                    self.cur
                 }
-            }
-            false => {
-                self.cur
-            }
+                Ok(rotated_coords) => rotated_coords,
+            },
+            false => self.cur,
         };
         let prev_coords = match self.use_rotation {
-            true => {
-                match self.rotate_prev_coords() {
-                    Ok(value) => { value }
-                    Err(error) => {
-                        info!("{}", error);
-                        self.prev
-                    }
+            true => match self.rotate_prev_coords() {
+                Ok(value) => value,
+                Err(error) => {
+                    info!("{}", error);
+                    self.prev
                 }
-            }
-            false => {
-                self.prev
-            }
+            },
+            false => self.prev,
         };
 
         let diff = CoordsDiff {
@@ -318,12 +310,9 @@ pub struct PadsCoords {
 impl PadsCoords {
     pub fn new(finger_rotation: &FingerRotation) -> Self {
         Self {
-            left_pad: CoordsState::new(
-                finger_rotation.left_pad, finger_rotation.use_rotation),
-            right_pad: CoordsState::new(
-                finger_rotation.right_pad, finger_rotation.use_rotation),
-            stick: CoordsState::new(
-                finger_rotation.stick, finger_rotation.use_rotation),
+            left_pad: CoordsState::new(finger_rotation.left_pad, finger_rotation.use_rotation),
+            right_pad: CoordsState::new(finger_rotation.right_pad, finger_rotation.use_rotation),
+            stick: CoordsState::new(finger_rotation.stick, finger_rotation.use_rotation),
         }
     }
 
@@ -364,29 +353,29 @@ fn is_jitter(value: f32, jitter_threshold: f32) -> bool {
 
 fn discard_jitter(prev_value: Option<f32>, new_value: f32, jitter_threshold: f32) -> Option<f32> {
     match prev_value {
-        None => { Some(new_value) }
+        None => Some(new_value),
         Some(prev_value) => {
             let diff = new_value - prev_value;
             match is_jitter(diff, jitter_threshold) {
-                true => { None }
-                false => { Some(new_value) }
+                true => None,
+                false => Some(new_value),
             }
         }
     }
 }
 
-fn assign_pad_stick_event(coords_state: &mut CoordsState, jitter_threshold: f32, pad_stick_event: PadStickEvent) {
+fn assign_pad_stick_event(
+    coords_state: &mut CoordsState,
+    jitter_threshold: f32,
+    pad_stick_event: PadStickEvent,
+) {
     match pad_stick_event {
-        PadStickEvent::FingerLifted => {
-            coords_state.reset()
-        }
+        PadStickEvent::FingerLifted => coords_state.reset(),
         PadStickEvent::MovedX(value) => {
-            coords_state.cur.x = discard_jitter(
-                coords_state.prev.x, value, jitter_threshold);
+            coords_state.cur.x = discard_jitter(coords_state.prev.x, value, jitter_threshold);
         }
         PadStickEvent::MovedY(value) => {
-            coords_state.cur.y = discard_jitter(
-                coords_state.prev.y, value, jitter_threshold);
+            coords_state.cur.y = discard_jitter(coords_state.prev.y, value, jitter_threshold);
         }
     }
 }
@@ -404,7 +393,10 @@ fn writing_thread(
     let scroll_configs = layout_configs.scroll;
     let mouse_speed = layout_configs.general.mouse_speed;
 
-    let mut buttons_state = ButtonsState::new(layout_configs.buttons_layout, layout_configs.general.repeat_keys);
+    let mut buttons_state = ButtonsState::new(
+        layout_configs.buttons_layout,
+        layout_configs.general.repeat_keys,
+    );
 
     let mut mouse_mode = MouseMode::default();
     let mut pads_coords = PadsCoords::new(&layout_configs.finger_rotation);
@@ -413,15 +405,12 @@ fn writing_thread(
         vec![KeyCode::KEY_W],
         vec![KeyCode::KEY_A],
         vec![KeyCode::KEY_S],
-        vec![KeyCode::KEY_D]
+        vec![KeyCode::KEY_D],
     ];
-    let _wasd_zone_range = ZoneAllowedRange::new(
-        22,
-        22,
-        22,
-    )?;
+    let _wasd_zone_range = ZoneAllowedRange::new(22, 22, 22)?;
     let mut wasd_zone_mapper = ZonesMapper::gen_from_4(
-        _wasd_zones, 90,
+        _wasd_zones,
+        90,
         &_wasd_zone_range,
         layout_configs.movement.start_threshold,
     )?;
@@ -432,35 +421,33 @@ fn writing_thread(
         //MOUSE
         for event in mouse_receiver.try_iter() {
             match event {
-                MouseEvent::ModeSwitched => {
-                    match mouse_mode {
-                        MouseMode::CursorMove => {
-                            mouse_mode = MouseMode::Typing;
-                        }
-                        MouseMode::Typing => {
-                            mouse_mode = MouseMode::CursorMove;
-                        }
+                MouseEvent::ModeSwitched => match mouse_mode {
+                    MouseMode::CursorMove => {
+                        mouse_mode = MouseMode::Typing;
                     }
-                }
+                    MouseMode::Typing => {
+                        mouse_mode = MouseMode::CursorMove;
+                    }
+                },
                 MouseEvent::Reset => {
                     mouse_mode = MouseMode::default();
                     pads_coords.reset();
                 }
-                MouseEvent::LeftPad(pad_stick_event) => {
-                    assign_pad_stick_event(&mut pads_coords.left_pad,
-                                           layout_configs.jitter_threshold.left_pad,
-                                           pad_stick_event)
-                }
-                MouseEvent::RightPad(pad_stick_event) => {
-                    assign_pad_stick_event(&mut pads_coords.right_pad,
-                                           layout_configs.jitter_threshold.right_pad,
-                                           pad_stick_event)
-                }
-                MouseEvent::Stick(pad_stick_event) => {
-                    assign_pad_stick_event(&mut pads_coords.stick,
-                                           layout_configs.jitter_threshold.stick,
-                                           pad_stick_event)
-                }
+                MouseEvent::LeftPad(pad_stick_event) => assign_pad_stick_event(
+                    &mut pads_coords.left_pad,
+                    layout_configs.jitter_threshold.left_pad,
+                    pad_stick_event,
+                ),
+                MouseEvent::RightPad(pad_stick_event) => assign_pad_stick_event(
+                    &mut pads_coords.right_pad,
+                    layout_configs.jitter_threshold.right_pad,
+                    pad_stick_event,
+                ),
+                MouseEvent::Stick(pad_stick_event) => assign_pad_stick_event(
+                    &mut pads_coords.stick,
+                    layout_configs.jitter_threshold.stick,
+                    pad_stick_event,
+                ),
             }
         }
 
@@ -492,10 +479,11 @@ fn writing_thread(
                 true => {
                     let mut cur_pos = pads_coords.left_pad.cur_pos();
                     cur_pos = match cur_pos.rotate(pads_coords.left_pad.finger_rotation) {
-                        Ok(rotated_coords) => { rotated_coords }
-                        Err(_) => { cur_pos }
+                        Ok(rotated_coords) => rotated_coords,
+                        Err(_) => cur_pos,
                     };
-                    let (to_release, to_press) = wasd_zone_mapper.get_commands_diff(cur_pos.x, cur_pos.y);
+                    let (to_release, to_press) =
+                        wasd_zone_mapper.get_commands_diff(cur_pos.x, cur_pos.y);
                     // if !to_release.is_empty() || !to_press.is_empty() {
                     //     println!("To release: '{:?}'; To press: '{:?}'", to_release, to_press)
                     // }
@@ -522,7 +510,6 @@ fn writing_thread(
         // pads_coords.update_if_not_init();
         pads_coords.update();
         pads_coords.reset_current();
-
 
         //BUTTONS
         for event in button_receiver.try_iter() {
@@ -552,7 +539,6 @@ fn writing_thread(
             }
         }
         buttons_state.queue.clear();
-
 
         //Scheduler
         let runtime = start.elapsed();

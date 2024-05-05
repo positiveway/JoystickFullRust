@@ -1,5 +1,4 @@
 use crate::configs::MainConfigs;
-use crate::exec_or_eyre;
 use crate::match_event::{AxisName, ButtonName, EventTypeName, TransformStatus, TransformedEvent};
 use crate::process_event::{process_event, ControllerState, ImplementationSpecificCfg};
 use crate::steamy_debug::{buf_to_string, init_debug_files};
@@ -182,7 +181,7 @@ pub fn run_steamy_loop(
     mut controller_state: ControllerState,
     configs: MainConfigs,
 ) -> color_eyre::Result<()> {
-    let mut manager = exec_or_eyre!(steamy_base::Manager::new())?;
+    let mut manager = steamy_base::Manager::new()?;
 
     loop {
         match manager.open() {

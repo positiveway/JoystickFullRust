@@ -1,13 +1,13 @@
+use crate::configs::{ButtonsLayout, KeyCodes};
+use crate::key_codes::KeyCode;
+use crate::match_event::ButtonName;
+use color_eyre::eyre::{OptionExt, Result};
+use serde::{Deserialize, Serialize};
 use std::borrow::Borrow;
 use std::collections::HashMap;
 use std::hash::Hash;
-use color_eyre::eyre::{OptionExt, Result};
-use serde::{Deserialize, Serialize};
 use strum::IntoEnumIterator;
 use strum_macros::Display;
-use crate::configs::{ButtonsLayout, KeyCodes};
-use crate::key_codes::{KeyCode};
-use crate::match_event::ButtonName;
 
 #[derive(Display, Copy, Clone, Debug, Serialize, Deserialize)]
 pub enum Command {
@@ -28,8 +28,10 @@ pub struct ButtonsState {
     pub queue: Commands,
 }
 
-pub fn get_or_err<'a, K: Hash + Eq + Sized + std::fmt::Display, V>(m: &'a HashMap<K, V>, key: &'a K) -> Result<&'a V>
-{
+pub fn get_or_err<'a, K: Hash + Eq + Sized + std::fmt::Display, V>(
+    m: &'a HashMap<K, V>,
+    key: &'a K,
+) -> Result<&'a V> {
     m.get(&key).ok_or_eyre(format!("No mapping for '{}'", &key))
 }
 
@@ -42,10 +44,7 @@ impl ButtonsState {
             KeyCode::RELEASE_ALL,
         ];
 
-        let special_buttons = vec![
-            buttons_layout.reset_btn,
-            buttons_layout.switch_mode_btn,
-        ];
+        let special_buttons = vec![buttons_layout.reset_btn, buttons_layout.switch_mode_btn];
 
         let mut pressed = HashMap::new();
         for key_code in KeyCode::iter() {
@@ -68,8 +67,7 @@ impl ButtonsState {
     pub fn press_keycodes(&mut self, key_codes: KeyCodes) -> Result<()> {
         if key_codes.len() == 1 {
             let key_code = key_codes[0];
-            if key_code == KeyCode::KEY_ESC ||
-                key_code == KeyCode::RELEASE_ALL {
+            if key_code == KeyCode::KEY_ESC || key_code == KeyCode::RELEASE_ALL {
                 self.release_all()?;
             }
         }
@@ -134,4 +132,3 @@ impl ButtonsState {
         Ok(())
     }
 }
-

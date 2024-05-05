@@ -1,24 +1,24 @@
-mod match_event;
-mod utils;
-mod configs;
-mod process_event;
-mod mouse;
-mod math_ops;
-mod key_codes;
 mod buttons_state;
+mod configs;
 mod gilrs_specific;
+mod key_codes;
+mod match_event;
+mod math_ops;
+mod mouse;
+mod process_event;
+mod steamy_debug;
+mod steamy_event;
 mod steamy_specific;
 mod steamy_state;
-mod steamy_event;
-mod steamy_debug;
+mod utils;
 
-use std::env;
-use color_eyre::eyre::{Result};
-use env_logger::{builder};
+use crate::configs::MainConfigs;
+use crate::mouse::create_writing_thread;
+use crate::process_event::{process_event, ControllerState};
+use color_eyre::eyre::Result;
+use env_logger::builder;
 use log::debug;
-use crate::configs::{MainConfigs};
-use crate::mouse::{create_writing_thread};
-use crate::process_event::{ControllerState, process_event};
+use std::env;
 
 fn init_controller() -> Result<()> {
     let (mut controller_state, configs) = load_configs()?;
@@ -46,10 +46,13 @@ fn load_configs() -> Result<(ControllerState, MainConfigs)> {
     let configs = MainConfigs::load()?;
 
     if env::var("RUST_LOG").is_err() {
-        env::set_var("RUST_LOG", match configs.debug {
-            true => { "debug" }
-            false => { "warn" }
-        })
+        env::set_var(
+            "RUST_LOG",
+            match configs.debug {
+                true => "debug",
+                false => "warn",
+            },
+        )
     }
     builder()
         .format_module_path(false)

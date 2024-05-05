@@ -51,7 +51,6 @@ pub enum SteamyTrigger {
     Right(f32),
 }
 
-
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum SteamyPadStickF32 {
     /// The left pad.
@@ -65,7 +64,3 @@ pub enum SteamyPadStickF32 {
     StickX(f32),
     StickY(f32),
 }
-
-
-
-

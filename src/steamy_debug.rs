@@ -1,11 +1,10 @@
-use std::fs::{File, OpenOptions, read_dir, remove_file};
+use std::fs::{read_dir, remove_file, File, OpenOptions};
 use std::io::prelude::*;
 
 const IS_PAD: bool = false;
 
 const BUF_SIZE: usize = 60;
 const BASE_PATH: &str = "/home/user/Documents/bytes";
-
 
 pub fn align_num(val: String, padding: usize) -> String {
     let mut res = String::from("");

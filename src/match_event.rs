@@ -1,22 +1,34 @@
+use color_eyre::eyre::{bail, Result};
 use serde::{Deserialize, Serialize};
 use strum_macros::{AsRefStr, Display, EnumIter, EnumString};
-use color_eyre::eyre::{bail, Result};
-use crate::exec_or_eyre;
 
-
-#[derive(EnumIter, EnumString, AsRefStr, Display, Default, Eq, Hash, PartialEq, Copy, Clone, Debug, Serialize, Deserialize)]
+#[derive(
+EnumIter,
+EnumString,
+AsRefStr,
+Display,
+Default,
+Eq,
+Hash,
+PartialEq,
+Copy,
+Clone,
+Debug,
+Serialize,
+Deserialize,
+)]
 // #[strum(serialize_all = "snake_case")]
 pub enum ButtonName {
     BtnUp_SideL,
     BtnDown_SideL,
     BtnLeft_SideL,
     BtnRight_SideL,
-    // 
+    //
     BtnUp_SideR,
     BtnDown_SideR,
     BtnLeft_SideR,
     BtnRight_SideR,
-    // 
+    //
     Wing_SideL,
     Wing_SideR,
     //
@@ -25,7 +37,7 @@ pub enum ButtonName {
     //
     UpperTrigger_SideL,
     UpperTrigger_SideR,
-    // 
+    //
     PadAsBtn_SideL,
     PadAsBtn_SideR,
     StickAsBtn,
@@ -37,7 +49,7 @@ pub enum ButtonName {
     PadDown_SideL,
     PadLeft_SideL,
     PadRight_SideL,
-    // 
+    //
     PadUp_SideR,
     PadDown_SideR,
     PadLeft_SideR,
@@ -75,7 +87,20 @@ impl ButtonName {
     // }
 }
 
-#[derive(EnumString, AsRefStr, Display, Default, Eq, Hash, PartialEq, Copy, Clone, Debug, Serialize, Deserialize)]
+#[derive(
+EnumString,
+AsRefStr,
+Display,
+Default,
+Eq,
+Hash,
+PartialEq,
+Copy,
+Clone,
+Debug,
+Serialize,
+Deserialize,
+)]
 // #[strum(serialize_all = "snake_case")]
 pub enum AxisName {
     PadX_SideL,
@@ -94,7 +119,9 @@ pub enum AxisName {
     None,
 }
 
-#[derive(EnumString, AsRefStr, Display, Eq, Hash, PartialEq, Copy, Clone, Debug, Serialize, Deserialize)]
+#[derive(
+EnumString, AsRefStr, Display, Eq, Hash, PartialEq, Copy, Clone, Debug, Serialize, Deserialize,
+)]
 // #[strum(serialize_all = "snake_case")]
 pub enum EventTypeName {
     AxisChanged,
