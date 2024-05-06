@@ -420,7 +420,8 @@ fn writing_thread(
         let start = Instant::now();
 
         //MOUSE
-        for event in mouse_receiver.try_iter() {
+        // for event in mouse_receiver.try_iter() {
+        while let Some(event) = mouse_receiver.try_recv()? {
             match event {
                 MouseEvent::ModeSwitched => match mouse_mode {
                     MouseMode::CursorMove => {
@@ -523,7 +524,8 @@ fn writing_thread(
         pads_coords.reset_current();
 
         //BUTTONS
-        for event in button_receiver.try_iter() {
+        // for event in button_receiver.try_iter() {
+        while let Some(event) = button_receiver.try_recv()? {
             match event {
                 //Press goes first to check if already pressed
                 ButtonEvent::Pressed(button_name) => {

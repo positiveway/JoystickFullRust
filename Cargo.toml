@@ -8,6 +8,8 @@ edition = "2021"
 steamy_base = { path = "/home/user/RustroverProjects/steamy_base" }
 #rusb = "0.9"
 #gilrs = "0.10"
+kanal = "0.1.0-pre8"
+#crossbeam-channel = "0.5"
 ahash = { version = "0.8", features = ["serde"] }
 bytes = "1.6"
 color-eyre = "0.6"
@@ -21,7 +23,6 @@ duplicate = "1.0"
 strum = { version = "0.26", features = ["derive"] }
 strum_macros = "0.26"
 regex = "1.10"
-crossbeam-channel = "0.5"
 env_logger = "0.11"
 log = "0.4"
 [target.'cfg(target_os = "windows")'.dependencies]

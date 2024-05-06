@@ -4,9 +4,10 @@ use crate::math_ops::RangeConverterBuilder;
 use crate::process_event::ButtonEvent::{Pressed, Released};
 use crate::process_event::PadStickEvent::FingerLifted;
 use color_eyre::eyre::{bail, Result};
-use crossbeam_channel::{bounded, Receiver, Sender};
 use serde::{Deserialize, Serialize};
 use strum_macros::Display;
+// use crossbeam_channel::{bounded, Receiver, Sender};
+use kanal::{bounded, Receiver, Sender};
 
 #[derive(Display, Copy, Clone, Debug, Serialize, Deserialize)]
 pub enum PadStickEvent {
