@@ -195,9 +195,8 @@ impl CoordsState {
         self.prev.update_if_not_init(&self.cur);
     }
 
-    pub fn rotate_cur_coords(&self) -> Option<Coords> {
-        self.cur_pos().rotate(self.finger_rotation)
-
+    //Left for DEBUG reference
+    // pub fn rotate_cur_coords(&self) -> Option<Coords> {
         // let cur_pos = self.cur_pos();
         // match (
         //     cur_pos.x,
@@ -224,11 +223,7 @@ impl CoordsState {
         //     }
         //     _ => None,
         // }
-    }
-
-    pub fn rotate_prev_coords(&self) -> Option<Coords> {
-        self.prev.rotate(self.finger_rotation)
-    }
+    // }
 
     pub fn cur_pos(&self) -> Coords {
         Coords {
@@ -238,10 +233,6 @@ impl CoordsState {
     }
 
     pub fn diff(&mut self) -> CoordsDiff {
-        // let cur_coords = match self.use_rotation {
-        //     true => self.rotate_cur_coords().unwrap_or(self.cur),
-        //     false => self.cur,
-        // };
         let cur_coords = match self.use_rotation {
             true => self.cur_pos().try_rotate(self.finger_rotation),
             false => self.cur_pos(),
@@ -458,10 +449,7 @@ fn writing_thread(
                 }
                 true => {
                     let cur_pos = pads_coords.left_pad.cur_pos().try_rotate(pads_coords.left_pad.finger_rotation);
-                    // let mut cur_pos = pads_coords.left_pad.cur_pos();
-                    // cur_pos = cur_pos
-                    //     .rotate(pads_coords.left_pad.finger_rotation)
-                    //     .unwrap_or(cur_pos);
+
                     let (to_release, to_press, to_press_full) =
                         wasd_zone_mapper.get_commands_diff(cur_pos.x, cur_pos.y);
                     // if !to_release.is_empty() || !to_press.is_empty() {
