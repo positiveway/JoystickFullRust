@@ -1,5 +1,8 @@
-[build]
+[target.'cfg(target_os = "linux")'.build]
 rustflags = ["-C", "target-cpu=native", "-C", "link-arg=-fuse-ld=lld"]
+
+[target.'cfg(not(target_os = "linux"))'.build]
+rustflags = ["-C", "target-cpu=native"]
 
 #"-Z", "polonius",
 #"-Z", "next-solver=coherence",
