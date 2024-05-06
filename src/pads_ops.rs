@@ -1,9 +1,9 @@
-use mouse_keyboard_input::Coord;
 use serde::{Deserialize, Serialize};
 use strum_macros::Display;
 use crate::configs::FingerRotation;
 use crate::math_ops::{rotate_around_center, Vector};
 use log::{debug, info};
+use universal_input::Coord;
 
 
 #[derive(Display, Eq, Hash, PartialEq, Default, Copy, Clone, Debug, Serialize, Deserialize)]

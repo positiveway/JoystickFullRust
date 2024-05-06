@@ -1,4 +1,3 @@
-use crate::key_codes::KeyCode;
 use crate::match_event::ButtonName;
 use color_eyre::eyre::{bail, Result};
 use lazy_static::lazy_static;
@@ -8,6 +7,8 @@ use std::fs::read_to_string;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 use ahash::AHashMap;
+use universal_input::{KeyCode, KeyCodes};
+use crate::key_codes::key_code_from_config;
 
 const PROJECT_NAME: &str = "JoystickFullRust";
 
@@ -181,8 +182,6 @@ impl LayoutConfigs {
     }
 }
 
-pub type KeyCodes = Vec<KeyCode>;
-
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct ButtonsLayout {
     pub reset_btn: ButtonName,
@@ -204,7 +203,7 @@ impl ButtonsLayout {
             let detect_special = codes.len() == 1;
 
             for code_as_str in codes {
-                let key_code = KeyCode::from_config(
+                let key_code = key_code_from_config(
                     button_name,
                     code_as_str,
                     &mut reset_btn,

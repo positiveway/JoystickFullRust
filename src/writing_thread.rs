@@ -1,12 +1,11 @@
 use std::thread;
 use std::thread::{JoinHandle, sleep};
 use std::time::Instant;
-use mouse_keyboard_input::VirtualDevice;
+use universal_input::{InputEmulator, KeyCode};
+use universal_input::KeyCode::KEY_LEFTSHIFT;
 use crate::buttons_state::{ButtonsState, Command};
 use crate::configs::MainConfigs;
 use crate::exec_or_eyre;
-use crate::key_codes::KeyCode;
-use crate::key_codes::KeyCode::KEY_LEFTSHIFT;
 use crate::math_ops::{ZoneAllowedRange, ZonesMapper};
 use crate::pads_ops::{CoordsState, discard_jitter, MouseMode, PadsCoords};
 use crate::process_event::{ButtonEvent, ButtonReceiver, MouseEvent, MouseReceiver, PadStickEvent};
@@ -33,7 +32,7 @@ fn writing_thread(
     button_receiver: ButtonReceiver,
     configs: MainConfigs,
 ) -> color_eyre::Result<()> {
-    let mut virtual_device = exec_or_eyre!(VirtualDevice::default())?;
+    let mut input_emulator = InputEmulator::new()?;
 
     let writing_interval = configs.mouse_refresh_interval;
     let layout_configs = configs.layout_configs;
@@ -109,7 +108,7 @@ fn writing_thread(
                 let mouse_diff = pads_coords.right_pad.diff();
                 let mouse_diff = mouse_diff.convert(mouse_speed);
                 if mouse_diff.is_any_changes() {
-                    exec_or_eyre!(virtual_device.move_mouse(mouse_diff.x, -mouse_diff.y))?;
+                    input_emulator.move_mouse(mouse_diff.x, -mouse_diff.y)?;
                 }
             }
             match gaming_mode {
@@ -122,8 +121,8 @@ fn writing_thread(
 
                         let scroll_diff = scroll_diff.convert(scroll_configs.speed);
                         if scroll_diff.is_any_changes() {
-                            exec_or_eyre!(virtual_device.scroll_x(scroll_diff.x))?;
-                            exec_or_eyre!(virtual_device.scroll_y(-scroll_diff.y))?;
+                            exec_or_eyre!(input_emulator.scroll_x(scroll_diff.x))?;
+                            exec_or_eyre!(input_emulator.scroll_y(-scroll_diff.y))?;
                         }
                     }
                 }
@@ -190,14 +189,12 @@ fn writing_thread(
         for command in &buttons_state.queue {
             match command {
                 Command::Pressed(key_code) => {
-                    let button = key_code.as_button()?;
-                    // println!("Send Pressed: {}", button);
-                    exec_or_eyre!(virtual_device.press(button))?
+                    // println!("Send Pressed: {}", key_code);
+                    exec_or_eyre!(input_emulator.press(*key_code))?
                 }
                 Command::Released(key_code) => {
-                    let button = key_code.as_button()?;
-                    // println!("Send Released: {}", button);
-                    exec_or_eyre!(virtual_device.release(button))?
+                    // println!("Send Released: {}", key_code);
+                    exec_or_eyre!(input_emulator.release(*key_code))?
                 }
             }
         }

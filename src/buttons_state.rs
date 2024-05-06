@@ -1,5 +1,4 @@
-use crate::configs::{ButtonsLayout, KeyCodes};
-use crate::key_codes::KeyCode;
+use crate::configs::{ButtonsLayout};
 use crate::match_event::ButtonName;
 use crate::utils::{get_or_default, get_or_err, Container};
 use ahash::AHashMap;
@@ -8,6 +7,7 @@ use serde::{Deserialize, Serialize};
 use std::borrow::Borrow;
 use strum::IntoEnumIterator;
 use strum_macros::Display;
+use universal_input::{KeyCode, KeyCodes};
 
 #[derive(Display, Copy, Clone, Debug, Serialize, Deserialize)]
 pub enum Command {
