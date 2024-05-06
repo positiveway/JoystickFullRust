@@ -1,33 +1,46 @@
+use ahash::{AHashMap, AHasher, HashSet, HashSetExt, RandomState};
+use std::collections::hash_set::Difference;
 use std::hash::Hash;
-use ahash::{AHasher, RandomState, AHashMap};
+
+// pub type SetDiff<'a, T> = Difference<'a, T, RandomState>;
+//
+// #[inline]
+// pub fn hashset_to_diff<'a, T: Hash + Eq>(set: &HashSet<T>) -> SetDiff<'a, T>{
+//     set.difference(&HashSet::new())
+// }
+//
+// #[inline]
+// pub fn empty_set_diff<'a, T: Hash + Eq>() -> SetDiff<'a, T>{
+//     hashset_to_diff(&HashSet::new())
+// }
 
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub struct Container<T: Hash + Eq + Sized + std::fmt::Display> {
-    storage: AHashMap<T, bool>,
+    storage: HashSet<T>,
 }
 
 impl<T: Hash + Eq + Sized + std::fmt::Display> Container<T> {
     pub fn new() -> Self {
         Self {
-            storage: AHashMap::new()
+            storage: HashSet::new(),
         }
     }
 
     pub fn from(vec: Vec<T>) -> Self {
         let mut container = Self::new();
         for element in vec {
-            container.storage.insert(element, false);
+            container.storage.insert(element);
         }
         container
     }
 
     #[inline]
     pub fn contains(&self, element: &T) -> bool {
-        self.storage.contains_key(element)
+        self.storage.contains(element)
     }
 
     pub fn push(&mut self, element: T) {
-        self.storage.insert(element, false);
+        self.storage.insert(element);
     }
 }
 
