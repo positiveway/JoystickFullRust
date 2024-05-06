@@ -52,6 +52,7 @@ impl Default for SteamyState {
     }
 }
 
+#[inline(always)]
 fn i16_to_f32(value: i16) -> f32 {
     value as f32 / i16::MAX as f32
     // if value == 0{
@@ -64,6 +65,7 @@ fn i16_to_f32(value: i16) -> f32 {
 }
 
 impl SteamyState {
+    #[inline]
     pub fn update(&mut self, state: steamy_base::State, buffer: Vec<u8>) -> Vec<SteamyEvent> {
         let mut events = Vec::new();
 
