@@ -1,13 +1,13 @@
 use crate::configs::{ButtonsLayout, KeyCodes};
 use crate::key_codes::KeyCode;
 use crate::match_event::ButtonName;
+use crate::utils::{get_or_default, get_or_err, Container};
+use ahash::AHashMap;
 use color_eyre::Result;
 use serde::{Deserialize, Serialize};
 use std::borrow::Borrow;
-use ahash::{AHashMap};
 use strum::IntoEnumIterator;
 use strum_macros::Display;
-use crate::utils::{get_or_default, get_or_err};
 
 #[derive(Display, Copy, Clone, Debug, Serialize, Deserialize)]
 pub enum Command {
@@ -22,23 +22,25 @@ pub struct ButtonsState {
     pressed: AHashMap<KeyCode, bool>,
     RESET_BTN: ButtonName,
     buttons_layout: AHashMap<ButtonName, KeyCodes>,
-    special_codes: KeyCodes,
-    special_buttons: Vec<ButtonName>,
+    special_codes: Container<KeyCode>,
+    special_buttons: Container<ButtonName>,
     repeat_keys: bool,
     pub queue: Commands,
 }
 
-
 impl ButtonsState {
     pub fn new(buttons_layout: ButtonsLayout, repeat_keys: bool) -> Self {
-        let special_codes = vec![
+        let special_codes = Container::from(vec![
             KeyCode::None,
             KeyCode::RESET_BTN,
             KeyCode::SWITCH_MODE_BTN,
             KeyCode::RELEASE_ALL,
-        ];
+        ]);
 
-        let special_buttons = vec![buttons_layout.reset_btn, buttons_layout.switch_mode_btn];
+        let special_buttons = Container::from(vec![
+            buttons_layout.reset_btn,
+            buttons_layout.switch_mode_btn,
+        ]);
 
         let mut pressed = AHashMap::new();
         for key_code in KeyCode::iter() {

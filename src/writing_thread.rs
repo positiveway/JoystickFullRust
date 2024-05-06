@@ -70,7 +70,7 @@ fn writing_thread(
         //MOUSE
         // for event in mouse_receiver.try_iter() {
         //TODO: test try_recv_realtime. fallback: try_recv()
-        while let Some(event) = mouse_receiver.try_recv_realtime()? {
+        while let Some(event) = mouse_receiver.try_recv()? {
             match event {
                 MouseEvent::ModeSwitched => match mouse_mode {
                     MouseMode::CursorMove => {
@@ -175,7 +175,7 @@ fn writing_thread(
         //BUTTONS
         // for event in button_receiver.try_iter() {
         //TODO: test try_recv_realtime. fallback: try_recv()
-        while let Some(event) = button_receiver.try_recv_realtime()? {
+        while let Some(event) = button_receiver.try_recv()? {
             match event {
                 //Press goes first to check if already pressed
                 ButtonEvent::Pressed(button_name) => {
