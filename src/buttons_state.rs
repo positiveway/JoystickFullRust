@@ -4,8 +4,7 @@ use crate::match_event::ButtonName;
 use color_eyre::Result;
 use serde::{Deserialize, Serialize};
 use std::borrow::Borrow;
-use std::collections::HashMap;
-use std::hash::Hash;
+use ahash::{AHashMap};
 use strum::IntoEnumIterator;
 use strum_macros::Display;
 use crate::utils::{get_or_default, get_or_err};
@@ -20,9 +19,9 @@ pub type Commands = Vec<Command>;
 
 #[derive(Clone, Debug)]
 pub struct ButtonsState {
-    pressed: HashMap<KeyCode, bool>,
+    pressed: AHashMap<KeyCode, bool>,
     RESET_BTN: ButtonName,
-    buttons_layout: HashMap<ButtonName, KeyCodes>,
+    buttons_layout: AHashMap<ButtonName, KeyCodes>,
     special_codes: KeyCodes,
     special_buttons: Vec<ButtonName>,
     repeat_keys: bool,
@@ -41,7 +40,7 @@ impl ButtonsState {
 
         let special_buttons = vec![buttons_layout.reset_btn, buttons_layout.switch_mode_btn];
 
-        let mut pressed = HashMap::new();
+        let mut pressed = AHashMap::new();
         for key_code in KeyCode::iter() {
             if !special_codes.contains(&key_code) {
                 pressed.insert(key_code, false);

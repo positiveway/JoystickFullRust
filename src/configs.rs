@@ -2,13 +2,12 @@ use crate::key_codes::KeyCode;
 use crate::match_event::ButtonName;
 use color_eyre::eyre::{bail, Result};
 use lazy_static::lazy_static;
-use mouse_keyboard_input::Button;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use std::env::current_dir;
 use std::fs::read_to_string;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
+use ahash::AHashMap;
 
 const PROJECT_NAME: &str = "JoystickFullRust";
 
@@ -189,7 +188,7 @@ pub struct ButtonsLayout {
     pub reset_btn: ButtonName,
     pub switch_mode_btn: ButtonName,
     //
-    pub layout: HashMap<ButtonName, KeyCodes>,
+    pub layout: AHashMap<ButtonName, KeyCodes>,
 }
 
 impl ButtonsLayout {
@@ -197,7 +196,7 @@ impl ButtonsLayout {
         let mut switch_mode_btn: ButtonName = Default::default();
         let mut reset_btn: ButtonName = Default::default();
 
-        let mut layout: HashMap<ButtonName, KeyCodes> = HashMap::new();
+        let mut layout: AHashMap<ButtonName, KeyCodes> = AHashMap::new();
 
         let mut string_to_key_code = |button_name: ButtonName, codes: Vec<String>| -> Result<()> {
             let mut key_codes = KeyCodes::new();

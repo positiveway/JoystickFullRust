@@ -1,9 +1,9 @@
-use std::collections::HashMap;
 use std::hash::Hash;
+use ahash::{AHasher, RandomState, AHashMap};
 
 #[inline]
 pub fn get_or_default<'a, K: Hash + Eq + Sized + std::fmt::Display, V: Default + Copy>(
-    m: &'a HashMap<K, V>,
+    m: &'a AHashMap<K, V>,
     key: &'a K,
 ) -> V {
     match m.get(key) {
@@ -14,7 +14,7 @@ pub fn get_or_default<'a, K: Hash + Eq + Sized + std::fmt::Display, V: Default +
 
 #[inline]
 pub fn get_or_err<'a, K: Hash + Eq + Sized + std::fmt::Display, V>(
-    m: &'a HashMap<K, V>,
+    m: &'a AHashMap<K, V>,
     key: &'a K,
 ) -> color_eyre::Result<&'a V> {
     m.get(key)
