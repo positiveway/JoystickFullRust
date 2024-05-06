@@ -1,10 +1,9 @@
-use crate::mouse::Coords;
+use crate::pads_ops::Coords;
 use color_eyre::eyre::{bail, Result};
 use log::debug;
 use serde::{Deserialize, Serialize};
-use std::fmt::{Display};
+use std::fmt::Display;
 use std::ops::Add;
-use strum_macros::Display;
 use trait_set::trait_set;
 
 fn smoothing_factor(t_e: f64, cutoff: f64) -> f64 {
@@ -147,7 +146,7 @@ impl Vector {
                 x: point2_x - point1_x,
                 y: point2_y - point1_y,
             }),
-            _ => None
+            _ => None,
         }
     }
 
@@ -156,7 +155,7 @@ impl Vector {
     pub fn from_coords(coords: Coords) -> Option<Self> {
         match (coords.x, coords.y) {
             (Some(x), Some(y)) => Some(Self { x, y }),
-            _ => None
+            _ => None,
         }
     }
 
