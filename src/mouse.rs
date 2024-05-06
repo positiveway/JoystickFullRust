@@ -80,6 +80,10 @@ impl Coords {
         })
     }
 
+    pub fn try_rotate(&self, rotation: i16) -> Self {
+        self.rotate(rotation).unwrap_or(*self)
+    }
+
     pub fn magnitude(&self) -> f32 {
         match (self.x, self.y) {
             (Some(x), Some(y)) => x.hypot(y),
@@ -234,12 +238,16 @@ impl CoordsState {
     }
 
     pub fn diff(&mut self) -> CoordsDiff {
+        // let cur_coords = match self.use_rotation {
+        //     true => self.rotate_cur_coords().unwrap_or(self.cur),
+        //     false => self.cur,
+        // };
         let cur_coords = match self.use_rotation {
-            true => self.rotate_cur_coords().unwrap_or(self.cur),
-            false => self.cur,
+            true => self.cur_pos().try_rotate(self.finger_rotation),
+            false => self.cur_pos(),
         };
         let prev_coords = match self.use_rotation {
-            true => self.rotate_prev_coords().unwrap_or(self.prev),
+            true => self.prev.try_rotate(self.finger_rotation),
             false => self.prev,
         };
 
@@ -380,7 +388,7 @@ fn writing_thread(
         vec![KeyCode::KEY_D],
     ];
     let _wasd_zone_range = ZoneAllowedRange::new(22, 22, 22)?;
-    let mut wasd_zone_mapper = ZonesMapper::gen_from_4(
+    let mut wasd_zone_mapper = ZonesMapper::gen_from_4_into_8(
         _wasd_zones,
         90,
         &_wasd_zone_range,
@@ -449,10 +457,11 @@ fn writing_thread(
                     }
                 }
                 true => {
-                    let mut cur_pos = pads_coords.left_pad.cur_pos();
-                    cur_pos = cur_pos
-                        .rotate(pads_coords.left_pad.finger_rotation)
-                        .unwrap_or(cur_pos);
+                    let cur_pos = pads_coords.left_pad.cur_pos().try_rotate(pads_coords.left_pad.finger_rotation);
+                    // let mut cur_pos = pads_coords.left_pad.cur_pos();
+                    // cur_pos = cur_pos
+                    //     .rotate(pads_coords.left_pad.finger_rotation)
+                    //     .unwrap_or(cur_pos);
                     let (to_release, to_press, to_press_full) =
                         wasd_zone_mapper.get_commands_diff(cur_pos.x, cur_pos.y);
                     // if !to_release.is_empty() || !to_press.is_empty() {

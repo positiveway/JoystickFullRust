@@ -379,7 +379,7 @@ impl<T: Clone + Display + PartialEq> ZonesMapper<T> {
         (zone_changed, value)
     }
 
-    pub fn gen_from_4(
+    pub fn gen_from_4_into_8(
         values: [Vec<T>; 4],
         start_angle: u16,
         zone_allowed_range: &ZoneAllowedRange,
