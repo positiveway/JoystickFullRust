@@ -30,7 +30,7 @@ ExtraBtnCentral = ["RESET_BTN"]
 [General]
 gaming_mode = true
 repeat_keys = false
-triggers_threshold_pct = 30
+triggers_threshold_pct = 20
 mouse_speed = 400
 [Movement]
 start_threshold_pct = 30
