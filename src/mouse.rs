@@ -218,32 +218,32 @@ impl CoordsState {
 
     //Left for DEBUG reference
     // pub fn rotate_cur_coords(&self) -> Option<Coords> {
-        // let cur_pos = self.cur_pos();
-        // match (
-        //     cur_pos.x,
-        //     cur_pos.y,
-        // ) {
-        //     (Some(x), Some(y)) => {
-        //         let point = Vector { x, y };
-        //
-        //         let orig_angle = point.angle();
-        //         let rotated_vector = rotate_around_center(point, self.finger_rotation as f32);
-        //
-        //         let rotated_coords = rotated_vector.as_coords();
-        //         debug!("Origin: {}", self.cur);
-        //         debug!("Filled: {}", self.cur_pos());
-        //         debug!("Rotated: {}", rotated_coords);
-        //         debug!(
-        //             "Angle: [Orig: {}, Shifted: {}; Rotation: {}]",
-        //             orig_angle,
-        //             rotated_vector.angle(),
-        //             self.finger_rotation
-        //         );
-        //         debug!("");
-        //         Some(rotated_coords)
-        //     }
-        //     _ => None,
-        // }
+    // let cur_pos = self.cur_pos();
+    // match (
+    //     cur_pos.x,
+    //     cur_pos.y,
+    // ) {
+    //     (Some(x), Some(y)) => {
+    //         let point = Vector { x, y };
+    //
+    //         let orig_angle = point.angle();
+    //         let rotated_vector = rotate_around_center(point, self.finger_rotation as f32);
+    //
+    //         let rotated_coords = rotated_vector.as_coords();
+    //         debug!("Origin: {}", self.cur);
+    //         debug!("Filled: {}", self.cur_pos());
+    //         debug!("Rotated: {}", rotated_coords);
+    //         debug!(
+    //             "Angle: [Orig: {}, Shifted: {}; Rotation: {}]",
+    //             orig_angle,
+    //             rotated_vector.angle(),
+    //             self.finger_rotation
+    //         );
+    //         debug!("");
+    //         Some(rotated_coords)
+    //     }
+    //     _ => None,
+    // }
     // }
 
     #[inline]
@@ -256,13 +256,12 @@ impl CoordsState {
 
     #[inline]
     pub fn diff(&mut self) -> CoordsDiff {
-        let cur_coords = match self.use_rotation {
-            true => self.cur_pos().try_rotate(self.finger_rotation),
-            false => self.cur_pos(),
-        };
-        let prev_coords = match self.use_rotation {
-            true => self.prev.try_rotate(self.finger_rotation),
-            false => self.prev,
+        let (prev_coords, cur_coords) = match self.use_rotation {
+            true => (
+                self.prev.try_rotate(self.finger_rotation),
+                self.cur_pos().try_rotate(self.finger_rotation),
+            ),
+            false => (self.prev, self.cur_pos()),
         };
 
         let diff = CoordsDiff {
@@ -481,7 +480,10 @@ fn writing_thread(
                 true => {
                     const ALWAYS_PRESS: bool = false; //For DEBUG purposes
 
-                    let cur_pos = pads_coords.left_pad.cur_pos().try_rotate(pads_coords.left_pad.finger_rotation);
+                    let cur_pos = pads_coords
+                        .left_pad
+                        .cur_pos()
+                        .try_rotate(pads_coords.left_pad.finger_rotation);
 
                     let (to_release, to_press, to_press_full) =
                         wasd_zone_mapper.get_commands_diff(cur_pos.x, cur_pos.y);
@@ -489,7 +491,11 @@ fn writing_thread(
                     //     println!("To release: '{:?}'; To press: '{:?}'", to_release, to_press)
                     // }
 
-                    let to_press = if ALWAYS_PRESS { to_press_full } else { to_press };
+                    let to_press = if ALWAYS_PRESS {
+                        to_press_full
+                    } else {
+                        to_press
+                    };
 
                     //Press goes first to check if already pressed
                     for keycode in to_press {
