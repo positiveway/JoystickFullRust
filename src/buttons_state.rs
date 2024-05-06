@@ -8,6 +8,7 @@ use std::collections::HashMap;
 use std::hash::Hash;
 use strum::IntoEnumIterator;
 use strum_macros::Display;
+use crate::utils::{get_or_default, get_or_err};
 
 #[derive(Display, Copy, Clone, Debug, Serialize, Deserialize)]
 pub enum Command {
@@ -28,23 +29,6 @@ pub struct ButtonsState {
     pub queue: Commands,
 }
 
-pub fn get_or_default<'a, K: Hash + Eq + Sized + std::fmt::Display, V: Default + Copy>(
-    m: &'a HashMap<K, V>,
-    key: &'a K,
-) -> V {
-    match m.get(key) {
-        None => V::default(),
-        Some(value) => *value,
-    }
-}
-
-pub fn get_or_err<'a, K: Hash + Eq + Sized + std::fmt::Display, V>(
-    m: &'a HashMap<K, V>,
-    key: &'a K,
-) -> Result<&'a V> {
-    m.get(key)
-        .ok_or_else(|| color_eyre::eyre::Report::msg(format!("No mapping for '{}'", key)))
-}
 
 impl ButtonsState {
     pub fn new(buttons_layout: ButtonsLayout, repeat_keys: bool) -> Self {
@@ -75,6 +59,7 @@ impl ButtonsState {
         }
     }
 
+    #[inline]
     pub fn press_keycodes(&mut self, key_codes: KeyCodes, always_press: bool) -> Result<()> {
         if key_codes.len() == 1 {
             let key_code = key_codes[0];
@@ -93,6 +78,7 @@ impl ButtonsState {
         Ok(())
     }
 
+    #[inline]
     pub fn release_keycodes(&mut self, key_codes: KeyCodes, always_release: bool) -> Result<()> {
         for key_code in key_codes.iter().rev() {
             if !self.special_codes.contains(key_code) {
@@ -105,6 +91,7 @@ impl ButtonsState {
         Ok(())
     }
 
+    #[inline]
     pub fn press(&mut self, button_name: ButtonName, always_press: bool) -> Result<()> {
         if self.special_buttons.contains(&button_name) {
             return Ok(());
@@ -116,6 +103,7 @@ impl ButtonsState {
         Ok(())
     }
 
+    #[inline]
     fn release_raw(&mut self, button_name: ButtonName) -> Result<()> {
         if self.special_buttons.contains(&button_name) {
             return Ok(());
@@ -127,6 +115,7 @@ impl ButtonsState {
         Ok(())
     }
 
+    #[inline]
     pub fn _release_all(&mut self, always_release: bool) -> Result<()> {
         for key_code in self.pressed.clone().keys() {
             self.release_keycodes(vec![*key_code], always_release)?;
@@ -134,14 +123,17 @@ impl ButtonsState {
         Ok(())
     }
 
+    #[inline]
     pub fn release_all_soft(&mut self) -> Result<()> {
         self._release_all(false)
     }
 
+    #[inline]
     pub fn release_all_hard(&mut self) -> Result<()> {
         self._release_all(true)
     }
 
+    #[inline]
     pub fn release(&mut self, button_name: ButtonName) -> Result<()> {
         if button_name == self.RESET_BTN {
             self.release_all_hard()?;

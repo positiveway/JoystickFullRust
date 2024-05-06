@@ -28,28 +28,33 @@ pub struct Coords {
 }
 
 impl Coords {
+    #[inline]
     pub fn reset(&mut self) {
         self.x = None;
         self.y = None;
     }
 
+    #[inline]
     fn update_one_coord(prev: &mut Option<f32>, new: Option<f32>) {
         if new.is_some() {
             *prev = new;
         }
     }
 
+    #[inline]
     fn update_one_if_not_init(prev: &mut Option<f32>, new: Option<f32>) {
         if prev.is_none() {
             Self::update_one_coord(prev, new);
         }
     }
 
+    #[inline]
     pub fn update(&mut self, new: &Self) {
         Self::update_one_coord(&mut self.x, new.x);
         Self::update_one_coord(&mut self.y, new.y);
     }
 
+    #[inline]
     pub fn update_if_not_init(&mut self, new: &Self) {
         Self::update_one_if_not_init(&mut self.x, new.x);
         Self::update_one_if_not_init(&mut self.y, new.y);
@@ -66,24 +71,29 @@ impl Coords {
     //     Self::set_one_coord(&mut self.y, prev.y);
     // }
 
+    #[inline]
     pub fn any_is_not_init(&self) -> bool {
         self.x.is_none() || self.y.is_none()
     }
 
+    #[inline]
     pub fn any_changes(&self) -> bool {
         self.x.is_some() || self.y.is_some()
     }
 
+    #[inline]
     pub fn rotate(&self, rotation: i16) -> Option<Self> {
         Vector::from_coords(*self).and_then(|vector: Vector| {
             Some(rotate_around_center(vector, rotation as f32).as_coords())
         })
     }
 
+    #[inline]
     pub fn try_rotate(&self, rotation: i16) -> Self {
         self.rotate(rotation).unwrap_or(*self)
     }
 
+    #[inline]
     pub fn magnitude(&self) -> f32 {
         match (self.x, self.y) {
             (Some(x), Some(y)) => x.hypot(y),
@@ -92,6 +102,7 @@ impl Coords {
     }
 }
 
+#[inline]
 fn option_to_string(value: Option<f32>) -> String {
     match value {
         None => "None".to_string(),
@@ -117,6 +128,7 @@ struct CoordsDiff {
 }
 
 impl CoordsDiff {
+    #[inline]
     pub fn convert(&self, multiplier: u16) -> ConvertedCoordsDiff {
         ConvertedCoordsDiff {
             x: convert_diff(self.x, multiplier),
@@ -124,6 +136,7 @@ impl CoordsDiff {
         }
     }
 
+    #[inline]
     pub fn is_any_changes(&self) -> bool {
         self.x != 0.0 || self.y != 0.0
     }
@@ -136,11 +149,13 @@ struct ConvertedCoordsDiff {
 }
 
 impl ConvertedCoordsDiff {
+    #[inline]
     pub fn is_any_changes(&self) -> bool {
         self.x != 0 || self.y != 0
     }
 }
 
+#[inline]
 fn calc_diff_one_coord(prev_coord: Option<f32>, cur_coord: Option<f32>) -> f32 {
     match (prev_coord, cur_coord) {
         (Some(prev_value), Some(cur_value)) => cur_value - prev_value,
@@ -148,6 +163,7 @@ fn calc_diff_one_coord(prev_coord: Option<f32>, cur_coord: Option<f32>) -> f32 {
     }
 }
 
+#[inline]
 fn convert_diff(value: f32, multiplier: u16) -> Coord {
     (value * multiplier as f32).round() as Coord
 }
@@ -170,6 +186,7 @@ impl CoordsState {
         }
     }
 
+    #[inline]
     pub fn any_changes(&self) -> bool {
         self.cur.any_changes()
     }
@@ -178,19 +195,23 @@ impl CoordsState {
     //     self.cur.set_prev_if_cur_is_none(&self.prev);
     // }
 
+    #[inline]
     pub fn reset(&mut self) {
         self.prev.reset();
         self.cur.reset();
     }
 
+    #[inline]
     pub fn reset_current(&mut self) {
         self.cur.reset();
     }
 
+    #[inline]
     pub fn update(&mut self) {
         self.prev.update(&self.cur)
     }
 
+    #[inline]
     pub fn update_if_not_init(&mut self) {
         self.prev.update_if_not_init(&self.cur);
     }
@@ -225,6 +246,7 @@ impl CoordsState {
         // }
     // }
 
+    #[inline]
     pub fn cur_pos(&self) -> Coords {
         Coords {
             x: self.cur.x.or(self.prev.x),
@@ -232,6 +254,7 @@ impl CoordsState {
         }
     }
 
+    #[inline]
     pub fn diff(&mut self) -> CoordsDiff {
         let cur_coords = match self.use_rotation {
             true => self.cur_pos().try_rotate(self.finger_rotation),
@@ -249,6 +272,7 @@ impl CoordsState {
         diff
     }
 
+    #[inline]
     pub fn convert_diff(&mut self, multiplier: u16) -> ConvertedCoordsDiff {
         self.diff().convert(multiplier)
     }
@@ -286,12 +310,14 @@ impl PadsCoords {
         }
     }
 
+    #[inline]
     pub fn reset(&mut self) {
         self.left_pad.reset();
         self.right_pad.reset();
         self.stick.reset();
     }
 
+    #[inline]
     pub fn reset_current(&mut self) {
         self.left_pad.reset_current();
         self.right_pad.reset_current();
@@ -304,12 +330,14 @@ impl PadsCoords {
     //     self.stick.set_prev_if_cur_is_none();
     // }
 
+    #[inline]
     pub fn update(&mut self) {
         self.left_pad.update();
         self.right_pad.update();
         self.stick.update();
     }
 
+    #[inline]
     pub fn update_if_not_init(&mut self) {
         self.left_pad.update_if_not_init();
         self.right_pad.update_if_not_init();
@@ -317,10 +345,12 @@ impl PadsCoords {
     }
 }
 
+#[inline(always)]
 fn is_jitter(value: f32, jitter_threshold: f32) -> bool {
     value.abs() <= jitter_threshold
 }
 
+#[inline]
 fn discard_jitter(prev_value: Option<f32>, new_value: f32, jitter_threshold: f32) -> Option<f32> {
     match prev_value {
         None => Some(new_value),
@@ -334,6 +364,7 @@ fn discard_jitter(prev_value: Option<f32>, new_value: f32, jitter_threshold: f32
     }
 }
 
+#[inline]
 fn assign_pad_stick_event(
     coords_state: &mut CoordsState,
     jitter_threshold: f32,

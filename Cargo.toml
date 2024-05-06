@@ -8,6 +8,7 @@ edition = "2021"
 steamy_base = { path = "/home/user/RustroverProjects/steamy_base" }
 #rusb = "0.9"
 #gilrs = "0.10"
+ahash = "0.8"
 bytes = "1.6"
 color-eyre = "0.6"
 lazy_static = "1.4"

@@ -18,8 +18,8 @@ fn exponential_smoothing(a: f64, x: f64, x_prev: f64) -> f64 {
 
 fn create_filter(cutoff: f64, beta: f64) -> impl FnMut(f64, f64) -> f64 {
     let mut self_filter = Filter {
-        cutoff: cutoff,
-        beta: beta,
+        cutoff,
+        beta,
         d_cutoff: 1.0,
         dx0: 0.0,
         x_prev: 0.0,
@@ -75,13 +75,14 @@ trait_set! {
     core::ops::Neg<Output=T>;
 }
 
-pub fn hypot<T: Numeric<T>>(a: T, b: T) -> f64 {
-    (a * a + b * b).into().sqrt()
-}
+// pub fn hypot<T: Numeric<T>>(a: T, b: T) -> f64 {
+//     (a * a + b * b).into().sqrt()
+// }
 
 const RADIANS_TO_DEGREES: f32 = 180f32 / std::f32::consts::PI;
 const DEGREES_TO_RADIANS: f32 = std::f32::consts::PI / 180f32;
 
+#[inline]
 pub fn resolve_angle(angle: f32) -> f32 {
     // Important to round the source angle in the beginning, not the result.
     // Otherwise, value can become greater than 360 if the source angle is greater than 359.5 but lower than 360
@@ -106,6 +107,7 @@ pub fn resolve_angle(angle: f32) -> f32 {
 //     }
 // }
 
+#[inline]
 pub fn calc_angle(x: f32, y: f32) -> f32 {
     let angle_in_radians = y.atan2(x);
     // let angle_in_degrees = angle_in_radians.to_degrees();
@@ -118,6 +120,7 @@ pub fn calc_angle(x: f32, y: f32) -> f32 {
     angle
 }
 
+#[inline]
 pub fn distance(x: f32, y: f32) -> f32 {
     x.hypot(y)
 }
@@ -128,16 +131,16 @@ pub struct Vector {
     pub y: f32,
 }
 
-pub const NONE_VAL_ERR_MSG: &str = "Value is None";
-pub const CONVERT_ERR_MSG: &str = "Could not convert";
-
 impl Vector {
+    #[inline(always)]
     pub fn as_coords(&self) -> Coords {
         Coords {
             x: Some(self.x),
             y: Some(self.y),
         }
     }
+
+    #[inline(always)]
     pub fn from_2_coords(point1: Coords, point2: Coords) -> Option<Vector> {
         match (point1.x, point1.y, point2.x, point2.y) {
             (Some(point1_x), Some(point1_y), Some(point2_x), Some(point2_y)) => Some(Self {
@@ -149,6 +152,7 @@ impl Vector {
     }
 
     //color-eyre takes a lot of CPU when frequently constructing error messages
+    #[inline(always)]
     pub fn from_coords(coords: Coords) -> Option<Self> {
         match (coords.x, coords.y) {
             (Some(x), Some(y)) => Some(Self { x, y }),
@@ -156,14 +160,17 @@ impl Vector {
         }
     }
 
+    #[inline]
     pub fn angle(&self) -> f32 {
         calc_angle(self.x, self.y)
     }
 
+    #[inline]
     pub fn distance(&self) -> f32 {
         self.x.hypot(self.y)
     }
 
+    #[inline]
     pub fn zero() -> Self {
         Self { x: 0.0, y: 0.0 }
     }
@@ -172,6 +179,7 @@ impl Vector {
 impl std::ops::Add<Vector> for Vector {
     type Output = Vector;
 
+    #[inline]
     fn add(self, other: Vector) -> Vector {
         Vector {
             x: self.x + other.x,
@@ -181,6 +189,7 @@ impl std::ops::Add<Vector> for Vector {
 }
 
 impl std::ops::AddAssign<Vector> for Vector {
+    #[inline]
     fn add_assign(&mut self, other: Vector) {
         self.x += other.x;
         self.y += other.y;
@@ -190,6 +199,7 @@ impl std::ops::AddAssign<Vector> for Vector {
 impl std::ops::Sub<Vector> for Vector {
     type Output = Vector;
 
+    #[inline]
     fn sub(self, other: Vector) -> Vector {
         Vector {
             x: self.x - other.x,
@@ -199,12 +209,14 @@ impl std::ops::Sub<Vector> for Vector {
 }
 
 impl std::ops::SubAssign<Vector> for Vector {
+    #[inline]
     fn sub_assign(&mut self, other: Vector) {
         self.x -= other.x;
         self.y -= other.y;
     }
 }
 
+#[inline]
 pub fn rotate_by_angle(point1: Vector, mut point2: Vector, rotation_angle: f32) -> Vector {
     let rotation_angle = rotation_angle * DEGREES_TO_RADIANS;
     let sin: f32 = rotation_angle.sin();
@@ -222,6 +234,7 @@ pub fn rotate_by_angle(point1: Vector, mut point2: Vector, rotation_angle: f32) 
     rotated_point
 }
 
+#[inline]
 pub fn rotate_around_center(point: Vector, rotation_angle: f32) -> Vector {
     rotate_by_angle(Vector::zero(), point, rotation_angle)
 }
@@ -260,6 +273,7 @@ impl<T: Numeric<T>> RangeConverterBuilder<T> {
         Self { slope, pre_calc }
     }
 
+    #[inline]
     pub fn convert(&self, input: T) -> T {
         let output = self.slope * input + self.pre_calc;
         output
@@ -301,6 +315,7 @@ pub fn pivot_angle_to_allowed_range(
     }
 }
 
+#[inline(always)]
 pub fn are_options_equal<T: PartialEq>(value1: Option<T>, value2: Option<T>) -> bool {
     match (value1, value2) {
         (Some(value1), Some(value2)) => value1 == value2,
@@ -309,6 +324,7 @@ pub fn are_options_equal<T: PartialEq>(value1: Option<T>, value2: Option<T>) -> 
     }
 }
 
+#[inline(always)]
 pub fn are_options_different<T: PartialEq>(value1: Option<T>, value2: Option<T>) -> bool {
     !are_options_equal(value1, value2)
 }
@@ -323,6 +339,7 @@ pub struct ZonesMapper<T: Clone + Display + PartialEq> {
 }
 
 impl<T: Clone + Display + PartialEq> ZonesMapper<T> {
+    #[inline]
     pub fn get_commands_diff(
         &mut self,
         x: Option<f32>,
@@ -357,6 +374,8 @@ impl<T: Clone + Display + PartialEq> ZonesMapper<T> {
             false => (vec![], vec![], vec![]),
         }
     }
+
+    #[inline]
     pub fn detect_zone(&mut self, x: Option<f32>, y: Option<f32>) -> (bool, Option<Vec<T>>) {
         let (zone, angle) = match (x, y) {
             (Some(x), Some(y)) => {
