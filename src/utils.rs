@@ -5,23 +5,20 @@ use std::hash::Hash;
 use trait_set::trait_set;
 
 trait_set! {
-    pub trait ContainerElement = PartialOrd + Hash + Eq + Sized + Display;
+    pub trait ContainerElement = Copy + Eq + Sized + Display;
     pub trait SetElement = Hash + Eq;
 }
 
 pub type SetDiff<'a, T> = Difference<'a, T, RandomState>;
 
-
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub struct Container<T: ContainerElement> {
-    storage: HashSet<T>,
+    storage: Vec<T>,
 }
 
 impl<T: ContainerElement> Container<T> {
     pub fn new() -> Self {
-        Self {
-            storage: HashSet::new(),
-        }
+        Self { storage: vec![] }
     }
 
     pub fn from(vec: Vec<T>) -> Self {
@@ -34,11 +31,31 @@ impl<T: ContainerElement> Container<T> {
 
     #[inline]
     pub fn contains(&self, element: &T) -> bool {
-        self.storage.contains(element)
+        let len = self.storage.len();
+        for ind in 0..len {
+            if self.storage[ind] == *element {
+                return true;
+            }
+        }
+        false
+    }
+
+    #[inline]
+    pub fn difference(&self, other: &Container<T>) -> Vec<T> {
+        let mut diff = vec![];
+
+        let len = self.storage.len();
+        for ind in 0..len {
+            let element = self.storage[ind];
+            if !other.contains(&element) {
+                diff.push(element)
+            }
+        }
+        diff
     }
 
     pub fn push(&mut self, element: T) {
-        self.storage.insert(element);
+        self.storage.push(element);
     }
 }
 

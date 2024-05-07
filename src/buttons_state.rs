@@ -1,10 +1,9 @@
-use crate::configs::{ButtonsLayout};
+use crate::configs::ButtonsLayout;
 use crate::match_event::ButtonName;
 use crate::utils::{get_or_default, get_or_err, Container};
 use ahash::AHashMap;
 use color_eyre::Result;
 use serde::{Deserialize, Serialize};
-use std::borrow::Borrow;
 use strum::IntoEnumIterator;
 use strum_macros::Display;
 use universal_input::{KeyCode, KeyCodes};

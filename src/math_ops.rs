@@ -1,13 +1,11 @@
 use crate::pads_ops::Coords;
-use ahash::{HashSet, HashSetExt};
+use crate::utils::{Container, ContainerElement};
 use color_eyre::eyre::{bail, Result};
 use log::debug;
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
-use std::hash::Hash;
 use std::ops::Add;
 use trait_set::trait_set;
-use crate::utils::SetElement;
 
 fn smoothing_factor(t_e: f64, cutoff: f64) -> f64 {
     let r = 2.0 * std::f64::consts::PI * cutoff * t_e;
@@ -332,7 +330,7 @@ pub fn are_options_different<T: PartialEq>(value1: Option<T>, value2: Option<T>)
 }
 
 #[derive(PartialEq, Clone, Debug)]
-pub struct ZonesMapper<T: Copy + Display + SetElement> {
+pub struct ZonesMapper<T: ContainerElement> {
     angle_to_value: [Option<Vec<T>>; 360],
     angle_to_zone: [u8; 360],
     prev_zone: Option<u8>,
@@ -340,7 +338,7 @@ pub struct ZonesMapper<T: Copy + Display + SetElement> {
     threshold: f32,
 }
 
-impl<T: Copy + Display + SetElement> ZonesMapper<T> {
+impl<T: ContainerElement> ZonesMapper<T> {
     #[inline]
     pub fn get_commands_diff(
         &mut self,
@@ -356,14 +354,11 @@ impl<T: Copy + Display + SetElement> ZonesMapper<T> {
                 (Some(prev_value), Some(cur_value)) => {
                     let to_press_full = cur_value.clone();
 
-                    let prev_value: HashSet<T> = HashSet::from_iter(prev_value);
-                    let cur_value: HashSet<T> = HashSet::from_iter(cur_value);
+                    let prev_value = Container::from(prev_value);
+                    let cur_value = Container::from(cur_value);
 
                     let to_release = prev_value.difference(&cur_value);
                     let to_press = cur_value.difference(&prev_value);
-
-                    let to_release: Vec<T> = to_release.into_iter().map(|x| *x).collect();
-                    let to_press: Vec<T> = to_press.into_iter().map(|x| *x).collect();
 
                     // let mut to_release = vec![];
                     // for prev_element_val in &prev_value {
