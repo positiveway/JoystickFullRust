@@ -1,10 +1,9 @@
-use serde::{Deserialize, Serialize};
-use strum_macros::Display;
 use crate::configs::FingerRotation;
 use crate::math_ops::{rotate_around_center, Vector};
 use log::{debug, info};
+use serde::{Deserialize, Serialize};
+use strum_macros::Display;
 use universal_input::Coord;
-
 
 #[derive(Display, Eq, Hash, PartialEq, Default, Copy, Clone, Debug, Serialize, Deserialize)]
 pub enum MouseMode {
@@ -251,9 +250,11 @@ impl CoordsState {
         let (prev_coords, cur_coords) = match self.use_rotation {
             true => (
                 self.prev.try_rotate(self.finger_rotation),
-                self.cur_pos().try_rotate(self.finger_rotation),
+                self.cur_pos().rotate(self.finger_rotation).unwrap_or(self.cur),
+                // self.cur_pos().try_rotate(self.finger_rotation),
             ),
-            false => (self.prev, self.cur_pos()),
+            false => (self.prev, self.cur),
+            // false => (self.prev, self.cur_pos()),
         };
 
         let diff = CoordsDiff {
@@ -342,7 +343,11 @@ pub fn is_jitter(value: f32, jitter_threshold: f32) -> bool {
 }
 
 #[inline]
-pub fn discard_jitter(prev_value: Option<f32>, new_value: f32, jitter_threshold: f32) -> Option<f32> {
+pub fn discard_jitter(
+    prev_value: Option<f32>,
+    new_value: f32,
+    jitter_threshold: f32,
+) -> Option<f32> {
     match prev_value {
         None => Some(new_value),
         Some(prev_value) => {
