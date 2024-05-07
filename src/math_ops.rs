@@ -7,6 +7,7 @@ use std::fmt::Display;
 use std::hash::Hash;
 use std::ops::Add;
 use trait_set::trait_set;
+use crate::utils::SetElement;
 
 fn smoothing_factor(t_e: f64, cutoff: f64) -> f64 {
     let r = 2.0 * std::f64::consts::PI * cutoff * t_e;
@@ -331,7 +332,7 @@ pub fn are_options_different<T: PartialEq>(value1: Option<T>, value2: Option<T>)
 }
 
 #[derive(PartialEq, Clone, Debug)]
-pub struct ZonesMapper<T: Copy + Display + Eq + Hash> {
+pub struct ZonesMapper<T: Copy + Display + SetElement> {
     angle_to_value: [Option<Vec<T>>; 360],
     angle_to_zone: [u8; 360],
     prev_zone: Option<u8>,
@@ -339,7 +340,7 @@ pub struct ZonesMapper<T: Copy + Display + Eq + Hash> {
     threshold: f32,
 }
 
-impl<T: Copy + Display + Eq + Hash> ZonesMapper<T> {
+impl<T: Copy + Display + SetElement> ZonesMapper<T> {
     #[inline]
     pub fn get_commands_diff(
         &mut self,

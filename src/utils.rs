@@ -1,25 +1,23 @@
 use ahash::{AHashMap, AHasher, HashSet, HashSetExt, RandomState};
 use std::collections::hash_set::Difference;
+use std::fmt::Display;
 use std::hash::Hash;
+use trait_set::trait_set;
 
-// pub type SetDiff<'a, T> = Difference<'a, T, RandomState>;
-//
-// #[inline]
-// pub fn hashset_to_diff<'a, T: Hash + Eq>(set: &HashSet<T>) -> SetDiff<'a, T>{
-//     set.difference(&HashSet::new())
-// }
-//
-// #[inline]
-// pub fn empty_set_diff<'a, T: Hash + Eq>() -> SetDiff<'a, T>{
-//     hashset_to_diff(&HashSet::new())
-// }
+trait_set! {
+    pub trait ContainerElement = PartialOrd + Hash + Eq + Sized + Display;
+    pub trait SetElement = Hash + Eq;
+}
+
+pub type SetDiff<'a, T> = Difference<'a, T, RandomState>;
+
 
 #[derive(Eq, PartialEq, Clone, Debug)]
-pub struct Container<T: Hash + Eq + Sized + std::fmt::Display> {
+pub struct Container<T: ContainerElement> {
     storage: HashSet<T>,
 }
 
-impl<T: Hash + Eq + Sized + std::fmt::Display> Container<T> {
+impl<T: ContainerElement> Container<T> {
     pub fn new() -> Self {
         Self {
             storage: HashSet::new(),

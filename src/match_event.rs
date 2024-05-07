@@ -2,7 +2,7 @@ use color_eyre::eyre::{bail, Result};
 use serde::{Deserialize, Serialize};
 use strum_macros::{AsRefStr, Display, EnumIter, EnumString};
 
-#[derive(EnumIter, EnumString, AsRefStr, Display, Default, Eq, Hash, PartialEq, Copy, Clone, Debug, Serialize, Deserialize, )]
+#[derive(PartialOrd, EnumIter, EnumString, AsRefStr, Display, Default, Eq, Hash, PartialEq, Copy, Clone, Debug, Serialize, Deserialize, )]
 // #[strum(serialize_all = "snake_case")]
 pub enum ButtonName {
     BtnUp_SideL,
