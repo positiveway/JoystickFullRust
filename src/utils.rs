@@ -27,7 +27,7 @@ impl<T: ContainerElement> Container<T> {
     pub fn from(vec: Vec<T>) -> Self {
         let mut container = Self::new();
         for element in vec {
-            container.storage.insert(element);
+            container.push(element);
         }
         container
     }
