@@ -1,4 +1,6 @@
+use crate::key_codes::key_code_from_config;
 use crate::match_event::ButtonName;
+use ahash::AHashMap;
 use color_eyre::eyre::{bail, Result};
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
@@ -6,9 +8,7 @@ use std::env::current_dir;
 use std::fs::read_to_string;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
-use ahash::AHashMap;
 use universal_input::{KeyCode, KeyCodes};
-use crate::key_codes::key_code_from_config;
 
 const PROJECT_NAME: &str = "JoystickFullRust";
 
@@ -175,8 +175,10 @@ impl LayoutConfigs {
                 }
             },
         }
-        layout_configs.buttons_layout =
-            ButtonsLayout::load(layout_configs._buttons_layout_raw.clone())?;
+        layout_configs.buttons_layout = ButtonsLayout::load(
+            layout_configs._buttons_layout_raw.clone(),
+            layout_configs.general.gaming_mode,
+        )?;
 
         Ok(layout_configs)
     }
@@ -191,9 +193,9 @@ pub struct ButtonsLayout {
 }
 
 impl ButtonsLayout {
-    pub fn load(layout_raw: ButtonsLayoutRaw) -> Result<Self> {
-        let mut switch_mode_btn: ButtonName = Default::default();
-        let mut reset_btn: ButtonName = Default::default();
+    pub fn load(layout_raw: ButtonsLayoutRaw, gaming_mode: bool) -> Result<Self> {
+        let mut switch_mode_btn = ButtonName::DefaultForSpecialBtns;
+        let mut reset_btn = ButtonName::DefaultForSpecialBtns;
 
         let mut layout: AHashMap<ButtonName, KeyCodes> = AHashMap::new();
 
@@ -258,7 +260,10 @@ impl ButtonsLayout {
         string_to_key_code(ButtonName::ExtraBtn_SideR, layout_raw.ExtraBtn_SideR)?;
         string_to_key_code(ButtonName::ExtraBtnCentral, layout_raw.ExtraBtnCentral)?;
 
-        reset_btn.bail_if_not_init()?;
+        if !gaming_mode {
+            switch_mode_btn.bail_if_special_not_init()?;
+            reset_btn.bail_if_special_not_init()?;
+        }
 
         Ok(Self {
             //

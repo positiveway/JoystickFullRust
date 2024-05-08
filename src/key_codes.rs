@@ -4,7 +4,7 @@ use crate::match_event::ButtonName;
 use universal_input::{KeyCode, KeyCodes};
 
 fn assign_special_button(special_button: &mut ButtonName, value: ButtonName) -> color_eyre::Result<KeyCode> {
-    if *special_button != ButtonName::None {
+    if *special_button != ButtonName::DefaultForSpecialBtns {
         bail!(
             "Duplicate of special button: '{}'. Value already exists: '{}'",
             value,

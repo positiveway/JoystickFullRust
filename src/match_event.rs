@@ -47,16 +47,17 @@ pub enum ButtonName {
     //
     #[default]
     None,
+    DefaultForSpecialBtns,
 }
 
 impl ButtonName {
-    pub fn is_not_init(self) -> bool {
-        self == Self::default()
+    pub fn is_special_not_init(self) -> bool {
+        self == Self::DefaultForSpecialBtns
     }
 
-    pub fn bail_if_not_init(self) -> Result<()> {
-        if self.is_not_init() {
-            bail!("'{self}' button is not specified")
+    pub fn bail_if_special_not_init(self) -> Result<()> {
+        if self.is_special_not_init() {
+            bail!("Special button '{self}' is not specified")
         } else {
             Ok(())
         }
