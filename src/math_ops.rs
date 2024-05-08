@@ -301,6 +301,10 @@ impl ZoneAllowedRange {
             diagonal,
         })
     }
+
+    pub fn from_one_value(range: Angle) -> Result<Self> {
+        Self::new(range, range, range)
+    }
 }
 
 pub fn pivot_angle_to_allowed_range(

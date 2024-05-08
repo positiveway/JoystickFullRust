@@ -40,6 +40,7 @@ fn writing_thread(
     let scroll_configs = layout_configs.scroll;
     let mouse_speed = layout_configs.general.mouse_speed;
     let use_shift_movement = layout_configs.movement.use_shift;
+    let zone_range = layout_configs.zone_range;
 
     let mut buttons_state = ButtonsState::new(
         layout_configs.buttons_layout,
@@ -55,7 +56,7 @@ fn writing_thread(
         vec![KeyCode::KEY_S],
         vec![KeyCode::KEY_D],
     ];
-    let _wasd_zone_range = ZoneAllowedRange::new(22, 22, 22)?;
+    let _wasd_zone_range = ZoneAllowedRange::from_one_value(zone_range.wasd)?;
     let mut wasd_zone_mapper = ZonesMapper::gen_from_4_into_8(
         _wasd_zones,
         90,

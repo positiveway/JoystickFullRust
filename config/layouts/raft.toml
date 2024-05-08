@@ -32,6 +32,9 @@ gaming_mode = true
 repeat_keys = false
 triggers_threshold_pct = 20
 mouse_speed = 400
+[ZoneRange]
+WASD = 22
+stick = 45
 [Movement]
 start_threshold_pct = 30
 shift_threshold_pct = 80

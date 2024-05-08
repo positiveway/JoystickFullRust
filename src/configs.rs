@@ -1,7 +1,8 @@
 use crate::key_codes::key_code_from_config;
 use crate::match_event::ButtonName;
+use crate::math_ops::Angle;
 use ahash::AHashMap;
-use color_eyre::eyre::{bail, Result};
+use color_eyre::eyre::{bail, OptionExt, Result};
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use std::env::current_dir;
@@ -75,6 +76,25 @@ impl MainConfigs {
 }
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
+pub struct ZoneRangeConfigs {
+    #[serde(alias = "WASD")]
+    _wasd: Option<Angle>,
+    #[serde(skip)]
+    pub wasd: Angle,
+
+    pub stick: Angle,
+}
+
+impl ZoneRangeConfigs {
+    pub fn load(&mut self, gaming_mode: bool) -> Result<()> {
+        if gaming_mode {
+            self.wasd = self._wasd.ok_or_eyre("ZoneRange: WASD has to be specified in gaming mode")?;
+        }
+        Ok(())
+    }
+}
+
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct MovementConfigs {
     #[serde(alias = "start_threshold_pct")]
     _start_threshold_pct: u8,
@@ -90,20 +110,16 @@ pub struct MovementConfigs {
 }
 
 impl MovementConfigs {
+    pub fn _load(&mut self) {
+        self.start_threshold = convert_pct(self._start_threshold_pct);
+        self.shift_threshold = convert_pct(self._shift_threshold_pct);
+        self.use_shift = self._shift_threshold_pct > 0 && self._shift_threshold_pct < 100;
+    }
+
     pub fn load(&self) -> Self {
-        Self {
-            start_threshold: convert_pct(self._start_threshold_pct),
-            shift_threshold: convert_pct(self._shift_threshold_pct),
-
-            _start_threshold_pct: self._start_threshold_pct,
-            _shift_threshold_pct: self._shift_threshold_pct,
-
-            use_shift: if self._shift_threshold_pct <= 0 || self._shift_threshold_pct >= 100 {
-                false
-            } else {
-                true
-            },
-        }
+        let mut movement = self.clone();
+        movement._load();
+        movement
     }
 }
 
@@ -138,6 +154,9 @@ pub struct LayoutConfigs {
     #[serde(alias = "FingerRotation")]
     pub finger_rotation: FingerRotation,
 
+    #[serde(alias = "ZoneRange")]
+    pub zone_range: ZoneRangeConfigs,
+
     #[serde(alias = "Movement")]
     _movement: Option<MovementConfigs>,
     #[serde(skip)]
@@ -158,14 +177,18 @@ impl LayoutConfigs {
         layout_configs.general.load()?;
 
         match layout_configs.general.gaming_mode {
-            true => match layout_configs._movement {
-                None => {
-                    bail!("'Movement' has to be specified in desktop mode")
+            true => {
+                layout_configs.zone_range.load(layout_configs.general.gaming_mode)?;
+
+                match layout_configs._movement {
+                    None => {
+                        bail!("'Movement' has to be specified in gaming mode")
+                    }
+                    Some(ref movement) => {
+                        layout_configs.movement = movement.load();
+                    }
                 }
-                Some(ref movement) => {
-                    layout_configs.movement = movement.load();
-                }
-            },
+            }
             false => match layout_configs._scroll {
                 None => {
                     bail!("'Scroll' has to be specified in desktop mode")
