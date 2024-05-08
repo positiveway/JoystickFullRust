@@ -411,8 +411,7 @@ impl<T: ZoneValue> ZonesMapper<T> {
             expanded_values[ind * 2 + 1] = [
                 values[ind].clone(),
                 values[(ind + 1) % values.len()].clone(),
-            ]
-                .concat();
+            ].concat();
         }
 
         Self::gen_from(
