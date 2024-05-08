@@ -8,6 +8,7 @@ use log::debug;
 use std::io::prelude::*;
 use std::thread::sleep;
 use std::time::Duration;
+use color_eyre::eyre::bail;
 
 pub fn match_button(button: &SteamyButton) -> color_eyre::Result<ButtonName> {
     Ok(match button {
@@ -21,8 +22,8 @@ pub fn match_button(button: &SteamyButton) -> color_eyre::Result<ButtonName> {
         SteamyButton::Up => ButtonName::PadUp_SideL,
         SteamyButton::LeftPadPressed => ButtonName::PadAsBtn_SideL, //unreliable: triggered for both stick and left pad
         SteamyButton::LeftPadTouch => ButtonName::PadAsTouch_SideL,
+        SteamyButton::StickTouch => bail!("Cannot happen"),
         SteamyButton::StickPressed => ButtonName::StickAsBtn,
-        SteamyButton::StickTouch => ButtonName::None,
         SteamyButton::RightPadPressed => ButtonName::PadAsBtn_SideR,
         SteamyButton::RightPadTouch => ButtonName::PadAsTouch_SideR,
         SteamyButton::Back => ButtonName::ExtraBtn_SideL,

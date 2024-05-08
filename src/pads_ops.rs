@@ -6,6 +6,7 @@ use strum_macros::Display;
 use universal_input::{Coord, KeyCode};
 use universal_input::KeyCode::KEY_LEFTSHIFT;
 use crate::buttons_state::ButtonsState;
+use crate::utils::are_options_different;
 
 #[derive(Display, Eq, Hash, PartialEq, Default, Copy, Clone, Debug, Serialize, Deserialize)]
 pub enum MouseMode {
@@ -386,7 +387,7 @@ pub fn is_jitter(value: f32, jitter_threshold: f32) -> bool {
 }
 
 #[inline]
-pub fn discard_jitter(
+pub fn discard_jitter_for_pad(
     prev_value: Option<f32>,
     new_value: f32,
     jitter_threshold: f32,
@@ -400,5 +401,18 @@ pub fn discard_jitter(
                 false => Some(new_value),
             }
         }
+    }
+}
+
+#[inline]
+pub fn discard_jitter_for_stick(
+    prev_value: Option<f32>,
+    new_value: f32,
+    jitter_threshold: f32,
+) -> Option<f32> {
+    if are_options_different(prev_value, Some(new_value)) && new_value == 0.0 {
+        Some(0.0)
+    } else {
+        discard_jitter_for_pad(prev_value, new_value, jitter_threshold)
     }
 }

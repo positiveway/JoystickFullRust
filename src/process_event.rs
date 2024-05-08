@@ -209,9 +209,18 @@ pub fn process_pad_stick(
     };
 
     if event.event_type == EventTypeName::AxisChanged {
-        if event.value == 0f32 {
-            return Ok(TransformStatus::Discarded);
-        };
+        //Discard 0.0 events for pads
+        match event.axis {
+            AxisName::PadX_SideL
+            | AxisName::PadY_SideL
+            | AxisName::PadX_SideR
+            | AxisName::PadY_SideR => {
+                if event.value == 0.0 {
+                    return Ok(TransformStatus::Discarded);
+                };
+            }
+            _ => {}
+        }
 
         if let Some(event_to_send) = match event.axis {
             AxisName::PadX_SideL => Some(MouseEvent::LeftPad(PadStickEvent::MovedX(event.value))),
