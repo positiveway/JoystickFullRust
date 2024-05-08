@@ -76,50 +76,43 @@ impl MainConfigs {
 }
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
-pub struct ZoneRangeConfigs {
-    #[serde(alias = "WASD")]
-    _wasd: Option<Angle>,
-    #[serde(skip)]
-    pub wasd: Angle,
+pub struct ZoneMappingConfigs {
+    pub zone_range: Angle,
 
-    pub stick: Angle,
-}
-
-impl ZoneRangeConfigs {
-    pub fn load(&mut self, gaming_mode: bool) -> Result<()> {
-        if gaming_mode {
-            self.wasd = self._wasd.ok_or_eyre("ZoneRange: WASD has to be specified in gaming mode")?;
-        }
-        Ok(())
-    }
-}
-
-#[derive(Clone, Debug, Default, Serialize, Deserialize)]
-pub struct MovementConfigs {
     #[serde(alias = "start_threshold_pct")]
     _start_threshold_pct: u8,
     #[serde(skip)]
     pub start_threshold: f32,
 
     #[serde(alias = "shift_threshold_pct")]
-    _shift_threshold_pct: u8,
+    _shift_threshold_pct: Option<u8>,
     #[serde(skip)]
     pub shift_threshold: f32,
     #[serde(skip)]
     pub use_shift: bool,
 }
 
-impl MovementConfigs {
-    pub fn _load(&mut self) {
+impl ZoneMappingConfigs {
+    pub fn load(&mut self) -> Result<()> {
         self.start_threshold = convert_pct(self._start_threshold_pct);
-        self.shift_threshold = convert_pct(self._shift_threshold_pct);
-        self.use_shift = self._shift_threshold_pct > 0 && self._shift_threshold_pct < 100;
+
+        (self.shift_threshold, self.use_shift) = match self._shift_threshold_pct {
+            None => (0.0, false),
+            Some(value) => {
+                if !(value > 0 && value < 100) {
+                    bail!("Incorrect value for 'shift_threshold': '{}'", value);
+                }
+                (convert_pct(value), true)
+            }
+        };
+
+        Ok(())
     }
 
-    pub fn load(&self) -> Self {
-        let mut movement = self.clone();
-        movement._load();
-        movement
+    pub fn load_and_return(&self) -> Result<Self> {
+        let mut res = self.clone();
+        res.load()?;
+        Ok(res)
     }
 }
 
@@ -154,13 +147,13 @@ pub struct LayoutConfigs {
     #[serde(alias = "FingerRotation")]
     pub finger_rotation: FingerRotation,
 
-    #[serde(alias = "ZoneRange")]
-    pub zone_range: ZoneRangeConfigs,
+    #[serde(alias = "Stick")]
+    pub stick: ZoneMappingConfigs,
 
-    #[serde(alias = "Movement")]
-    _movement: Option<MovementConfigs>,
+    #[serde(alias = "WASD")]
+    _wasd: Option<ZoneMappingConfigs>,
     #[serde(skip)]
-    pub movement: MovementConfigs,
+    pub wasd: ZoneMappingConfigs,
 
     #[serde(alias = "Scroll")]
     _scroll: Option<ScrollConfigs>,
@@ -175,17 +168,18 @@ impl LayoutConfigs {
     pub fn load<S: AsRef<str>>(layout_name: S) -> Result<Self> {
         let mut layout_configs: Self = read_toml(LAYOUTS_DIR.as_path(), layout_name)?;
         layout_configs.general.load()?;
+        let gaming_mode = layout_configs.general.gaming_mode;
 
-        match layout_configs.general.gaming_mode {
+        match gaming_mode {
             true => {
-                layout_configs.zone_range.load(layout_configs.general.gaming_mode)?;
+                layout_configs.stick.load()?;
 
-                match layout_configs._movement {
+                match layout_configs._wasd {
                     None => {
                         bail!("'Movement' has to be specified in gaming mode")
                     }
-                    Some(ref movement) => {
-                        layout_configs.movement = movement.load();
+                    Some(ref wasd) => {
+                        layout_configs.wasd = wasd.load_and_return()?;
                     }
                 }
             }

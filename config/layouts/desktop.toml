@@ -32,8 +32,9 @@ gaming_mode = false
 repeat_keys = false
 triggers_threshold_pct = 30
 mouse_speed = 400
-[ZoneRange]
-stick = 45
+[Stick]
+zone_range = 44
+start_threshold_pct = 30
 [Scroll]
 speed = 600
 horizontal_threshold = 0.08

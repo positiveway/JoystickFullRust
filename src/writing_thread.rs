@@ -6,6 +6,7 @@ use universal_input::KeyCode::KEY_LEFTSHIFT;
 use crate::buttons_state::{ButtonsState, Command};
 use crate::configs::MainConfigs;
 use crate::exec_or_eyre;
+use crate::match_event::ButtonName;
 use crate::math_ops::{ZoneAllowedRange, ZonesMapper};
 use crate::pads_ops::{CoordsState, discard_jitter, MouseMode, PadsCoords};
 use crate::process_event::{ButtonEvent, ButtonReceiver, MouseEvent, MouseReceiver, PadStickEvent};
@@ -32,23 +33,23 @@ fn writing_thread(
     button_receiver: ButtonReceiver,
     configs: MainConfigs,
 ) -> color_eyre::Result<()> {
-    let mut input_emulator = InputEmulator::new()?;
-
+    //Loading Configs
     let writing_interval = configs.mouse_refresh_interval;
     let layout_configs = configs.layout_configs;
     let gaming_mode = layout_configs.general.gaming_mode;
     let scroll_configs = layout_configs.scroll;
     let mouse_speed = layout_configs.general.mouse_speed;
-    let use_shift_movement = layout_configs.movement.use_shift;
-    let zone_range = layout_configs.zone_range;
+
+    let mut pads_coords = PadsCoords::new(&layout_configs.finger_rotation);
 
     let mut buttons_state = ButtonsState::new(
-        layout_configs.buttons_layout,
+        layout_configs.buttons_layout.clone(),
         layout_configs.general.repeat_keys,
     );
 
-    let mut mouse_mode = MouseMode::default();
-    let mut pads_coords = PadsCoords::new(&layout_configs.finger_rotation);
+    //Zone Mapping
+    let WASD_configs = layout_configs.wasd;
+    let _buttons_layout = layout_configs.buttons_layout.layout;
 
     let _wasd_zones: [Vec<KeyCode>; 4] = [
         vec![KeyCode::KEY_W],
@@ -56,13 +57,32 @@ fn writing_thread(
         vec![KeyCode::KEY_S],
         vec![KeyCode::KEY_D],
     ];
-    let _wasd_zone_range = ZoneAllowedRange::from_one_value(zone_range.wasd)?;
+    let _wasd_zone_range = ZoneAllowedRange::from_one_value_with_diagonal(WASD_configs.zone_range)?;
     let mut wasd_zone_mapper = ZonesMapper::gen_from_4_into_8(
         _wasd_zones,
         90,
         &_wasd_zone_range,
-        layout_configs.movement.start_threshold,
+        WASD_configs.start_threshold,
     )?;
+
+    let _stick_zones: [Vec<KeyCode>; 4] = [
+        _buttons_layout[&ButtonName::BtnRight_SideL].clone(),
+        _buttons_layout[&ButtonName::BtnUp_SideL].clone(),
+        _buttons_layout[&ButtonName::BtnLeft_SideL].clone(),
+        _buttons_layout[&ButtonName::BtnDown_SideL].clone(),
+    ];
+    let _stick_zone_range = ZoneAllowedRange::from_one_value_no_diagonal(layout_configs.stick.zone_range)?;
+    let mut stick_zone_mapper = ZonesMapper::gen_from(
+        _stick_zones.to_vec(),
+        0,
+        &_stick_zone_range,
+        layout_configs.stick.start_threshold,
+    )?;
+    //Zone Mapping
+    //Loading Configs
+
+    let mut input_emulator = InputEmulator::new()?;
+    let mut mouse_mode = MouseMode::default();
 
     loop {
         let start = Instant::now();
@@ -130,10 +150,7 @@ fn writing_thread(
                 true => {
                     const ALWAYS_PRESS: bool = false; //For DEBUG purposes
 
-                    let cur_pos = pads_coords
-                        .left_pad
-                        .cur_pos()
-                        .try_rotate(pads_coords.left_pad.finger_rotation);
+                    let cur_pos = pads_coords.left_pad.cur_pos().try_rotate(pads_coords.left_pad.finger_rotation);
 
                     let (to_release, to_press, to_press_full) =
                         wasd_zone_mapper.get_commands_diff(cur_pos.x, cur_pos.y);
@@ -155,8 +172,8 @@ fn writing_thread(
                         buttons_state.release_keycodes(vec![keycode], false)?;
                     }
 
-                    if use_shift_movement {
-                        if cur_pos.magnitude() > layout_configs.movement.shift_threshold {
+                    if WASD_configs.use_shift {
+                        if cur_pos.magnitude() > WASD_configs.shift_threshold {
                             buttons_state.press_keycodes(vec![KEY_LEFTSHIFT], ALWAYS_PRESS)?;
                         } else {
                             buttons_state.release_keycodes(vec![KEY_LEFTSHIFT], false)?;

@@ -302,8 +302,12 @@ impl ZoneAllowedRange {
         })
     }
 
-    pub fn from_one_value(range: Angle) -> Result<Self> {
+    pub fn from_one_value_with_diagonal(range: Angle) -> Result<Self> {
         Self::new(range, range, range)
+    }
+
+    pub fn from_one_value_no_diagonal(range: Angle) -> Result<Self> {
+        Self::new(range, range, 0)
     }
 }
 
