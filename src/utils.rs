@@ -79,6 +79,20 @@ pub fn get_or_err<'a, K: Hash + Eq + Sized + std::fmt::Display, V>(
         .ok_or_else(|| color_eyre::eyre::Report::msg(format!("No mapping for '{}'", key)))
 }
 
+#[inline(always)]
+pub fn are_options_equal<T: PartialEq>(value1: Option<T>, value2: Option<T>) -> bool {
+    match (value1, value2) {
+        (Some(value1), Some(value2)) => value1 == value2,
+        (None, None) => true,
+        _ => false,
+    }
+}
+
+#[inline(always)]
+pub fn are_options_different<T: PartialEq>(value1: Option<T>, value2: Option<T>) -> bool {
+    !are_options_equal(value1, value2)
+}
+
 #[macro_export]
 macro_rules! err_eyre {
     ($err:expr $(,)?) => {{

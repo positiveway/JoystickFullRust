@@ -1,5 +1,5 @@
 use crate::pads_ops::Coords;
-use crate::utils::{Container, ContainerElement};
+use crate::utils::{are_options_different, Container, ContainerElement};
 use color_eyre::eyre::{bail, Result};
 use log::debug;
 use serde::{Deserialize, Serialize};
@@ -281,6 +281,7 @@ impl<T: Numeric<T>> RangeConverterBuilder<T> {
 }
 
 pub type Angle = usize;
+pub type ZoneNumber = u8;
 
 #[derive(PartialEq, Default, Copy, Clone, Debug, Serialize, Deserialize)]
 pub struct ZoneAllowedRange {
@@ -316,22 +317,6 @@ pub fn pivot_angle_to_allowed_range(
         bail!("Such angle cannot be converted: '{}'", angle)
     }
 }
-
-#[inline(always)]
-pub fn are_options_equal<T: PartialEq>(value1: Option<T>, value2: Option<T>) -> bool {
-    match (value1, value2) {
-        (Some(value1), Some(value2)) => value1 == value2,
-        (None, None) => true,
-        _ => false,
-    }
-}
-
-#[inline(always)]
-pub fn are_options_different<T: PartialEq>(value1: Option<T>, value2: Option<T>) -> bool {
-    !are_options_equal(value1, value2)
-}
-
-pub type ZoneNumber = u8;
 
 #[derive(PartialEq, Clone, Debug)]
 pub struct ZonesMapper<T: ContainerElement> {
