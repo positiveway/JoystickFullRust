@@ -1,24 +1,31 @@
 [ButtonsLayout]
-BtnRight_SideR = ["KEY_BACKSPACE"]
 BtnUp_SideR = ["KEY_RIGHTSHIFT"]
-BtnLeft_SideR = ["KEY_E"]
+BtnRight_SideR = ["KEY_BACKSPACE"]
 BtnDown_SideR = ["KEY_ENTER"]
+BtnLeft_SideR = ["KEY_E"]
+
+BtnUp_SideL = ["KEY_F1"]
+BtnRight_SideL = ["KEY_F2"]
+BtnDown_SideL = ["KEY_F3"]
+BtnLeft_SideL = ["KEY_F4"]
+
 Wing_SideL = ["KEY_Z"]
 Wing_SideR = ["KEY_X"]
+
 LowerTriggerAsBtn_SideL = ["KEY_LEFTCTRL"]
 LowerTriggerAsBtn_SideR = ["KEY_SPACE"]
+
 UpperTrigger_SideL = ["KEY_COMMA"]
 UpperTrigger_SideR = ["KEY_DOT"]
+
 # PadAsBtn_SideL = ["KEY_LEFTCTRL", "KEY_X"]
 # PadAsBtn_SideR = ["KEY_LEFTCTRL", "KEY_V"]
 # StickAsBtn = ["KEY_LEFTCTRL", "KEY_C"]
+
 ExtraBtn_SideL = ["KEY_ESC"]
-ExtraBtn_SideR = ["KEY_TAB"]
 ExtraBtnCentral = ["RESET_BTN"]
-#BtnUp_SideL = ["BtnUp_SideL"]
-#BtnDown_SideL = ["BtnDown_SideL"]
-#BtnLeft_SideL = ["BtnLeft_SideL"]
-#BtnRight_SideL = ["BtnRight_SideL"]
+ExtraBtn_SideR = ["KEY_TAB"]
+
 #PadUp_SideL = ["PadUp_SideL"]
 #PadDown_SideL = ["PadDown_SideL"]
 #PadLeft_SideL = ["PadLeft_SideL"]
@@ -27,6 +34,7 @@ ExtraBtnCentral = ["RESET_BTN"]
 #PadDown_SideR = ["PadDown_SideR"]
 #PadLeft_SideR = ["PadLeft_SideR"]
 #PadRight_SideR = ["PadRight_SideR"]
+
 [General]
 gaming_mode = true
 repeat_keys = false

@@ -124,6 +124,13 @@ fn writing_thread(
 
         // pads_coords.set_prev_if_cur_is_none();
 
+        pads_coords.stick.send_commands_diff(
+            &mut stick_zone_mapper,
+            &layout_configs.stick,
+            &mut buttons_state,
+            false,
+        )?;
+
         if mouse_mode != MouseMode::Typing {
             if pads_coords.right_pad.any_changes() {
                 let mouse_diff = pads_coords.right_pad.diff();
@@ -150,35 +157,12 @@ fn writing_thread(
                 true => {
                     const ALWAYS_PRESS: bool = false; //For DEBUG purposes
 
-                    let cur_pos = pads_coords.left_pad.cur_pos().try_rotate(pads_coords.left_pad.finger_rotation);
-
-                    let (to_release, to_press, to_press_full) =
-                        wasd_zone_mapper.get_commands_diff(cur_pos.x, cur_pos.y);
-                    // if !to_release.is_empty() || !to_press.is_empty() {
-                    //     println!("To release: '{:?}'; To press: '{:?}'", to_release, to_press)
-                    // }
-
-                    let to_press = if ALWAYS_PRESS {
-                        to_press_full
-                    } else {
-                        to_press
-                    };
-
-                    //Press goes first to check if already pressed
-                    for keycode in to_press {
-                        buttons_state.press_keycodes(vec![keycode], ALWAYS_PRESS)?;
-                    }
-                    for keycode in to_release {
-                        buttons_state.release_keycodes(vec![keycode], false)?;
-                    }
-
-                    if WASD_configs.use_shift {
-                        if cur_pos.magnitude() > WASD_configs.shift_threshold {
-                            buttons_state.press_keycodes(vec![KEY_LEFTSHIFT], ALWAYS_PRESS)?;
-                        } else {
-                            buttons_state.release_keycodes(vec![KEY_LEFTSHIFT], false)?;
-                        }
-                    }
+                    pads_coords.left_pad.send_commands_diff(
+                        &mut wasd_zone_mapper,
+                        &WASD_configs,
+                        &mut buttons_state,
+                        ALWAYS_PRESS,
+                    )?;
                 }
             }
         }

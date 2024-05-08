@@ -1,9 +1,11 @@
-use crate::configs::FingerRotation;
-use crate::math_ops::{rotate_around_center, Vector};
+use crate::configs::{FingerRotation, ZoneMappingConfigs};
+use crate::math_ops::{rotate_around_center, Vector, ZonesMapper, ZoneValue};
 use log::{debug, info};
 use serde::{Deserialize, Serialize};
 use strum_macros::Display;
-use universal_input::Coord;
+use universal_input::{Coord, KeyCode};
+use universal_input::KeyCode::KEY_LEFTSHIFT;
+use crate::buttons_state::ButtonsState;
 
 #[derive(Display, Eq, Hash, PartialEq, Default, Copy, Clone, Debug, Serialize, Deserialize)]
 pub enum MouseMode {
@@ -250,6 +252,7 @@ impl CoordsState {
         let (prev_coords, cur_coords) = match self.use_rotation {
             true => (
                 self.prev.try_rotate(self.finger_rotation),
+                //Leave it as self.cur for default for proper diff calculations
                 self.cur_pos().rotate(self.finger_rotation).unwrap_or(self.cur),
                 // self.cur_pos().try_rotate(self.finger_rotation),
             ),
@@ -284,6 +287,46 @@ impl CoordsState {
     //     }
     //     converted_diff
     // }
+
+    pub fn send_commands_diff(
+        &self,
+        zone_mapper: &mut ZonesMapper<KeyCode>,
+        mapping_configs: &ZoneMappingConfigs,
+        buttons_state: &mut ButtonsState,
+        always_press: bool,
+    ) -> color_eyre::Result<()> {
+        let cur_pos = self.cur_pos().try_rotate(self.finger_rotation);
+
+        let (to_release, to_press, to_press_full) =
+            zone_mapper.get_commands_diff(cur_pos.x, cur_pos.y);
+        // if !to_release.is_empty() || !to_press.is_empty() {
+        //     println!("To release: '{:?}'; To press: '{:?}'", to_release, to_press)
+        // }
+
+        let to_press = if always_press {
+            to_press_full
+        } else {
+            to_press
+        };
+
+        //Press goes first to check if already pressed
+        for keycode in to_press {
+            buttons_state.press_keycodes(vec![keycode], always_press)?;
+        }
+        for keycode in to_release {
+            buttons_state.release_keycodes(vec![keycode], false)?;
+        }
+
+        if mapping_configs.use_shift {
+            if cur_pos.magnitude() > mapping_configs.shift_threshold {
+                buttons_state.press_keycodes(vec![KEY_LEFTSHIFT], always_press)?;
+            } else {
+                buttons_state.release_keycodes(vec![KEY_LEFTSHIFT], false)?;
+            }
+        }
+
+        Ok(())
+    }
 }
 
 #[derive(Copy, Clone, Debug, Serialize, Deserialize)]
