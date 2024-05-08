@@ -280,15 +280,17 @@ impl<T: Numeric<T>> RangeConverterBuilder<T> {
     }
 }
 
+pub type Angle = usize;
+
 #[derive(PartialEq, Default, Copy, Clone, Debug, Serialize, Deserialize)]
 pub struct ZoneAllowedRange {
-    vertical: u16,
-    horizontal: u16,
-    diagonal: u16,
+    vertical: Angle,
+    horizontal: Angle,
+    diagonal: Angle,
 }
 
 impl ZoneAllowedRange {
-    pub fn new(vertical: u16, horizontal: u16, diagonal: u16) -> Result<Self> {
+    pub fn new(vertical: Angle, horizontal: Angle, diagonal: Angle) -> Result<Self> {
         if vertical + horizontal + 2 * diagonal > 90 {
             bail!("Incorrect zones allowed range")
         }
@@ -301,9 +303,9 @@ impl ZoneAllowedRange {
 }
 
 pub fn pivot_angle_to_allowed_range(
-    angle: u16,
+    angle: Angle,
     zone_allowed_range: &ZoneAllowedRange,
-) -> Result<u16> {
+) -> Result<Angle> {
     if angle % 180 == 0 {
         return Ok(zone_allowed_range.horizontal);
     } else if angle % 90 == 0 {
@@ -329,11 +331,13 @@ pub fn are_options_different<T: PartialEq>(value1: Option<T>, value2: Option<T>)
     !are_options_equal(value1, value2)
 }
 
+pub type ZoneNumber = u8;
+
 #[derive(PartialEq, Clone, Debug)]
 pub struct ZonesMapper<T: ContainerElement> {
     angle_to_value: [Option<Vec<T>>; 360],
-    angle_to_zone: [u8; 360],
-    prev_zone: Option<u8>,
+    angle_to_zone: [ZoneNumber; 360],
+    prev_zone: Option<ZoneNumber>,
     prev_value: Option<Vec<T>>,
     threshold: f32,
 }
@@ -389,7 +393,7 @@ impl<T: ContainerElement> ZonesMapper<T> {
             (Some(x), Some(y)) => {
                 if distance(x, y) > self.threshold {
                     // debug!("Angle: {}", calc_angle(x, y));
-                    let angle = calc_angle(x, y) as usize;
+                    let angle = calc_angle(x, y) as Angle;
                     (Some(self.angle_to_zone[angle]), Some(angle))
                 } else {
                     (None, None)
@@ -408,7 +412,7 @@ impl<T: ContainerElement> ZonesMapper<T> {
 
     pub fn gen_from_4_into_8(
         values: [Vec<T>; 4],
-        start_angle: u16,
+        start_angle: Angle,
         zone_allowed_range: &ZoneAllowedRange,
         threshold: f32,
     ) -> Result<Self> {
@@ -422,7 +426,12 @@ impl<T: ContainerElement> ZonesMapper<T> {
                 .concat();
         }
 
-        Self::gen_from_8(expanded_values, start_angle, zone_allowed_range, threshold)
+        Self::gen_from(
+            expanded_values.to_vec(),
+            start_angle,
+            zone_allowed_range,
+            threshold,
+        )
     }
 
     fn _print_angle_to_value(angle_to_value: &[Option<Vec<T>>; 360]) {
@@ -441,29 +450,45 @@ impl<T: ContainerElement> ZonesMapper<T> {
         }
     }
 
-    pub fn gen_from_8(
-        values: [Vec<T>; 8],
-        start_angle: u16,
+    pub fn gen_from(
+        values: Vec<Vec<T>>,
+        start_angle: Angle,
         zone_allowed_range: &ZoneAllowedRange,
         threshold: f32,
     ) -> Result<Self> {
-        let mut angle_to_value: [Option<Vec<T>>; 360] = std::array::from_fn(|_| None);
-        let mut angle_to_zone: [u8; 360] = std::array::from_fn(|_| 0);
+        let sectors_amount = values.len();
+        if sectors_amount > ZoneNumber::MAX as usize {
+            bail!(
+                "Maximum amount of zone values is '{}' but provided '{}'",
+                ZoneNumber::MAX,
+                sectors_amount
+            )
+        }
 
-        for ind in 0..values.len() {
-            let pivot_angle = start_angle + 45 * ind as u16;
+        let sector_size = 360.0 / sectors_amount as f32;
+        if sector_size.fract() != 0.0 {
+            bail!(
+                "Incorrect amount of zone values to form sectors. Sector's size is not an integer"
+            )
+        }
+        let sector_size = sector_size as Angle;
+
+        let mut angle_to_value: [Option<Vec<T>>; 360] = std::array::from_fn(|_| None);
+        let mut angle_to_zone: [ZoneNumber; 360] = std::array::from_fn(|_| 0);
+
+        for ind in 0..sectors_amount {
+            let pivot_angle = start_angle + sector_size * ind;
             let allowed_range = pivot_angle_to_allowed_range(pivot_angle, zone_allowed_range)?;
             let range_to_value = Self::gen_range(pivot_angle, allowed_range, &values[ind]);
             for (angle, value) in range_to_value {
                 if angle >= 360 || angle < 0 {
                     bail!("Incorrectly generated angle '{}'", angle)
                 }
-                let angle = angle as usize;
                 if angle_to_value[angle].is_some() {
                     bail!("Duplicate angle '{}'", angle)
                 }
                 angle_to_value[angle] = Some(value.clone());
-                angle_to_zone[angle] = ind as u8;
+                angle_to_zone[angle] = ind as ZoneNumber;
             }
         }
 
@@ -478,7 +503,11 @@ impl<T: ContainerElement> ZonesMapper<T> {
         })
     }
 
-    pub fn gen_range(pivot_angle: u16, allowed_range: u16, value: &Vec<T>) -> Vec<(u16, &Vec<T>)> {
+    pub fn gen_range(
+        pivot_angle: Angle,
+        allowed_range: Angle,
+        value: &Vec<T>,
+    ) -> Vec<(Angle, &Vec<T>)> {
         let range_start = 360 + pivot_angle - allowed_range;
         // +1 to include end of range and close the gap between zones
         let range_end = 360 + pivot_angle + allowed_range + 1;
