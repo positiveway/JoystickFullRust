@@ -317,9 +317,12 @@ pub fn pivot_angle_to_allowed_range(
         bail!("Such angle cannot be converted: '{}'", angle)
     }
 }
+trait_set! {
+    pub trait ZoneValue = ContainerElement;
+}
 
 #[derive(PartialEq, Clone, Debug)]
-pub struct ZonesMapper<T: ContainerElement> {
+pub struct ZonesMapper<T: ZoneValue> {
     angle_to_value: [Option<Vec<T>>; 360],
     angle_to_zone: [ZoneNumber; 360],
     prev_zone: Option<ZoneNumber>,
@@ -327,7 +330,7 @@ pub struct ZonesMapper<T: ContainerElement> {
     threshold: f32,
 }
 
-impl<T: ContainerElement> ZonesMapper<T> {
+impl<T: ZoneValue> ZonesMapper<T> {
     #[inline]
     pub fn get_commands_diff(
         &mut self,
@@ -401,7 +404,8 @@ impl<T: ContainerElement> ZonesMapper<T> {
         zone_allowed_range: &ZoneAllowedRange,
         threshold: f32,
     ) -> Result<Self> {
-        let mut expanded_values: [Vec<T>; 8] = core::array::from_fn(|i| values[0].clone());
+        //initialize with copy of first value because KeyCode (used as generic type T) doesn't implement Default trait
+        let mut expanded_values: [Vec<T>; 8] = core::array::from_fn(|_| values[0].clone());
         for ind in 0..values.len() {
             expanded_values[ind * 2] = values[ind].clone();
             expanded_values[ind * 2 + 1] = [
