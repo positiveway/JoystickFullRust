@@ -4,7 +4,7 @@ use crate::process_event::{process_event, ControllerState, ImplementationSpecifi
 use crate::steamy_debug::{buf_to_string, init_debug_files};
 use crate::steamy_event::{SteamyButton, SteamyEvent, SteamyPadStickF32, SteamyTrigger};
 use crate::steamy_state::SteamyState;
-use log::debug;
+use log::{debug, error, warn};
 use std::io::prelude::*;
 use std::thread::sleep;
 use std::time::Duration;
@@ -22,7 +22,11 @@ pub fn match_button(button: &SteamyButton) -> color_eyre::Result<ButtonName> {
         SteamyButton::Up => ButtonName::PadUp_SideL,
         SteamyButton::LeftPadPressed => ButtonName::PadAsBtn_SideL, //unreliable: triggered for both stick and left pad
         SteamyButton::LeftPadTouch => ButtonName::PadAsTouch_SideL,
-        SteamyButton::StickTouch => bail!("Cannot happen"),
+        SteamyButton::StickTouch => {
+            // println!("StickTouch happened");
+            warn!("StickTouch happened");
+            ButtonName::None
+        },
         SteamyButton::StickPressed => ButtonName::StickAsBtn,
         SteamyButton::RightPadPressed => ButtonName::PadAsBtn_SideR,
         SteamyButton::RightPadTouch => ButtonName::PadAsTouch_SideR,
