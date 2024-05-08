@@ -425,6 +425,22 @@ impl<T: ContainerElement> ZonesMapper<T> {
         Self::gen_from_8(expanded_values, start_angle, zone_allowed_range, threshold)
     }
 
+    fn _print_angle_to_value(angle_to_value: &[Option<Vec<T>>; 360]) {
+        for ind in 0..angle_to_value.len() {
+            let value = match angle_to_value[ind].clone() {
+                None => "None".to_string(),
+                Some(value) => {
+                    let mut combined_str = String::new();
+                    for val in value {
+                        combined_str = combined_str.add(format!("{} ", val).as_str());
+                    }
+                    combined_str
+                }
+            };
+            debug!("{}: {}", ind, value)
+        }
+    }
+
     pub fn gen_from_8(
         values: [Vec<T>; 8],
         start_angle: u16,
@@ -451,19 +467,7 @@ impl<T: ContainerElement> ZonesMapper<T> {
             }
         }
 
-        // for ind in 0..angle_to_value.len(){
-        //     let value = match angle_to_value[ind].clone() {
-        //         None => {"None".to_string()}
-        //         Some(value) => {
-        //             let mut combined_str = String::new();
-        //             for val in value{
-        //                 combined_str = combined_str.add(format!("{} ", val).as_str());
-        //             }
-        //             combined_str
-        //         }
-        //     };
-        //     debug!("{}: {}", ind, value)
-        // }
+        Self::_print_angle_to_value(&angle_to_value);
 
         Ok(Self {
             angle_to_value,
