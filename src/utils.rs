@@ -93,6 +93,14 @@ pub fn are_options_different<T: PartialEq>(value1: Option<T>, value2: Option<T>)
     !are_options_equal(value1, value2)
 }
 
+#[inline]
+pub fn option_to_string<T: Display>(value: Option<T>) -> String {
+    match value {
+        None => "None".to_string(),
+        Some(value) => value.to_string(),
+    }
+}
+
 #[macro_export]
 macro_rules! err_eyre {
     ($err:expr $(,)?) => {{

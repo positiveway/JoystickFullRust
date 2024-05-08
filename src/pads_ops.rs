@@ -1,3 +1,4 @@
+use std::fmt::Display;
 use crate::configs::{FingerRotation, ZoneMappingConfigs};
 use crate::math_ops::{rotate_around_center, Vector, ZonesMapper, ZoneValue};
 use log::{debug, info};
@@ -6,7 +7,7 @@ use strum_macros::Display;
 use universal_input::{Coord, KeyCode};
 use universal_input::KeyCode::KEY_LEFTSHIFT;
 use crate::buttons_state::ButtonsState;
-use crate::utils::are_options_different;
+use crate::utils::{are_options_different, option_to_string};
 
 #[derive(Display, Eq, Hash, PartialEq, Default, Copy, Clone, Debug, Serialize, Deserialize)]
 pub enum MouseMode {
@@ -93,14 +94,6 @@ impl Coords {
             (Some(x), Some(y)) => x.hypot(y),
             (_, _) => 0.0,
         }
-    }
-}
-
-#[inline]
-pub fn option_to_string(value: Option<f32>) -> String {
-    match value {
-        None => "None".to_string(),
-        Some(value) => value.to_string(),
     }
 }
 
@@ -289,6 +282,7 @@ impl CoordsState {
     //     converted_diff
     // }
 
+    #[inline]
     pub fn send_commands_diff(
         &self,
         zone_mapper: &mut ZonesMapper<KeyCode>,

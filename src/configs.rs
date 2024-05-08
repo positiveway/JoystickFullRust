@@ -77,6 +77,7 @@ impl MainConfigs {
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct ZoneMappingConfigs {
+    pub diagonal_zones: bool,
     pub zone_range: Angle,
 
     #[serde(alias = "start_threshold_pct")]

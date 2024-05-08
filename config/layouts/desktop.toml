@@ -41,6 +41,7 @@ repeat_keys = false
 triggers_threshold_pct = 30
 mouse_speed = 400
 [Stick]
+diagonal_zones = false
 zone_range = 44
 start_threshold_pct = 30
 [Scroll]

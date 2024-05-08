@@ -1,5 +1,5 @@
-use crate::pads_ops::Coords;
-use crate::utils::{are_options_different, Container, ContainerElement};
+use crate::pads_ops::{Coords};
+use crate::utils::{are_options_different, option_to_string, Container, ContainerElement};
 use color_eyre::eyre::{bail, Result};
 use log::debug;
 use serde::{Deserialize, Serialize};
@@ -332,7 +332,7 @@ trait_set! {
 #[derive(PartialEq, Clone, Debug)]
 pub struct ZonesMapper<T: ZoneValue> {
     angle_to_value: [Option<Vec<T>>; 360],
-    angle_to_zone: [ZoneNumber; 360],
+    angle_to_zone: [Option<ZoneNumber>; 360],
     prev_zone: Option<ZoneNumber>,
     prev_value: Option<Vec<T>>,
     threshold: f32,
@@ -390,7 +390,7 @@ impl<T: ZoneValue> ZonesMapper<T> {
                 if distance(x, y) > self.threshold {
                     // debug!("Angle: {}", calc_angle(x, y));
                     let angle = calc_angle(x, y) as Angle;
-                    (Some(self.angle_to_zone[angle]), Some(angle))
+                    (self.angle_to_zone[angle], Some(angle))
                 } else {
                     (None, None)
                 }
@@ -406,7 +406,33 @@ impl<T: ZoneValue> ZonesMapper<T> {
         (zone_changed, value)
     }
 
-    pub fn gen_from_4_into_8(
+    pub fn gen_from(
+        values: Vec<Vec<T>>,
+        start_angle: Angle,
+        zone_allowed_range: &ZoneAllowedRange,
+        threshold: f32,
+        diagonal_zones: bool,
+    ) -> Result<Self> {
+        match diagonal_zones {
+            true => {
+                if values.len() != 4 {
+                    bail!("4 values have to be provided to build diagonal zone mapper. Provided: {}", values.len())
+                }
+                let values: [Vec<T>; 4] = [
+                    values[0].clone(),
+                    values[1].clone(),
+                    values[2].clone(),
+                    values[3].clone()
+                ];
+                Self::_gen_from_4_into_8(values, start_angle, zone_allowed_range, threshold)
+            }
+            false => {
+                Self::_gen_from_any(values, start_angle, zone_allowed_range, threshold)
+            }
+        }
+    }
+
+    fn _gen_from_4_into_8(
         values: [Vec<T>; 4],
         start_angle: Angle,
         zone_allowed_range: &ZoneAllowedRange,
@@ -422,7 +448,7 @@ impl<T: ZoneValue> ZonesMapper<T> {
             ].concat();
         }
 
-        Self::gen_from(
+        Self::_gen_from_any(
             expanded_values.to_vec(),
             start_angle,
             zone_allowed_range,
@@ -446,7 +472,14 @@ impl<T: ZoneValue> ZonesMapper<T> {
         }
     }
 
-    pub fn gen_from(
+    fn _print_angle_to_zone(angle_to_zone: &[Option<ZoneNumber>; 360]) {
+        for ind in 0..angle_to_zone.len() {
+            let value = option_to_string(angle_to_zone[ind]);
+            debug!("{}: {}", ind, value);
+        }
+    }
+
+    fn _gen_from_any(
         values: Vec<Vec<T>>,
         start_angle: Angle,
         zone_allowed_range: &ZoneAllowedRange,
@@ -470,7 +503,7 @@ impl<T: ZoneValue> ZonesMapper<T> {
         let sector_size = sector_size as Angle;
 
         let mut angle_to_value: [Option<Vec<T>>; 360] = std::array::from_fn(|_| None);
-        let mut angle_to_zone: [ZoneNumber; 360] = std::array::from_fn(|_| 0);
+        let mut angle_to_zone: [Option<ZoneNumber>; 360] = std::array::from_fn(|_| None);
 
         for ind in 0..sectors_amount {
             let pivot_angle = start_angle + sector_size * ind;
@@ -484,11 +517,12 @@ impl<T: ZoneValue> ZonesMapper<T> {
                     bail!("Duplicate angle '{}'", angle)
                 }
                 angle_to_value[angle] = Some(value.clone());
-                angle_to_zone[angle] = ind as ZoneNumber;
+                angle_to_zone[angle] = Some(ind as ZoneNumber);
             }
         }
 
         Self::_print_angle_to_value(&angle_to_value);
+        Self::_print_angle_to_zone(&angle_to_zone);
 
         Ok(Self {
             angle_to_value,

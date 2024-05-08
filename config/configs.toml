@@ -1,4 +1,4 @@
-debug = false
+debug = true
 is_steamy = true
 buttons_layout = "raft"
 typing_layout = "typing"

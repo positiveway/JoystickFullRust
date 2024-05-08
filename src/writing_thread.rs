@@ -91,11 +91,12 @@ fn writing_thread(
         vec![KeyCode::KEY_D],
     ];
     let _wasd_zone_range = ZoneAllowedRange::from_one_value_with_diagonal(WASD_configs.zone_range)?;
-    let mut wasd_zone_mapper = ZonesMapper::gen_from_4_into_8(
-        _wasd_zones,
+    let mut wasd_zone_mapper = ZonesMapper::gen_from(
+        _wasd_zones.to_vec(),
         90,
         &_wasd_zone_range,
         WASD_configs.start_threshold,
+        WASD_configs.diagonal_zones,
     )?;
 
     let _stick_zones: [Vec<KeyCode>; 4] = [
@@ -110,6 +111,7 @@ fn writing_thread(
         0,
         &_stick_zone_range,
         layout_configs.stick.start_threshold,
+        layout_configs.stick.diagonal_zones,
     )?;
     //Zone Mapping
     //Loading Configs
@@ -180,6 +182,8 @@ fn writing_thread(
                         let mut scroll_diff = pads_coords.left_pad.diff();
                         if scroll_diff.x.abs() <= scroll_configs.horizontal_threshold {
                             scroll_diff.x = 0.0;
+                        } else {
+                            scroll_diff.y = 0.0;
                         }
 
                         let scroll_diff = scroll_diff.convert(scroll_configs.speed);

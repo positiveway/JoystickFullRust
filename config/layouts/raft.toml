@@ -41,9 +41,11 @@ repeat_keys = false
 triggers_threshold_pct = 20
 mouse_speed = 400
 [Stick]
+diagonal_zones = false
 zone_range = 44
 start_threshold_pct = 30
 [WASD]
+diagonal_zones = true
 zone_range = 22
 start_threshold_pct = 30
 shift_threshold_pct = 80
