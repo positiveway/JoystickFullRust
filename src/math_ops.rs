@@ -5,6 +5,7 @@ use log::debug;
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
 use std::ops::Add;
+use strum_macros::{AsRefStr, Display, EnumIter, EnumString};
 use trait_set::trait_set;
 
 fn smoothing_factor(t_e: f64, cutoff: f64) -> f64 {
@@ -232,6 +233,38 @@ pub fn rotate_by_angle(point1: Vector, mut point2: Vector, rotation_angle: f32) 
     rotated_point += point1;
 
     rotated_point
+}
+
+#[derive(PartialOrd, EnumIter, EnumString, AsRefStr, Display, Eq, Hash, PartialEq, Copy, Clone, Debug, Serialize, Deserialize, )]
+pub enum Quadrant {
+    Q1,
+    Q2,
+    Q3,
+    Q4,
+}
+
+#[inline]
+fn get_quadrant(angle: Angle) -> Quadrant {
+    let angle = resolve_angle(angle as f32) as Angle;
+    if angle >= 270 {
+        Quadrant::Q4
+    } else if angle >= 180 {
+        Quadrant::Q3
+    } else if angle >= 90 {
+        Quadrant::Q2
+    } else {
+        Quadrant::Q1
+    }
+}
+
+#[inline]
+fn get_rotation_by_quadrant(source_angle: Angle, rotation: Angle) -> Angle {
+    match get_quadrant(source_angle) {
+        Quadrant::Q1 => rotation,
+        Quadrant::Q2 => rotation,
+        Quadrant::Q3 => rotation / 2,
+        Quadrant::Q4 => rotation / 2,
+    }
 }
 
 #[inline]
