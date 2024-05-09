@@ -73,7 +73,7 @@ fn writing_thread(
     let scroll_configs = layout_configs.scroll;
     let mouse_speed = layout_configs.general.mouse_speed;
 
-    let mut pads_coords = PadsCoords::new(&layout_configs.finger_rotation);
+    let mut pads_coords = PadsCoords::new(&layout_configs.finger_rotation_cfg);
 
     let mut buttons_state = ButtonsState::new(
         layout_configs.buttons_layout.clone(),
@@ -142,18 +142,18 @@ fn writing_thread(
                 }
                 MouseEvent::LeftPad(pad_stick_event) => assign_pad_event(
                     &mut pads_coords.left_pad,
-                    layout_configs.jitter_threshold.left_pad,
+                    layout_configs.jitter_threshold_cfg.left_pad,
                     pad_stick_event,
                 ),
                 MouseEvent::RightPad(pad_stick_event) => assign_pad_event(
                     &mut pads_coords.right_pad,
-                    layout_configs.jitter_threshold.right_pad,
+                    layout_configs.jitter_threshold_cfg.right_pad,
                     pad_stick_event,
                 ),
                 MouseEvent::Stick(pad_stick_event) => {
                     assign_stick_event(
                         &mut pads_coords.stick,
-                        layout_configs.jitter_threshold.stick,
+                        layout_configs.jitter_threshold_cfg.stick,
                         pad_stick_event,
                     )?;
                 },

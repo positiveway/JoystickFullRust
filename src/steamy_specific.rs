@@ -145,7 +145,7 @@ fn read_events(
         msg_counter += 1;
 
         let (new_state, buffer) = controller.state(Duration::from_secs(0))?;
-        for event in state.update(new_state, buffer.clone())? {
+        for event in state.update(new_state, buffer.clone(), &configs.layout_configs.axis_correction_cfg)? {
             debug!("{:?}", &event);
             let is_disconnected = event == SteamyEvent::Disconnected;
 

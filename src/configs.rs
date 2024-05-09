@@ -10,6 +10,7 @@ use std::fs::read_to_string;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 use universal_input::{KeyCode, KeyCodes};
+use crate::steamy_state::SteamyInputCoord;
 
 const PROJECT_NAME: &str = "JoystickFullRust";
 
@@ -19,18 +20,32 @@ lazy_static! {
 }
 
 #[derive(Clone, Debug, Copy, Default, Serialize, Deserialize)]
-pub struct JitterThreshold {
+pub struct JitterThresholdConfigs {
     pub left_pad: f32,
     pub right_pad: f32,
     pub stick: f32,
 }
 
 #[derive(Clone, Debug, Copy, Default, Serialize, Deserialize)]
-pub struct FingerRotation {
+pub struct FingerRotationConfigs {
     pub use_rotation: bool,
     pub left_pad: i16,
     pub right_pad: i16,
     pub stick: i16,
+}
+
+#[derive(Clone, Debug, Copy, Default, Serialize, Deserialize)]
+pub struct AxisCorrection {
+    pub x: SteamyInputCoord,
+    pub y: SteamyInputCoord,
+}
+
+#[derive(Clone, Debug, Copy, Default, Serialize, Deserialize)]
+pub struct AxisCorrectionConfigs {
+    pub use_correction: bool,
+    pub left_pad: AxisCorrection,
+    pub right_pad: AxisCorrection,
+    pub stick: AxisCorrection,
 }
 
 #[derive(Clone, Debug, Copy, Default, Serialize, Deserialize)]
@@ -146,7 +161,10 @@ pub struct LayoutConfigs {
     pub general: GeneralConfigs,
 
     #[serde(alias = "FingerRotation")]
-    pub finger_rotation: FingerRotation,
+    pub finger_rotation_cfg: FingerRotationConfigs,
+
+    #[serde(alias = "AxisCorrection")]
+    pub axis_correction_cfg: AxisCorrectionConfigs,
 
     #[serde(alias = "Stick")]
     pub stick: ZoneMappingConfigs,
@@ -162,7 +180,7 @@ pub struct LayoutConfigs {
     pub scroll: ScrollConfigs,
 
     #[serde(alias = "JitterThreshold")]
-    pub jitter_threshold: JitterThreshold,
+    pub jitter_threshold_cfg: JitterThresholdConfigs,
 }
 
 impl LayoutConfigs {

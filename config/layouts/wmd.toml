@@ -51,8 +51,19 @@ start_threshold_pct = 30
 [Scroll]
 speed = 600
 horizontal_threshold = 0.08
+[AxisCorrection]
+use_correction = true
+[AxisCorrection.left_pad]
+x = 2000
+y = 3000
+[AxisCorrection.right_pad]
+x = 2000
+y = 3000
+[AxisCorrection.stick]
+x = 0
+y = 0
 [FingerRotation]
-use_rotation = true
+use_rotation = false
 left_pad = -20
 right_pad = 8
 stick = -8

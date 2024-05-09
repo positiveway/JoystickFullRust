@@ -1,5 +1,5 @@
 use std::fmt::Display;
-use crate::configs::{FingerRotation, ZoneMappingConfigs};
+use crate::configs::{FingerRotationConfigs, ZoneMappingConfigs};
 use crate::math_ops::{rotate_around_center, Vector, ZonesMapper, ZoneValue};
 use log::{debug, info};
 use serde::{Deserialize, Serialize};
@@ -332,7 +332,7 @@ pub struct PadsCoords {
 }
 
 impl PadsCoords {
-    pub fn new(finger_rotation: &FingerRotation) -> Self {
+    pub fn new(finger_rotation: &FingerRotationConfigs) -> Self {
         Self {
             left_pad: CoordsState::new(finger_rotation.left_pad, finger_rotation.use_rotation),
             right_pad: CoordsState::new(finger_rotation.right_pad, finger_rotation.use_rotation),
