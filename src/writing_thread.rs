@@ -18,14 +18,21 @@ fn assign_pad_event(
     pad_stick_event: PadStickEvent,
 ) {
     match pad_stick_event {
-        PadStickEvent::FingerLifted => coords_state.reset(),
+        PadStickEvent::FingerLifted => {
+            coords_state.reset();
+            println!("Finger lifted")
+        },
+        PadStickEvent::FingerPut => {
+            coords_state.reset();
+            println!("Finger put")
+        },
         PadStickEvent::MovedX(value) => {
             coords_state.cur.x = discard_jitter_for_pad(coords_state.prev.x, value, jitter_threshold);
-            // println!("X: {value}")
+            println!("X: {value}")
         }
         PadStickEvent::MovedY(value) => {
             coords_state.cur.y = discard_jitter_for_pad(coords_state.prev.y, value, jitter_threshold);
-            // println!("Y: {value}")
+            println!("Y: {value}")
         }
     }
 }
@@ -37,7 +44,7 @@ fn assign_stick_event(
     pad_stick_event: PadStickEvent,
 ) -> color_eyre::Result<()> {
     match pad_stick_event {
-        PadStickEvent::FingerLifted => bail!("Cannot happen"),
+        PadStickEvent::FingerLifted | PadStickEvent::FingerPut => bail!("Cannot happen"),
         PadStickEvent::MovedX(value) => {
             coords_state.cur.x = discard_jitter_for_stick(coords_state.prev.x, value, jitter_threshold);
             // println!("X: {value}")

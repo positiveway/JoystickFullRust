@@ -2,7 +2,7 @@ use crate::configs::{LayoutConfigs, MainConfigs};
 use crate::match_event::*;
 use crate::math_ops::RangeConverterBuilder;
 use crate::process_event::ButtonEvent::{Pressed, Released};
-use crate::process_event::PadStickEvent::FingerLifted;
+use crate::process_event::PadStickEvent::{FingerLifted, FingerPut};
 use color_eyre::eyre::{bail, Result};
 use serde::{Deserialize, Serialize};
 use strum_macros::Display;
@@ -11,6 +11,7 @@ use kanal::{bounded, Receiver, Sender};
 
 #[derive(Display, Copy, Clone, Debug, Serialize, Deserialize)]
 pub enum PadStickEvent {
+    FingerPut,
     FingerLifted,
     MovedX(f32),
     MovedY(f32),
@@ -170,6 +171,16 @@ pub fn process_buttons(
     }
 }
 
+fn convert_to_pad_event(event_type: EventTypeName) -> Result<PadStickEvent> {
+    Ok(
+        match event_type {
+            EventTypeName::ButtonReleased => FingerLifted,
+            EventTypeName::ButtonPressed => FingerPut,
+            _ => { bail!("Cannot happen") }
+        }
+    )
+}
+
 pub fn process_pad_stick(
     event: &TransformedEvent,
     controller_state: &ControllerState,
@@ -182,15 +193,11 @@ pub fn process_pad_stick(
     match event.button {
         // Important: Act only on Released event, not as Pressed
         ButtonName::PadAsTouch_SideR => {
-            if event.event_type == EventTypeName::ButtonReleased {
-                send_mouse_event(MouseEvent::RightPad(FingerLifted))?;
-            }
+            send_mouse_event(MouseEvent::RightPad(convert_to_pad_event(event.event_type)?))?;
             return Ok(TransformStatus::Handled);
         }
         ButtonName::PadAsTouch_SideL => {
-            if event.event_type == EventTypeName::ButtonReleased {
-                send_mouse_event(MouseEvent::LeftPad(FingerLifted))?;
-            }
+            send_mouse_event(MouseEvent::LeftPad(convert_to_pad_event(event.event_type)?))?;
             return Ok(TransformStatus::Handled);
         }
         _ => {
@@ -209,18 +216,19 @@ pub fn process_pad_stick(
     };
 
     if event.event_type == EventTypeName::AxisChanged {
+        //Was needed for gilrs. Now causes various bugs
         //Discard 0.0 events for pads
-        match event.axis {
-            AxisName::PadX_SideL
-            | AxisName::PadY_SideL
-            | AxisName::PadX_SideR
-            | AxisName::PadY_SideR => {
-                if event.value == 0.0 {
-                    return Ok(TransformStatus::Discarded);
-                };
-            }
-            _ => {}
-        }
+        // match event.axis {
+        //     AxisName::PadX_SideL
+        //     | AxisName::PadY_SideL
+        //     | AxisName::PadX_SideR
+        //     | AxisName::PadY_SideR => {
+        //         if event.value == 0.0 {
+        //             return Ok(TransformStatus::Discarded);
+        //         };
+        //     }
+        //     _ => {}
+        // }
 
         if let Some(event_to_send) = match event.axis {
             AxisName::PadX_SideL => Some(MouseEvent::LeftPad(PadStickEvent::MovedX(event.value))),

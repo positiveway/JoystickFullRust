@@ -243,15 +243,22 @@ impl CoordsState {
 
     #[inline]
     pub fn diff(&mut self) -> CoordsDiff {
+        println!(
+            "Prev: [X: {}, Y: {}]. Cur: [X: {}, Y: {}]",
+            option_to_string(self.prev.x),
+            option_to_string(self.prev.y),
+            option_to_string(self.cur.x),
+            option_to_string(self.cur.y),
+        );
         let (prev_coords, cur_coords) = match self.use_rotation {
             true => (
                 self.prev.try_rotate(self.finger_rotation),
-                //Leave it as self.cur for default for proper diff calculations
-                self.cur_pos().rotate(self.finger_rotation).unwrap_or(self.cur),
-                // self.cur_pos().try_rotate(self.finger_rotation),
+                //Check it for default for proper diff calculations
+                // self.cur_pos().rotate(self.finger_rotation).unwrap_or(self.cur),
+                self.cur_pos().try_rotate(self.finger_rotation),
             ),
-            false => (self.prev, self.cur),
-            // false => (self.prev, self.cur_pos()),
+            // false => (self.prev, self.cur),
+            false => (self.prev, self.cur_pos()),
         };
 
         let diff = CoordsDiff {
