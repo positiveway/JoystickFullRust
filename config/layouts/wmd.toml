@@ -57,7 +57,7 @@ use_correction = true
 x = 2000
 y = 3000
 [AxisCorrection.right_pad]
-x = 2000
+x = 1000
 y = 3000
 [AxisCorrection.stick]
 x = 0
@@ -70,4 +70,4 @@ stick = -8
 [JitterThreshold]
 left_pad = 0.01
 right_pad = 0.01
-stick = 0.08
+stick = 0.01
