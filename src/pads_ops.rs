@@ -310,7 +310,7 @@ impl CoordsHistoryState {
 
     #[inline]
     pub fn diff(&mut self) -> CoordsDiff {
-        println!(
+        debug!(
             "Prev: [X: {}, Y: {}]. Cur: [X: {}, Y: {}]",
             self.prev.x,
             self.prev.y,

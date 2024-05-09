@@ -2,6 +2,7 @@ use std::thread;
 use std::thread::{JoinHandle, sleep};
 use std::time::Instant;
 use color_eyre::eyre::bail;
+use log::debug;
 use universal_input::{InputEmulator, KeyCode};
 use crate::buttons_state::{ButtonsState, Command};
 use crate::configs::MainConfigs;
@@ -22,19 +23,19 @@ fn assign_pad_event(
     match pad_stick_event {
         PadStickEvent::FingerLifted => {
             coords_state.set_to_discard_next();
-            println!("\nFinger lifted\n")
+            debug!("\nFinger lifted\n")
         },
         PadStickEvent::FingerPut => {
             coords_state.reset_all();
-            println!("\nFinger put\n")
+            debug!("\nFinger put\n")
         },
         PadStickEvent::MovedX(value) => {
             coords_state.cur.x = discard_jitter_for_pad(coords_state.prev.x, value, jitter_threshold);
-            println!("X: {value}")
+            // println!("X: {value}")
         }
         PadStickEvent::MovedY(value) => {
             coords_state.cur.y = discard_jitter_for_pad(coords_state.prev.y, value, jitter_threshold);
-            println!("Y: {value}")
+            // println!("Y: {value}")
         }
     }
 }
