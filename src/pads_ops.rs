@@ -3,17 +3,25 @@ use crate::configs::{FingerRotationConfigs, ZoneMappingConfigs};
 use crate::math_ops::{rotate_around_center, Vector, ZonesMapper, ZoneValue};
 use log::{debug, info};
 use serde::{Deserialize, Serialize};
-use strum_macros::Display;
+use strum_macros::{AsRefStr, Display, EnumIter, EnumString};
 use universal_input::{Coord, KeyCode};
 use universal_input::KeyCode::KEY_LEFTSHIFT;
 use crate::buttons_state::ButtonsState;
 use crate::utils::{are_options_different, option_to_string};
 
-#[derive(Display, Eq, Hash, PartialEq, Default, Copy, Clone, Debug, Serialize, Deserialize)]
+#[derive(PartialOrd, EnumIter, EnumString, AsRefStr, Display, Default, Eq, Hash, PartialEq, Copy, Clone, Debug, Serialize, Deserialize, )]
 pub enum MouseMode {
     #[default]
     CursorMove,
     Typing,
+}
+
+#[derive(PartialOrd, EnumIter, EnumString, AsRefStr, Display, Default, PartialEq, Copy, Clone, Debug, Serialize, Deserialize, )]
+pub enum CoordState {
+    #[default]
+    NotInit,
+    DiscardNext,
+    Value(f32),
 }
 
 #[derive(PartialEq, Copy, Clone, Default, Debug, Serialize, Deserialize)]
@@ -36,12 +44,12 @@ impl Coords {
         }
     }
 
-    #[inline]
-    pub fn update_one_if_not_init(prev: &mut Option<f32>, new: Option<f32>) {
-        if prev.is_none() {
-            Self::update_one_coord(prev, new);
-        }
-    }
+    // #[inline]
+    // pub fn update_one_if_not_init(prev: &mut Option<f32>, new: Option<f32>) {
+    //     if prev.is_none() {
+    //         Self::update_one_coord(prev, new);
+    //     }
+    // }
 
     #[inline]
     pub fn update(&mut self, new: &Self) {
@@ -49,11 +57,11 @@ impl Coords {
         Self::update_one_coord(&mut self.y, new.y);
     }
 
-    #[inline]
-    pub fn update_if_not_init(&mut self, new: &Self) {
-        Self::update_one_if_not_init(&mut self.x, new.x);
-        Self::update_one_if_not_init(&mut self.y, new.y);
-    }
+    // #[inline]
+    // pub fn update_if_not_init(&mut self, new: &Self) {
+    //     Self::update_one_if_not_init(&mut self.x, new.x);
+    //     Self::update_one_if_not_init(&mut self.y, new.y);
+    // }
 
     //pub fn set_one_coord(cur: &mut Option<f32>, prev: Option<f32>) {
     //     if cur.is_none() {
@@ -66,10 +74,10 @@ impl Coords {
     //     Self::set_one_coord(&mut self.y, prev.y);
     // }
 
-    #[inline]
-    pub fn any_is_not_init(&self) -> bool {
-        self.x.is_none() || self.y.is_none()
-    }
+    // #[inline]
+    // pub fn any_is_not_init(&self) -> bool {
+    //     self.x.is_none() || self.y.is_none()
+    // }
 
     #[inline]
     pub fn any_changes(&self) -> bool {
@@ -198,10 +206,10 @@ impl CoordsState {
         self.prev.update(&self.cur)
     }
 
-    #[inline]
-    pub fn update_if_not_init(&mut self) {
-        self.prev.update_if_not_init(&self.cur);
-    }
+    // #[inline]
+    // pub fn update_if_not_init(&mut self) {
+    //     self.prev.update_if_not_init(&self.cur);
+    // }
 
     //Left for DEBUG reference
     // pub fn rotate_cur_coords(&self) -> Option<Coords> {
@@ -374,12 +382,12 @@ impl PadsCoords {
         self.stick.update();
     }
 
-    #[inline]
-    pub fn update_if_not_init(&mut self) {
-        self.left_pad.update_if_not_init();
-        self.right_pad.update_if_not_init();
-        self.stick.update_if_not_init();
-    }
+    // #[inline]
+    // pub fn update_if_not_init(&mut self) {
+    //     self.left_pad.update_if_not_init();
+    //     self.right_pad.update_if_not_init();
+    //     self.stick.update_if_not_init();
+    // }
 }
 
 #[inline(always)]
