@@ -82,6 +82,7 @@ fn writing_thread(
 
     //Zone Mapping
     let WASD_configs = layout_configs.wasd;
+    let stick_zones_configs = layout_configs.stick;
     let _buttons_layout = layout_configs.buttons_layout.layout;
 
     let _wasd_zones: [Vec<KeyCode>; 4] = [
@@ -90,7 +91,7 @@ fn writing_thread(
         vec![KeyCode::KEY_S],
         vec![KeyCode::KEY_D],
     ];
-    let _wasd_zone_range = ZoneAllowedRange::from_one_value_with_diagonal(WASD_configs.zone_range)?;
+    let _wasd_zone_range = ZoneAllowedRange::from_one_value(WASD_configs.zone_range, WASD_configs.diagonal_zones)?;
     let mut wasd_zone_mapper = ZonesMapper::gen_from(
         _wasd_zones.to_vec(),
         90,
@@ -105,13 +106,13 @@ fn writing_thread(
         _buttons_layout[&ButtonName::BtnLeft_SideL].clone(),
         _buttons_layout[&ButtonName::BtnDown_SideL].clone(),
     ];
-    let _stick_zone_range = ZoneAllowedRange::from_one_value_no_diagonal(layout_configs.stick.zone_range)?;
+    let _stick_zone_range = ZoneAllowedRange::from_one_value(stick_zones_configs.zone_range, stick_zones_configs.diagonal_zones)?;
     let mut stick_zone_mapper = ZonesMapper::gen_from(
         _stick_zones.to_vec(),
         0,
         &_stick_zone_range,
-        layout_configs.stick.start_threshold,
-        layout_configs.stick.diagonal_zones,
+        stick_zones_configs.start_threshold,
+        stick_zones_configs.diagonal_zones,
     )?;
     //Zone Mapping
     //Loading Configs
@@ -163,7 +164,7 @@ fn writing_thread(
 
         pads_coords.stick.send_commands_diff(
             &mut stick_zone_mapper,
-            &layout_configs.stick,
+            &stick_zones_configs,
             &mut buttons_state,
             false,
         )?;

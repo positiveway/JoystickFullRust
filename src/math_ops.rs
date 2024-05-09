@@ -293,7 +293,12 @@ pub struct ZoneAllowedRange {
 impl ZoneAllowedRange {
     pub fn new(vertical: Angle, horizontal: Angle, diagonal: Angle) -> Result<Self> {
         if vertical + horizontal + 2 * diagonal > 90 {
-            bail!("Incorrect zones allowed range")
+            bail!(
+                "Incorrect zones allowed range. Vertical: {}, Horizontal: {}, Diagonal: {}",
+                vertical,
+                horizontal,
+                diagonal
+            )
         }
         Ok(Self {
             vertical,
@@ -302,12 +307,11 @@ impl ZoneAllowedRange {
         })
     }
 
-    pub fn from_one_value_with_diagonal(range: Angle) -> Result<Self> {
-        Self::new(range, range, range)
-    }
-
-    pub fn from_one_value_no_diagonal(range: Angle) -> Result<Self> {
-        Self::new(range, range, 0)
+    pub fn from_one_value(range: Angle, diagonal_zones: bool) -> Result<Self> {
+        match diagonal_zones {
+            true => Self::new(range, range, range),
+            false => Self::new(range, range, 0)
+        }
     }
 }
 

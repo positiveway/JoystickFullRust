@@ -46,7 +46,7 @@ zone_range = 22
 start_threshold_pct = 30
 [WASD]
 diagonal_zones = false
-zone_range = 22
+zone_range = 44
 start_threshold_pct = 30
 [Scroll]
 speed = 600
