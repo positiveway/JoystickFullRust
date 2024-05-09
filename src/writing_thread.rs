@@ -8,23 +8,25 @@ use crate::configs::MainConfigs;
 use crate::exec_or_eyre;
 use crate::match_event::ButtonName;
 use crate::math_ops::{ZoneAllowedRange, ZonesMapper};
-use crate::pads_ops::{Coords, CoordsState, discard_jitter_for_pad, discard_jitter_for_stick, MouseMode, PadsCoords};
+use crate::pads_ops::{Coords, CoordsHistoryState, discard_jitter_for_pad, discard_jitter_for_stick, MouseMode, PadsCoords};
+use crate::pads_ops::CoordState::Value;
 use crate::process_event::{ButtonEvent, ButtonReceiver, MouseEvent, MouseReceiver, PadStickEvent};
 
 #[inline]
 fn assign_pad_event(
-    coords_state: &mut CoordsState,
-    jitter_threshold: f32,
+    coords_state: &mut CoordsHistoryState,
     pad_stick_event: PadStickEvent,
 ) {
+    let jitter_threshold = coords_state.jitter_threshold;
+
     match pad_stick_event {
         PadStickEvent::FingerLifted => {
-            coords_state.reset();
-            println!("Finger lifted")
+            coords_state.set_to_discard_next();
+            println!("\nFinger lifted\n")
         },
         PadStickEvent::FingerPut => {
-            coords_state.reset();
-            println!("Finger put")
+            coords_state.reset_all();
+            println!("\nFinger put\n")
         },
         PadStickEvent::MovedX(value) => {
             coords_state.cur.x = discard_jitter_for_pad(coords_state.prev.x, value, jitter_threshold);
@@ -39,29 +41,54 @@ fn assign_pad_event(
 
 #[inline]
 fn assign_stick_event(
-    coords_state: &mut CoordsState,
-    jitter_threshold: f32,
+    coords_state: &mut CoordsHistoryState,
     pad_stick_event: PadStickEvent,
 ) -> color_eyre::Result<()> {
+    let axis_correction = coords_state.axis_correction;
+    let use_correction = coords_state.use_correction;
+    let jitter_threshold = coords_state.jitter_threshold;
+
     match pad_stick_event {
         PadStickEvent::FingerLifted | PadStickEvent::FingerPut => bail!("Cannot happen"),
         PadStickEvent::MovedX(value) => {
-            coords_state.cur.x = discard_jitter_for_stick(coords_state.prev.x, value, jitter_threshold);
+            coords_state.cur.x = discard_jitter_for_stick(
+                coords_state.prev.x,
+                value,
+                jitter_threshold,
+                axis_correction.x,
+                use_correction,
+            );
             // println!("X: {value}")
         }
         PadStickEvent::MovedY(value) => {
-            coords_state.cur.y = discard_jitter_for_stick(coords_state.prev.y, value, jitter_threshold);
+            coords_state.cur.y = discard_jitter_for_stick(
+                coords_state.prev.y,
+                value,
+                jitter_threshold,
+                axis_correction.y,
+                use_correction,
+            );
             // println!("Y: {value}")
         }
     }
 
     if coords_state.any_changes() {
         let cur_pos = coords_state.cur_pos();
-        let zero_coords = Coords { x: Some(0.0), y: Some(0.0) };
+        let zero_coords = match use_correction {
+            true => Coords {
+                x: Value(axis_correction.x as f32),
+                y: Value(axis_correction.y as f32),
+            },
+            false => Coords {
+                x: Value(0.0),
+                y: Value(0.0),
+            }
+        };
+
         if cur_pos == zero_coords {
             // if coords_state.cur.x == Some(0.0) || coords_state.cur.y == Some(0.0){
             //Finger lifted
-            coords_state.reset();
+            coords_state.reset_all();
         }
     }
 
@@ -80,7 +107,11 @@ fn writing_thread(
     let scroll_configs = layout_configs.scroll;
     let mouse_speed = layout_configs.general.mouse_speed;
 
-    let mut pads_coords = PadsCoords::new(&layout_configs.finger_rotation_cfg);
+    let mut pads_coords = PadsCoords::new(
+        &layout_configs.finger_rotation_cfg,
+        &layout_configs.axis_correction_cfg,
+        &layout_configs.jitter_threshold_cfg,
+    );
 
     let mut buttons_state = ButtonsState::new(
         layout_configs.buttons_layout.clone(),
@@ -145,22 +176,19 @@ fn writing_thread(
                 },
                 MouseEvent::Reset => {
                     mouse_mode = MouseMode::default();
-                    pads_coords.reset();
+                    pads_coords.reset_all();
                 }
                 MouseEvent::LeftPad(pad_stick_event) => assign_pad_event(
                     &mut pads_coords.left_pad,
-                    layout_configs.jitter_threshold_cfg.left_pad,
                     pad_stick_event,
                 ),
                 MouseEvent::RightPad(pad_stick_event) => assign_pad_event(
                     &mut pads_coords.right_pad,
-                    layout_configs.jitter_threshold_cfg.right_pad,
                     pad_stick_event,
                 ),
                 MouseEvent::Stick(pad_stick_event) => {
                     assign_stick_event(
                         &mut pads_coords.stick,
-                        layout_configs.jitter_threshold_cfg.stick,
                         pad_stick_event,
                     )?;
                 },

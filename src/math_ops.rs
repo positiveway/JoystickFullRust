@@ -1,4 +1,4 @@
-use crate::pads_ops::{Coords};
+use crate::pads_ops::{Coords, CoordState};
 use crate::utils::{are_options_different, option_to_string, Container, ContainerElement};
 use color_eyre::eyre::{bail, Result};
 use log::debug;
@@ -7,6 +7,7 @@ use std::fmt::Display;
 use std::ops::Add;
 use strum_macros::{AsRefStr, Display, EnumIter, EnumString};
 use trait_set::trait_set;
+use crate::pads_ops::CoordState::Value;
 
 fn smoothing_factor(t_e: f64, cutoff: f64) -> f64 {
     let r = 2.0 * std::f64::consts::PI * cutoff * t_e;
@@ -136,15 +137,15 @@ impl Vector {
     #[inline(always)]
     pub fn as_coords(&self) -> Coords {
         Coords {
-            x: Some(self.x),
-            y: Some(self.y),
+            x: Value(self.x),
+            y: Value(self.y),
         }
     }
 
     #[inline(always)]
     pub fn from_2_coords(point1: Coords, point2: Coords) -> Option<Vector> {
         match (point1.x, point1.y, point2.x, point2.y) {
-            (Some(point1_x), Some(point1_y), Some(point2_x), Some(point2_y)) => Some(Self {
+            (Value(point1_x), Value(point1_y), Value(point2_x), Value(point2_y)) => Some(Self {
                 x: point2_x - point1_x,
                 y: point2_y - point1_y,
             }),
@@ -156,7 +157,7 @@ impl Vector {
     #[inline(always)]
     pub fn from_coords(coords: Coords) -> Option<Self> {
         match (coords.x, coords.y) {
-            (Some(x), Some(y)) => Some(Self { x, y }),
+            (Value(x), Value(y)) => Some(Self { x, y }),
             _ => None,
         }
     }
@@ -379,8 +380,8 @@ impl<T: ZoneValue> ZonesMapper<T> {
     #[inline]
     pub fn get_commands_diff(
         &mut self,
-        x: Option<f32>,
-        y: Option<f32>,
+        x: CoordState,
+        y: CoordState,
     ) -> (Vec<T>, Vec<T>, Vec<T>) {
         let (zone_changed, cur_value) = self.detect_zone(x, y);
         let prev_value = self.prev_value.clone();
@@ -421,9 +422,9 @@ impl<T: ZoneValue> ZonesMapper<T> {
     }
 
     #[inline]
-    pub fn detect_zone(&mut self, x: Option<f32>, y: Option<f32>) -> (bool, Option<Vec<T>>) {
+    pub fn detect_zone(&mut self, x: CoordState, y: CoordState) -> (bool, Option<Vec<T>>) {
         let (zone, angle) = match (x, y) {
-            (Some(x), Some(y)) => {
+            (Value(x), Value(y)) => {
                 if distance(x, y) > self.threshold {
                     // debug!("Angle: {}", calc_angle(x, y));
                     let angle = calc_angle(x, y) as Angle;

@@ -1,12 +1,14 @@
-use std::fmt::Display;
-use crate::configs::{FingerRotationConfigs, ZoneMappingConfigs};
+use std::fmt::{Display, Formatter};
+use crate::configs::{AxisCorrection, AxisCorrectionConfigs, FingerRotationConfigs, JitterThresholdConfigs, ZoneMappingConfigs};
 use crate::math_ops::{rotate_around_center, Vector, ZonesMapper, ZoneValue};
 use log::{debug, info};
 use serde::{Deserialize, Serialize};
 use strum_macros::{AsRefStr, Display, EnumIter, EnumString};
-use universal_input::{Coord, KeyCode};
+use universal_input::{OS_Input_Coord, KeyCode};
 use universal_input::KeyCode::KEY_LEFTSHIFT;
 use crate::buttons_state::ButtonsState;
+use crate::pads_ops::CoordState::Value;
+use crate::steamy_state::SteamyInputCoord;
 use crate::utils::{are_options_different, option_to_string};
 
 #[derive(PartialOrd, EnumIter, EnumString, AsRefStr, Display, Default, Eq, Hash, PartialEq, Copy, Clone, Debug, Serialize, Deserialize, )]
@@ -16,7 +18,7 @@ pub enum MouseMode {
     Typing,
 }
 
-#[derive(PartialOrd, EnumIter, EnumString, AsRefStr, Display, Default, PartialEq, Copy, Clone, Debug, Serialize, Deserialize, )]
+#[derive(PartialOrd, EnumIter, EnumString, AsRefStr, Default, PartialEq, Copy, Clone, Debug, Serialize, Deserialize, )]
 pub enum CoordState {
     #[default]
     NotInit,
@@ -24,22 +26,62 @@ pub enum CoordState {
     Value(f32),
 }
 
+impl Display for CoordState {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        match self {
+            Self::NotInit => write!(f, "NotInit"),
+            Self::DiscardNext => write!(f, "DiscardNext"),
+            Self::Value(value) => write!(f, "{}", value),
+        }
+    }
+}
+
+impl CoordState {
+    pub fn has_value(&self) -> bool {
+        match self {
+            CoordState::Value(_) => true,
+            _ => false,
+        }
+    }
+
+    pub fn not_init(&self) -> bool {
+        match self {
+            CoordState::NotInit => true,
+            _ => false,
+        }
+    }
+
+    pub fn or(self, other: Self) -> Self {
+        match self {
+            value @ Value(_) => value,
+            CoordState::NotInit => other,
+            CoordState::DiscardNext => CoordState::DiscardNext //TODO: Check this invariant
+        }
+    }
+}
+
 #[derive(PartialEq, Copy, Clone, Default, Debug, Serialize, Deserialize)]
 pub struct Coords {
-    pub x: Option<f32>,
-    pub y: Option<f32>,
+    pub x: CoordState,
+    pub y: CoordState,
 }
 
 impl Coords {
     #[inline]
     pub fn reset(&mut self) {
-        self.x = None;
-        self.y = None;
+        self.x = CoordState::NotInit;
+        self.y = CoordState::NotInit;
     }
 
     #[inline]
-    pub fn update_one_coord(prev: &mut Option<f32>, new: Option<f32>) {
-        if new.is_some() {
+    pub fn set_to_discard_next(&mut self) {
+        self.x = CoordState::DiscardNext;
+        self.y = CoordState::DiscardNext;
+    }
+
+    #[inline]
+    pub fn update_one_coord(prev: &mut CoordState, new: CoordState) {
+        if new.has_value() {
             *prev = new;
         }
     }
@@ -81,7 +123,7 @@ impl Coords {
 
     #[inline]
     pub fn any_changes(&self) -> bool {
-        self.x.is_some() || self.y.is_some()
+        self.x.has_value() || self.y.has_value()
     }
 
     #[inline]
@@ -99,19 +141,19 @@ impl Coords {
     #[inline]
     pub fn magnitude(&self) -> f32 {
         match (self.x, self.y) {
-            (Some(x), Some(y)) => x.hypot(y),
+            (Value(x), Value(y)) => x.hypot(y),
             (_, _) => 0.0,
         }
     }
 }
 
 impl std::fmt::Display for Coords {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
         write!(
             f,
-            "[x: {}, y: {}]",
-            option_to_string(self.x),
-            option_to_string(self.y)
+            "[X: {}, Y: {}]",
+            self.x,
+            self.x
         )
     }
 }
@@ -139,8 +181,8 @@ impl CoordsDiff {
 
 #[derive(PartialEq, Copy, Clone, Debug, Serialize, Deserialize)]
 pub struct ConvertedCoordsDiff {
-    pub x: Coord,
-    pub y: Coord,
+    pub x: OS_Input_Coord,
+    pub y: OS_Input_Coord,
 }
 
 impl ConvertedCoordsDiff {
@@ -151,33 +193,45 @@ impl ConvertedCoordsDiff {
 }
 
 #[inline]
-pub fn calc_diff_one_coord(prev_coord: Option<f32>, cur_coord: Option<f32>) -> f32 {
+pub fn calc_diff_one_coord(prev_coord: CoordState, cur_coord: CoordState) -> f32 {
     match (prev_coord, cur_coord) {
-        (Some(prev_value), Some(cur_value)) => cur_value - prev_value,
+        (Value(prev_value), Value(cur_value)) => cur_value - prev_value,
         _ => 0.0,
     }
 }
 
 #[inline]
-pub fn convert_diff(value: f32, multiplier: u16) -> Coord {
-    (value * multiplier as f32).round() as Coord
+pub fn convert_diff(value: f32, multiplier: u16) -> OS_Input_Coord {
+    (value * multiplier as f32).round() as OS_Input_Coord
 }
 
 #[derive(Copy, Clone, Debug, Serialize, Deserialize)]
-pub struct CoordsState {
+pub struct CoordsHistoryState {
     pub prev: Coords,
     pub cur: Coords,
     pub finger_rotation: i16,
     pub use_rotation: bool,
+    pub axis_correction: AxisCorrection,
+    pub use_correction: bool,
+    pub jitter_threshold: f32,
 }
 
-impl CoordsState {
-    pub fn new(finger_rotation: i16, use_rotation: bool) -> Self {
+impl CoordsHistoryState {
+    pub fn new(
+        finger_rotation: i16,
+        use_rotation: bool,
+        axis_correction: AxisCorrection,
+        use_correction: bool,
+        jitter_threshold: f32,
+    ) -> Self {
         Self {
             prev: Default::default(),
             cur: Default::default(),
             finger_rotation,
             use_rotation,
+            axis_correction,
+            use_correction,
+            jitter_threshold,
         }
     }
 
@@ -191,9 +245,14 @@ impl CoordsState {
     // }
 
     #[inline]
-    pub fn reset(&mut self) {
+    pub fn reset_all(&mut self) {
         self.prev.reset();
         self.cur.reset();
+    }
+
+    #[inline]
+    pub fn set_to_discard_next(&mut self) {
+        self.prev.set_to_discard_next();
     }
 
     #[inline]
@@ -253,10 +312,10 @@ impl CoordsState {
     pub fn diff(&mut self) -> CoordsDiff {
         println!(
             "Prev: [X: {}, Y: {}]. Cur: [X: {}, Y: {}]",
-            option_to_string(self.prev.x),
-            option_to_string(self.prev.y),
-            option_to_string(self.cur.x),
-            option_to_string(self.cur.y),
+            self.prev.x,
+            self.prev.y,
+            self.cur.x,
+            self.cur.y,
         );
         let (prev_coords, cur_coords) = match self.use_rotation {
             true => (
@@ -341,25 +400,50 @@ impl CoordsState {
 
 #[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 pub struct PadsCoords {
-    pub left_pad: CoordsState,
-    pub right_pad: CoordsState,
-    pub stick: CoordsState,
+    pub left_pad: CoordsHistoryState,
+    pub right_pad: CoordsHistoryState,
+    pub stick: CoordsHistoryState,
 }
 
 impl PadsCoords {
-    pub fn new(finger_rotation: &FingerRotationConfigs) -> Self {
+    pub fn new(
+        finger_rotation_cfg: &FingerRotationConfigs,
+        axis_correction_cfg: &AxisCorrectionConfigs,
+        jitter_threshold_cfg: &JitterThresholdConfigs,
+    ) -> Self {
+        let use_rotation = finger_rotation_cfg.use_rotation;
+        let use_correction = axis_correction_cfg.use_correction;
+
         Self {
-            left_pad: CoordsState::new(finger_rotation.left_pad, finger_rotation.use_rotation),
-            right_pad: CoordsState::new(finger_rotation.right_pad, finger_rotation.use_rotation),
-            stick: CoordsState::new(finger_rotation.stick, finger_rotation.use_rotation),
+            left_pad: CoordsHistoryState::new(
+                finger_rotation_cfg.left_pad,
+                use_rotation,
+                axis_correction_cfg.left_pad,
+                use_correction,
+                jitter_threshold_cfg.left_pad,
+            ),
+            right_pad: CoordsHistoryState::new(
+                finger_rotation_cfg.right_pad,
+                use_rotation,
+                axis_correction_cfg.right_pad,
+                use_correction,
+                jitter_threshold_cfg.right_pad,
+            ),
+            stick: CoordsHistoryState::new(
+                finger_rotation_cfg.stick,
+                use_rotation,
+                axis_correction_cfg.stick,
+                use_correction,
+                jitter_threshold_cfg.stick,
+            ),
         }
     }
 
     #[inline]
-    pub fn reset(&mut self) {
-        self.left_pad.reset();
-        self.right_pad.reset();
-        self.stick.reset();
+    pub fn reset_all(&mut self) {
+        self.left_pad.reset_all();
+        self.right_pad.reset_all();
+        self.stick.reset_all();
     }
 
     #[inline]
@@ -397,17 +481,18 @@ pub fn is_jitter(value: f32, jitter_threshold: f32) -> bool {
 
 #[inline]
 pub fn discard_jitter_for_pad(
-    prev_value: Option<f32>,
+    prev_value: CoordState,
     new_value: f32,
     jitter_threshold: f32,
-) -> Option<f32> {
+) -> CoordState {
     match prev_value {
-        None => Some(new_value),
-        Some(prev_value) => {
+        CoordState::NotInit => Value(new_value),
+        CoordState::DiscardNext => CoordState::NotInit,
+        Value(prev_value) => {
             let diff = new_value - prev_value;
             match is_jitter(diff, jitter_threshold) {
-                true => None,
-                false => Some(new_value),
+                true => CoordState::NotInit,
+                false => Value(new_value),
             }
         }
     }
@@ -415,12 +500,18 @@ pub fn discard_jitter_for_pad(
 
 #[inline]
 pub fn discard_jitter_for_stick(
-    prev_value: Option<f32>,
+    prev_value: CoordState,
     new_value: f32,
     jitter_threshold: f32,
-) -> Option<f32> {
-    if are_options_different(prev_value, Some(new_value)) && new_value == 0.0 {
-        Some(0.0)
+    correction: SteamyInputCoord,
+    use_correction: bool,
+) -> CoordState {
+    let zero_value: f32 = match use_correction {
+        true => correction as f32,
+        false => 0.0
+    };
+    if prev_value != Value(new_value) && new_value == zero_value {
+        Value(zero_value)
     } else {
         discard_jitter_for_pad(prev_value, new_value, jitter_threshold)
     }
