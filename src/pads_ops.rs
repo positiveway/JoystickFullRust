@@ -320,12 +320,12 @@ impl CoordsHistoryState {
         let (prev_coords, cur_coords) = match self.use_rotation {
             true => (
                 self.prev.try_rotate(self.finger_rotation),
-                //Check it for default for proper diff calculations
-                // self.cur_pos().rotate(self.finger_rotation).unwrap_or(self.cur),
-                self.cur_pos().try_rotate(self.finger_rotation),
+                // Calculating diff from self.cur_pos() or self.cur produces equivalent results
+                self.cur_pos().rotate(self.finger_rotation).unwrap_or(self.cur),
+                // self.cur_pos().try_rotate(self.finger_rotation),
             ),
-            // false => (self.prev, self.cur),
-            false => (self.prev, self.cur_pos()),
+            false => (self.prev, self.cur),
+            // false => (self.prev, self.cur_pos()),
         };
 
         let diff = CoordsDiff {
