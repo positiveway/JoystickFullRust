@@ -1,8 +1,11 @@
-[target.'cfg(target_os = "linux")'.build]
+[target.build]
+rustflags = ["-C", "target-cpu=native"]
+
+[target.x86_64-unknown-linux-gnu]
+linker = "/usr/bin/clang"
+#rustflags = ["-C", "target-cpu=native", "-C", "link-arg=--ld-path=/usr/bin/mold"]
 rustflags = ["-C", "target-cpu=native", "-C", "link-arg=-fuse-ld=lld"]
 
-[target.'cfg(not(target_os = "linux"))'.build]
-rustflags = ["-C", "target-cpu=native"]
 
 #"-Z", "polonius",
 #"-Z", "next-solver=coherence",
