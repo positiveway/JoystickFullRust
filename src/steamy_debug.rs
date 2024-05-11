@@ -1,10 +1,16 @@
-use std::fs::{read_dir, remove_file, File, OpenOptions};
+use std::fs::{read_dir, remove_file, File, OpenOptions, create_dir_all};
+use std::path::{Path, PathBuf};
 use std::io::prelude::*;
 
 const IS_PAD: bool = false;
 
 const BUF_SIZE: usize = 60;
+
+#[cfg(target_os = "linux")]
 const BASE_PATH: &str = "/home/user/Documents/bytes";
+#[cfg(target_os = "windows")]
+const BASE_PATH: &Path = Path::new(""); //TODO: fill in
+
 
 pub fn align_num(val: String, padding: usize) -> String {
     let mut res = String::from("");
@@ -59,7 +65,7 @@ pub fn get_header() -> String {
     content
 }
 
-pub fn clean_dir_fn(dir_path: String) -> color_eyre::Result<()> {
+pub fn clean_dir_fn(dir_path: PathBuf) -> color_eyre::Result<()> {
     for entry in read_dir(dir_path)? {
         remove_file(entry?.path())?;
     }
@@ -67,7 +73,8 @@ pub fn clean_dir_fn(dir_path: String) -> color_eyre::Result<()> {
 }
 
 pub fn create_file(subject: &str, endings: bool) -> color_eyre::Result<File> {
-    let dir_path = format!("{}/{}", BASE_PATH, subject);
+    let dir_path = Path::new(BASE_PATH).join(subject);
+    create_dir_all(dir_path.clone())?;
 
     if !endings {
         clean_dir_fn(dir_path.clone())?;
@@ -84,7 +91,7 @@ pub fn create_file(subject: &str, endings: bool) -> color_eyre::Result<File> {
         // .create(true)
         .write(true)
         .create_new(true)
-        .open(format!("{}/{}.txt", dir_path, subject))?;
+        .open(dir_path.join(format!("{}.txt", subject)))?;
     file.write_all(get_header().as_bytes())?;
 
     Ok(file)

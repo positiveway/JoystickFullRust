@@ -5,10 +5,6 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
-universal_input = { git = "https://github.com/positiveway/universal_input", branch = "master" }
-#universal_input = { path = "/home/user/RustroverProjects/universal_input" }
-steamy_base = { git = "https://github.com/positiveway/steamy_base", branch = "master" }
-#steamy_base = { path = "/home/user/RustroverProjects/steamy_base" }
 #rusb = "0.9"
 #gilrs = "0.10"
 #regex = "1.10"
@@ -28,3 +24,14 @@ strum = { version = "0.26", features = ["derive"] }
 strum_macros = "0.26"
 env_logger = "0.11"
 log = "0.4"
+
+universal_input = { git = "https://github.com/positiveway/universal_input", branch = "master" }
+steamy_base = { git = "https://github.com/positiveway/steamy_base", branch = "master" }
+
+[target.'cfg(target_os = "windows")'.dependencies]
+#universal_input = { path = "universal_input" }
+#steamy_base = { path = "steamy_base" }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+#universal_input = { path = "/home/user/RustroverProjects/universal_input" }
+#steamy_base = { path = "/home/user/RustroverProjects/steamy_base" }
