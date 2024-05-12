@@ -3,6 +3,8 @@ use std::collections::hash_set::Difference;
 use std::fmt::Display;
 use std::hash::Hash;
 use trait_set::trait_set;
+use color_eyre::eyre::Result;
+
 
 trait_set! {
     pub trait ContainerElement = Copy + Eq + Sized + Display;
@@ -74,7 +76,7 @@ pub fn get_or_default<'a, K: Hash + Eq + Sized + std::fmt::Display, V: Default +
 pub fn get_or_err<'a, K: Hash + Eq + Sized + std::fmt::Display, V>(
     m: &'a AHashMap<K, V>,
     key: &'a K,
-) -> color_eyre::Result<&'a V> {
+) -> Result<&'a V> {
     m.get(key)
         .ok_or_else(|| color_eyre::eyre::Report::msg(format!("No mapping for '{}'", key)))
 }

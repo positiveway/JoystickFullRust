@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use strum_macros::{AsRefStr, Display, EnumIter, EnumString};
 use universal_input::{OS_Input_Coord, KeyCode};
 use universal_input::KeyCode::KEY_LEFTSHIFT;
+use color_eyre::eyre::Result;
 use crate::buttons_state::ButtonsState;
 use crate::pads_ops::CoordState::Value;
 use crate::steamy_state::SteamyInputCoord;
@@ -363,7 +364,7 @@ impl CoordsHistoryState {
         mapping_configs: &ZoneMappingConfigs,
         buttons_state: &mut ButtonsState,
         always_press: bool,
-    ) -> color_eyre::Result<()> {
+    ) -> Result<()> {
         let cur_pos = self.cur_pos().try_rotate(self.finger_rotation);
 
         let (to_release, to_press, to_press_full) =

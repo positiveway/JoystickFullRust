@@ -3,21 +3,15 @@ use crate::match_event::ButtonName;
 use crate::math_ops::Angle;
 use ahash::AHashMap;
 use color_eyre::eyre::{bail, OptionExt, Result};
-use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
-use std::env::current_dir;
-use std::fs::read_to_string;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 use universal_input::{KeyCode, KeyCodes};
+use crate::file_ops::{get_project_dir, read_toml};
 use crate::steamy_state::SteamyInputCoord;
 
 const PROJECT_NAME: &str = "JoystickFullRust";
 
-lazy_static! {
-    pub static ref CONFIGS_DIR: PathBuf = get_project_dir().join("config");
-    pub static ref LAYOUTS_DIR: PathBuf = CONFIGS_DIR.join("layouts");
-}
 
 #[derive(Clone, Debug, Copy, Default, Serialize, Deserialize)]
 pub struct JitterThresholdConfigs {
@@ -78,13 +72,16 @@ pub fn convert_pct(value: u8) -> f32 {
 
 impl MainConfigs {
     pub fn load() -> Result<Self> {
-        let mut main_configs: Self = read_toml(CONFIGS_DIR.as_path(), "configs")?;
+        let configs_dir = get_project_dir(PROJECT_NAME).unwrap().join("config");
+        let layouts_dir = configs_dir.join("layouts");
+
+        let mut main_configs: Self = read_toml(configs_dir.as_path(), "configs")?;
         main_configs.channel_size = 100;
         main_configs.usb_input_refresh_interval = Duration::from_millis(1);
         main_configs.mouse_refresh_interval = Duration::from_millis(1);
 
         main_configs.layout_configs =
-            LayoutConfigs::load(main_configs.buttons_layout_name.as_str())?;
+            LayoutConfigs::load(main_configs.buttons_layout_name.as_str(), layouts_dir.as_path())?;
 
         Ok(main_configs)
     }
@@ -184,8 +181,8 @@ pub struct LayoutConfigs {
 }
 
 impl LayoutConfigs {
-    pub fn load<S: AsRef<str>>(layout_name: S) -> Result<Self> {
-        let mut layout_configs: Self = read_toml(LAYOUTS_DIR.as_path(), layout_name)?;
+    pub fn load<S: AsRef<str>, P: AsRef<Path>>(layout_name: S, layout_dir: P) -> Result<Self> {
+        let mut layout_configs: Self = read_toml(layout_dir.as_ref(), layout_name)?;
         layout_configs.general.load()?;
         let gaming_mode = layout_configs.general.gaming_mode;
 
@@ -377,39 +374,4 @@ pub struct ButtonsLayoutRaw {
     pub ExtraBtn_SideR: Vec<String>,
     #[serde(default)]
     pub ExtraBtnCentral: Vec<String>,
-}
-
-pub fn last_path_component(path: &Path) -> &str {
-    path.components()
-        .last()
-        .unwrap()
-        .as_os_str()
-        .to_str()
-        .unwrap()
-}
-
-pub fn get_project_dir() -> PathBuf {
-    let mut cur_dir = current_dir().unwrap();
-    while last_path_component(cur_dir.as_path()) != PROJECT_NAME {
-        cur_dir = cur_dir.parent().unwrap().to_path_buf();
-    }
-    cur_dir
-}
-
-pub fn read_toml<T, P, S>(folder: P, filename: S) -> Result<T>
-    where
-        T: serde::de::DeserializeOwned,
-        P: AsRef<Path>,
-        S: AsRef<str>,
-{
-    const EXTENSION: &str = ".toml";
-    let mut filename = filename.as_ref().to_string();
-    if !filename.ends_with(EXTENSION) {
-        filename += EXTENSION
-    }
-
-    let filepath = folder.as_ref().join(filename);
-    let file_content = read_to_string(filepath)?;
-    let decoded_obj = toml::from_str(file_content.as_str())?;
-    Ok(decoded_obj)
 }

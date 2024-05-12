@@ -1,7 +1,7 @@
 use std::thread;
 use std::thread::{JoinHandle, sleep};
 use std::time::Instant;
-use color_eyre::eyre::bail;
+use color_eyre::eyre::{bail, Result};
 use log::debug;
 use universal_input::{InputEmulator, KeyCode};
 use crate::buttons_state::{ButtonsState, Command};
@@ -44,7 +44,7 @@ fn assign_pad_event(
 fn assign_stick_event(
     coords_state: &mut CoordsHistoryState,
     pad_stick_event: PadStickEvent,
-) -> color_eyre::Result<()> {
+) -> Result<()> {
     let axis_correction = coords_state.axis_correction;
     let use_correction = coords_state.use_correction;
     let jitter_threshold = coords_state.jitter_threshold;
@@ -100,7 +100,7 @@ fn writing_thread(
     mouse_receiver: MouseReceiver,
     button_receiver: ButtonReceiver,
     configs: MainConfigs,
-) -> color_eyre::Result<()> {
+) -> Result<()> {
     //Loading Configs
     let writing_interval = configs.mouse_refresh_interval;
     let layout_configs = configs.layout_configs;
@@ -287,12 +287,28 @@ fn writing_thread(
     }
 }
 
+pub type ThreadHandle = JoinHandle<()>;
+
+pub fn check_thread_handle(thread_handle: &ThreadHandle) -> Result<()> {
+    if thread_handle.is_finished() {
+        bail!("Thread panicked")
+    } else {
+        Ok(())
+    }
+}
+
+pub fn try_unwrap_thread(thread_handle: ThreadHandle) {
+    if thread_handle.is_finished() {
+        thread_handle.join().unwrap();
+    };
+}
+
 pub fn create_writing_thread(
     mouse_receiver: MouseReceiver,
     button_receiver: ButtonReceiver,
     configs: MainConfigs,
-) -> JoinHandle<()> {
+) -> ThreadHandle {
     thread::spawn(move || {
-        writing_thread(mouse_receiver, button_receiver, configs).unwrap();
+        writing_thread(mouse_receiver, button_receiver, configs).unwrap()
     })
 }

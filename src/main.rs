@@ -12,9 +12,10 @@ mod steamy_state;
 mod utils;
 mod writing_thread;
 mod pads_ops;
+mod file_ops;
 
 use crate::configs::MainConfigs;
-use crate::writing_thread::create_writing_thread;
+use crate::writing_thread::{create_writing_thread, try_unwrap_thread};
 use crate::process_event::{process_event, ControllerState};
 use color_eyre::eyre::Result;
 use env_logger::builder;
@@ -32,13 +33,15 @@ fn init_controller() -> Result<()> {
     match configs.is_steamy {
         true => {
             use crate::steamy_specific::run_steamy_loop;
-            run_steamy_loop(controller_state, configs)?;
+            run_steamy_loop(controller_state, configs, &thread_handle)?;
         }
         false => {
             // use crate::gilrs_specific::run_gilrs_loop;
-            // run_gilrs_loop(controller_state)?;
+            // run_gilrs_loop(controller_state, &thread_handle)?;
         }
     }
+
+    try_unwrap_thread(thread_handle);
 
     Ok(())
 }

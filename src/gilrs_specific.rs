@@ -10,6 +10,7 @@
 // use serde::{Deserialize, Serialize};
 // use std::thread::sleep;
 // use std::time::Duration;
+// use crate::writing_thread::{check_thread_handle, ThreadHandle};
 //
 // #[derive(PartialEq, Default, Copy, Clone, Debug, Serialize, Deserialize)]
 // struct Coords {
@@ -51,13 +52,18 @@
 // fn read_events(
 //     gilrs: &mut Gilrs,
 //     controller_state: &mut ControllerState,
-// ) -> color_eyre::Result<()> {
+//     thread_handle: &ThreadHandle,
+// ) -> Result<()> {
 //     let impl_cfg = ImplementationSpecificCfg::new(-1.0, 1.0);
 //
 //     // gilrs.next_event().filter_ev()
 //     print_deadzones(gilrs, 0)?;
 //
 //     loop {
+//         if check_thread_handle(thread_handle).is_err(){
+//             return Ok(())
+//         };
+//
 //         // Examine new events
 //         while let Some(Event { id, event, time }) = gilrs.next_event() {
 //             let is_disconnected = event == Disconnected;
@@ -91,7 +97,7 @@
 //     mut device: rusb::Device<rusb::GlobalContext>,
 //     mut handle: rusb::DeviceHandle<rusb::GlobalContext>,
 //     endpoint: u8,
-// ) -> color_eyre::Result<UsbHolder> {
+// ) -> Result<UsbHolder> {
 //     for i in 0..device.device_descriptor()?.num_configurations() {
 //         for interface in device.config_descriptor(i)?.interfaces() {
 //             if handle.kernel_driver_active(interface.number())? {
@@ -121,7 +127,7 @@
 //     bail!("Invalid address")
 // }
 //
-// fn find_usb_device() -> color_eyre::Result<UsbHolder> {
+// fn find_usb_device() -> Result<UsbHolder> {
 //     for device in rusb::devices()?.iter() {
 //         let descriptor = device.device_descriptor()?;
 //
@@ -149,11 +155,14 @@
 //     bail!("Device not found")
 // }
 //
-// fn init_gilrs() -> color_eyre::Result<Gilrs> {
+// fn init_gilrs() -> Result<Gilrs> {
 //     exec_or_eyre!(Gilrs::new())
 // }
 //
-// pub fn run_gilrs_loop(mut controller_state: ControllerState) -> color_eyre::Result<()> {
+// pub fn run_gilrs_loop(
+//     mut controller_state: ControllerState,
+//     thread_handle: &ThreadHandle,
+// ) -> Result<()> {
 //     // let usb_holder = find_usb_device()?;
 //
 //     let mut gilrs = init_gilrs()?;
@@ -179,7 +188,7 @@
 //             }
 //             1 => {
 //                 wait_msg_is_printed = false;
-//                 read_events(&mut gilrs, &mut controller_state)?;
+//                 read_events(&mut gilrs, &mut controller_state, thread_handle)?;
 //             }
 //             _ => {
 //                 println!("Only one gamepad is supported. Disconnect other gamepads");
@@ -189,7 +198,7 @@
 //     }
 // }
 //
-// pub fn match_button(code: u16) -> color_eyre::Result<ButtonName> {
+// pub fn match_button(code: u16) -> Result<ButtonName> {
 //     Ok(match code {
 //         304 => ButtonName::BtnDown_SideR,
 //         305 => ButtonName::BtnRight_SideR,
@@ -223,7 +232,7 @@
 //     })
 // }
 //
-// pub fn match_axis(code: u16) -> color_eyre::Result<AxisName> {
+// pub fn match_axis(code: u16) -> Result<AxisName> {
 //     Ok(match code {
 //         16 => AxisName::PadX_SideL,
 //         17 => AxisName::PadY_SideL,
@@ -244,7 +253,7 @@
 // pub fn normalize_event(
 //     event: &EventType,
 //     RESET_BTN: ButtonName,
-// ) -> color_eyre::Result<TransformStatus> {
+// ) -> Result<TransformStatus> {
 //     Ok(match event {
 //         AxisChanged(axis, value, code) => {
 //             let code_as_num = print_code(code)?;
@@ -326,7 +335,7 @@
 //     }
 // }
 //
-// fn print_code(code: &Code) -> color_eyre::Result<u16> {
+// fn print_code(code: &Code) -> Result<u16> {
 //     let re = Regex::new(r"\(([0-9]+)\)")?;
 //     let binding = code.to_string();
 //     let Some(caps) = re.captures(binding.as_str()) else {
@@ -336,7 +345,7 @@
 //     Ok(code)
 // }
 //
-// pub fn print_event(event: &EventType) -> color_eyre::Result<String> {
+// pub fn print_event(event: &EventType) -> Result<String> {
 //     let mut button_or_axis = "";
 //     let mut res_value: f32 = 0.0;
 //     let mut event_type = "";

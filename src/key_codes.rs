@@ -1,9 +1,8 @@
-use color_eyre::eyre::bail;
-use color_eyre::Report;
+use color_eyre::eyre::{bail, Result, Report};
 use crate::match_event::ButtonName;
 use universal_input::{KeyCode, KeyCodes};
 
-fn assign_special_button(special_button: &mut ButtonName, value: ButtonName) -> color_eyre::Result<KeyCode> {
+fn assign_special_button(special_button: &mut ButtonName, value: ButtonName) -> Result<KeyCode> {
     if *special_button != ButtonName::DefaultForSpecialBtns {
         bail!(
             "Duplicate of special button: '{}'. Value already exists: '{}'",
@@ -23,7 +22,7 @@ pub fn key_code_from_config(
     reset_btn: &mut ButtonName,
     switch_mode_btn: &mut ButtonName,
     detect_special: bool,
-) -> color_eyre::Result<KeyCode> {
+) -> Result<KeyCode> {
     if code_str == "" {
         return Ok(KeyCode::None);
     };

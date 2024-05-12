@@ -2,7 +2,7 @@ use crate::configs::ButtonsLayout;
 use crate::match_event::ButtonName;
 use crate::utils::{get_or_default, get_or_err, Container};
 use ahash::AHashMap;
-use color_eyre::Result;
+use color_eyre::eyre::Result;
 use serde::{Deserialize, Serialize};
 use strum::IntoEnumIterator;
 use strum_macros::Display;

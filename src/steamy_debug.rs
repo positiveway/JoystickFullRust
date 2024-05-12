@@ -1,15 +1,18 @@
 use std::fs::{read_dir, remove_file, File, OpenOptions, create_dir_all};
 use std::path::{Path, PathBuf};
+use color_eyre::eyre::Result;
 use std::io::prelude::*;
+use log::debug;
+use crate::file_ops::get_home_dir;
 
 const IS_PAD: bool = false;
 
 const BUF_SIZE: usize = 60;
 
 #[cfg(target_os = "linux")]
-const BASE_PATH: &str = "/home/user/Documents/bytes";
+const DUMP_DIR: &str = "Documents/bytes";
 #[cfg(target_os = "windows")]
-const BASE_PATH: &Path = Path::new(""); //TODO: fill in
+const BASE_PATH: &str = "Documents\\bytes";
 
 
 pub fn align_num(val: String, padding: usize) -> String {
@@ -65,15 +68,16 @@ pub fn get_header() -> String {
     content
 }
 
-pub fn clean_dir_fn(dir_path: PathBuf) -> color_eyre::Result<()> {
+pub fn clean_dir_fn(dir_path: PathBuf) -> Result<()> {
     for entry in read_dir(dir_path)? {
         remove_file(entry?.path())?;
     }
     Ok(())
 }
 
-pub fn create_file(subject: &str, endings: bool) -> color_eyre::Result<File> {
-    let dir_path = Path::new(BASE_PATH).join(subject);
+pub fn create_file(subject: &str, endings: bool) -> Result<File> {
+    let dir_path = get_home_dir()?.join(DUMP_DIR).join(subject);
+    debug!("{:#?}", dir_path.as_os_str());
     create_dir_all(dir_path.clone())?;
 
     if !endings {
@@ -97,7 +101,7 @@ pub fn create_file(subject: &str, endings: bool) -> color_eyre::Result<File> {
     Ok(file)
 }
 
-pub fn init_debug_files() -> color_eyre::Result<(File, File, File)> {
+pub fn init_debug_files() -> Result<(File, File, File)> {
     let subject = if IS_PAD { "pad" } else { "stick" };
 
     let mut subject_file = create_file(subject, false)?;

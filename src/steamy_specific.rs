@@ -6,11 +6,12 @@ use crate::steamy_event::{SteamyButton, SteamyEvent, SteamyPadStickF32, SteamyTr
 use crate::steamy_state::SteamyState;
 use log::{debug, error, warn};
 use std::io::prelude::*;
-use std::thread::sleep;
+use std::thread::{JoinHandle, sleep};
 use std::time::Duration;
-use color_eyre::eyre::bail;
+use color_eyre::eyre::{bail, Result};
+use crate::writing_thread::{check_thread_handle, ThreadHandle};
 
-pub fn match_button(button: &SteamyButton) -> color_eyre::Result<ButtonName> {
+pub fn match_button(button: &SteamyButton) -> Result<ButtonName> {
     Ok(match button {
         SteamyButton::A => ButtonName::BtnDown_SideR,
         SteamyButton::B => ButtonName::BtnRight_SideR,
@@ -45,7 +46,7 @@ pub fn match_button(button: &SteamyButton) -> color_eyre::Result<ButtonName> {
 pub fn normalize_event(
     event: &SteamyEvent,
     RESET_BTN: ButtonName,
-) -> color_eyre::Result<TransformStatus> {
+) -> Result<TransformStatus> {
     Ok(match event {
         SteamyEvent::Button(button, pressed) => {
             let button = match_button(button)?;
@@ -131,7 +132,8 @@ fn read_events(
     mut controller: steamy_base::Controller,
     controller_state: &mut ControllerState,
     configs: MainConfigs,
-) -> color_eyre::Result<()> {
+    thread_handle: &ThreadHandle,
+) -> Result<()> {
     let impl_cfg = ImplementationSpecificCfg::new(0.0, 1.0);
     let usb_input_refresh_interval = configs.usb_input_refresh_interval;
     let mut state = SteamyState::default();
@@ -142,6 +144,10 @@ fn read_events(
     //DEBUG
 
     loop {
+        if check_thread_handle(thread_handle).is_err() {
+            return Ok(())
+        };
+
         msg_counter += 1;
 
         let (new_state, buffer) = controller.state(Duration::from_secs(0))?;
@@ -186,13 +192,14 @@ fn read_events(
 pub fn run_steamy_loop(
     mut controller_state: ControllerState,
     configs: MainConfigs,
-) -> color_eyre::Result<()> {
+    thread_handle: &ThreadHandle,
+) -> Result<()> {
     let mut manager = steamy_base::Manager::new()?;
 
     loop {
         match manager.open() {
             Ok(mut controller) => {
-                read_events(controller, &mut controller_state, configs.clone())?;
+                read_events(controller, &mut controller_state, configs.clone(), thread_handle)?;
             }
             Err(_) => {
                 println!("Gamepad is not connected. Waiting...");
