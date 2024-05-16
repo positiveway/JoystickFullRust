@@ -130,6 +130,25 @@ impl ZoneMappingConfigs {
 }
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
+pub struct GradualMoveConfigs {
+    pub mouse: bool,
+    #[serde(alias = "scroll")]
+    pub _scroll: Option<bool>,
+    #[serde(skip)]
+    pub scroll: bool,
+}
+
+impl GradualMoveConfigs {
+    pub fn load(&mut self, gaming_mode: bool) -> Result<()> {
+        if !gaming_mode && self._scroll.is_none() {
+            bail!("[GradualMove][Scroll] has to be specified in Desktop mode");
+        }
+        self.scroll = self._scroll.unwrap_or(false);
+        Ok(())
+    }
+}
+
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct GeneralConfigs {
     pub gaming_mode: bool,
     pub repeat_keys: bool,
@@ -157,24 +176,29 @@ pub struct LayoutConfigs {
     #[serde(alias = "General")]
     pub general: GeneralConfigs,
 
+    #[serde(alias = "GradualMove")]
+    pub gradual_move_cfg: GradualMoveConfigs,
+
     #[serde(alias = "FingerRotation")]
+    pub _finger_rotation_cfg: Option<FingerRotationConfigs>,
+    #[serde(skip)]
     pub finger_rotation_cfg: FingerRotationConfigs,
 
     #[serde(alias = "AxisCorrection")]
     pub axis_correction_cfg: AxisCorrectionConfigs,
 
     #[serde(alias = "Stick")]
-    pub stick: ZoneMappingConfigs,
+    pub stick_zones_cfg: ZoneMappingConfigs,
 
     #[serde(alias = "WASD")]
     _wasd: Option<ZoneMappingConfigs>,
     #[serde(skip)]
-    pub wasd: ZoneMappingConfigs,
+    pub wasd_zones_cfg: ZoneMappingConfigs,
 
     #[serde(alias = "Scroll")]
     _scroll: Option<ScrollConfigs>,
     #[serde(skip)]
-    pub scroll: ScrollConfigs,
+    pub scroll_cfg: ScrollConfigs,
 
     #[serde(alias = "JitterThreshold")]
     pub jitter_threshold_cfg: JitterThresholdConfigs,
@@ -183,31 +207,40 @@ pub struct LayoutConfigs {
 impl LayoutConfigs {
     pub fn load<S: AsRef<str>, P: AsRef<Path>>(layout_name: S, layout_dir: P) -> Result<Self> {
         let mut layout_configs: Self = read_toml(layout_dir.as_ref(), layout_name)?;
+
         layout_configs.general.load()?;
         let gaming_mode = layout_configs.general.gaming_mode;
 
         match gaming_mode {
             true => {
-                layout_configs.stick.load()?;
-
                 match layout_configs._wasd {
                     None => {
-                        bail!("'Movement' has to be specified in gaming mode")
+                        bail!("[WASD] has to be specified in gaming mode")
                     }
                     Some(ref wasd) => {
-                        layout_configs.wasd = wasd.load_and_return()?;
+                        layout_configs.wasd_zones_cfg = wasd.load_and_return()?;
                     }
                 }
             }
             false => match layout_configs._scroll {
                 None => {
-                    bail!("'Scroll' has to be specified in desktop mode")
+                    bail!("[Scroll] has to be specified in desktop mode")
                 }
                 Some(scroll) => {
-                    layout_configs.scroll = scroll;
+                    layout_configs.scroll_cfg = scroll;
                 }
             },
         }
+
+        layout_configs.gradual_move_cfg.load(gaming_mode)?;
+        layout_configs.stick_zones_cfg.load()?;
+        layout_configs.finger_rotation_cfg = layout_configs._finger_rotation_cfg.unwrap_or_else(|| FingerRotationConfigs {
+            use_rotation: false,
+            left_pad: 0,
+            right_pad: 0,
+            stick: 0,
+        });
+
         layout_configs.buttons_layout = ButtonsLayout::load(
             layout_configs._buttons_layout_raw.clone(),
             layout_configs.general.gaming_mode,

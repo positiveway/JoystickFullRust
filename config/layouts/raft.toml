@@ -40,6 +40,16 @@ gaming_mode = true
 repeat_keys = false
 triggers_threshold_pct = 20
 mouse_speed = 400
+[Scroll]
+speed = 600
+horizontal_threshold = 0.08
+[GradualMove]
+mouse = true
+scroll = false
+[JitterThreshold]
+left_pad = 0.01
+right_pad = 0.01
+stick = 0.01
 [Stick]
 diagonal_zones = false
 zone_range = 22
@@ -49,9 +59,6 @@ diagonal_zones = true
 zone_range = 22
 start_threshold_pct = 30
 shift_threshold_pct = 80
-[Scroll]
-speed = 600
-horizontal_threshold = 0.08
 [AxisCorrection]
 use_correction = true
 [AxisCorrection.left_pad]
@@ -63,12 +70,3 @@ y = 3000
 [AxisCorrection.stick]
 x = 0
 y = 0
-[FingerRotation]
-use_rotation = false
-left_pad = -20
-right_pad = 8
-stick = -8
-[JitterThreshold]
-left_pad = 0.01
-right_pad = 0.01
-stick = 0.01

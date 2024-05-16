@@ -1,15 +1,17 @@
+use std::cmp::min;
 use std::thread;
 use std::thread::{JoinHandle, sleep};
 use std::time::Instant;
 use color_eyre::eyre::{bail, Result};
 use log::debug;
-use universal_input::{InputEmulator, KeyCode};
+use serde::{Deserialize, Serialize};
+use universal_input::{InputEmulator, KeyCode, OS_Input_Coord};
 use crate::buttons_state::{ButtonsState, Command};
 use crate::configs::MainConfigs;
 use crate::exec_or_eyre;
 use crate::match_event::ButtonName;
 use crate::math_ops::{ZoneAllowedRange, ZonesMapper};
-use crate::pads_ops::{Coords, CoordsHistoryState, discard_jitter_for_pad, discard_jitter_for_stick, MouseMode, PadsCoords};
+use crate::pads_ops::{ConvertedCoordsDiff, Coords, CoordsHistoryState, discard_jitter_for_pad, discard_jitter_for_stick, MouseMode, PadsCoords};
 use crate::pads_ops::CoordState::Value;
 use crate::process_event::{ButtonEvent, ButtonReceiver, MouseEvent, MouseReceiver, PadStickEvent};
 
@@ -96,6 +98,44 @@ fn assign_stick_event(
     Ok(())
 }
 
+#[derive(PartialEq, Copy, Clone, Default, Debug, Serialize, Deserialize)]
+pub struct GradualMove {
+    pub x_direction: OS_Input_Coord,
+    pub y_direction: OS_Input_Coord,
+    pub both_move: OS_Input_Coord,
+    pub move_only_x: OS_Input_Coord,
+    pub move_only_y: OS_Input_Coord,
+}
+
+impl GradualMove {
+    pub fn calculate(mouse_diff: ConvertedCoordsDiff) -> Self {
+        // println!("Diff X: {}, Diff Y: {}", mouse_diff.x, mouse_diff.y);
+
+        let x_direction = mouse_diff.x.signum();
+        let y_direction = mouse_diff.y.signum();
+
+        let move_x = mouse_diff.x.abs();
+        let move_y = mouse_diff.y.abs();
+
+        let both_move = min(move_x, move_y);
+
+        // println!("Dir X: {}, Dir Y: {}, Move both: {}", x_direction, y_direction, both_move);
+
+        let move_only_x = move_x - both_move;
+        let move_only_y = move_y - both_move;
+
+        // println!("Only X: {}, Only Y: {}\n", move_only_x, move_only_y);
+
+        Self {
+            x_direction,
+            y_direction,
+            both_move,
+            move_only_x,
+            move_only_y,
+        }
+    }
+}
+
 fn writing_thread(
     mouse_receiver: MouseReceiver,
     button_receiver: ButtonReceiver,
@@ -105,8 +145,9 @@ fn writing_thread(
     let writing_interval = configs.mouse_refresh_interval;
     let layout_configs = configs.layout_configs;
     let gaming_mode = layout_configs.general.gaming_mode;
-    let scroll_configs = layout_configs.scroll;
+    let scroll_cfg = layout_configs.scroll_cfg;
     let mouse_speed = layout_configs.general.mouse_speed;
+    let gradual_move_cfg = layout_configs.gradual_move_cfg;
 
     let mut pads_coords = PadsCoords::new(
         &layout_configs.finger_rotation_cfg,
@@ -120,8 +161,8 @@ fn writing_thread(
     );
 
     //Zone Mapping
-    let WASD_configs = layout_configs.wasd;
-    let stick_zones_configs = layout_configs.stick;
+    let WASD_zones_cfg = layout_configs.wasd_zones_cfg;
+    let stick_zones_cfg = layout_configs.stick_zones_cfg;
     let _buttons_layout = layout_configs.buttons_layout.layout;
 
     let _wasd_zones: [Vec<KeyCode>; 4] = [
@@ -130,13 +171,13 @@ fn writing_thread(
         vec![KeyCode::KEY_S],
         vec![KeyCode::KEY_D],
     ];
-    let _wasd_zone_range = ZoneAllowedRange::from_one_value(WASD_configs.zone_range, WASD_configs.diagonal_zones)?;
+    let _wasd_zone_range = ZoneAllowedRange::from_one_value(WASD_zones_cfg.zone_range, WASD_zones_cfg.diagonal_zones)?;
     let mut wasd_zone_mapper = ZonesMapper::gen_from(
         _wasd_zones.to_vec(),
         90,
         &_wasd_zone_range,
-        WASD_configs.start_threshold,
-        WASD_configs.diagonal_zones,
+        WASD_zones_cfg.start_threshold,
+        WASD_zones_cfg.diagonal_zones,
     )?;
 
     let _stick_zones: [Vec<KeyCode>; 4] = [
@@ -145,13 +186,13 @@ fn writing_thread(
         _buttons_layout[&ButtonName::BtnLeft_SideL].clone(),
         _buttons_layout[&ButtonName::BtnDown_SideL].clone(),
     ];
-    let _stick_zone_range = ZoneAllowedRange::from_one_value(stick_zones_configs.zone_range, stick_zones_configs.diagonal_zones)?;
+    let _stick_zone_range = ZoneAllowedRange::from_one_value(stick_zones_cfg.zone_range, stick_zones_cfg.diagonal_zones)?;
     let mut stick_zone_mapper = ZonesMapper::gen_from(
         _stick_zones.to_vec(),
         0,
         &_stick_zone_range,
-        stick_zones_configs.start_threshold,
-        stick_zones_configs.diagonal_zones,
+        stick_zones_cfg.start_threshold,
+        stick_zones_cfg.diagonal_zones,
     )?;
     //Zone Mapping
     //Loading Configs
@@ -200,7 +241,7 @@ fn writing_thread(
 
         pads_coords.stick.send_commands_diff(
             &mut stick_zone_mapper,
-            &stick_zones_configs,
+            &stick_zones_cfg,
             &mut buttons_state,
             false,
         )?;
@@ -210,23 +251,60 @@ fn writing_thread(
                 let mouse_diff = pads_coords.right_pad.diff();
                 let mouse_diff = mouse_diff.convert(mouse_speed);
                 if mouse_diff.is_any_changes() {
-                    input_emulator.move_mouse(mouse_diff.x, -mouse_diff.y)?;
+                    match gradual_move_cfg.mouse {
+                        true => {
+                            // println!("Gradual Mouse");
+                            let gradual_move = GradualMove::calculate(mouse_diff);
+
+                            for _ in 0..gradual_move.both_move {
+                                input_emulator.move_mouse(gradual_move.x_direction, gradual_move.y_direction)?;
+                            }
+                            for _ in 0..gradual_move.move_only_x {
+                                input_emulator.move_mouse_x(gradual_move.x_direction)?;
+                            }
+                            for _ in 0..gradual_move.move_only_y {
+                                input_emulator.move_mouse_y(gradual_move.y_direction)?;
+                            }
+                        }
+                        false => {
+                            input_emulator.move_mouse(mouse_diff.x, mouse_diff.y)?;
+                        }
+                    }
                 }
             }
             match gaming_mode {
                 false => {
                     if pads_coords.left_pad.any_changes() {
                         let mut scroll_diff = pads_coords.left_pad.diff();
-                        if scroll_diff.x.abs() <= scroll_configs.horizontal_threshold {
+                        if scroll_diff.x.abs() <= scroll_cfg.horizontal_threshold {
                             scroll_diff.x = 0.0;
                         } else {
                             scroll_diff.y = 0.0;
                         }
 
-                        let scroll_diff = scroll_diff.convert(scroll_configs.speed);
+                        let scroll_diff = scroll_diff.convert(scroll_cfg.speed);
                         if scroll_diff.is_any_changes() {
-                            exec_or_eyre!(input_emulator.scroll_x(scroll_diff.x))?;
-                            exec_or_eyre!(input_emulator.scroll_y(-scroll_diff.y))?;
+                            match gradual_move_cfg.scroll {
+                                true => {
+                                    // println!("Gradual Scroll");
+                                    let gradual_scroll = GradualMove::calculate(scroll_diff);
+
+                                    for _ in 0..gradual_scroll.both_move {
+                                        input_emulator.scroll_x(gradual_scroll.x_direction)?;
+                                        input_emulator.scroll_y(gradual_scroll.y_direction)?;
+                                    }
+                                    for _ in 0..gradual_scroll.move_only_x {
+                                        input_emulator.scroll_x(gradual_scroll.x_direction)?;
+                                    }
+                                    for _ in 0..gradual_scroll.move_only_y {
+                                        input_emulator.scroll_y(gradual_scroll.y_direction)?;
+                                    }
+                                }
+                                false => {
+                                    input_emulator.scroll_x(scroll_diff.x)?;
+                                    input_emulator.scroll_y(scroll_diff.y)?;
+                                }
+                            }
                         }
                     }
                 }
@@ -235,7 +313,7 @@ fn writing_thread(
 
                     pads_coords.left_pad.send_commands_diff(
                         &mut wasd_zone_mapper,
-                        &WASD_configs,
+                        &WASD_zones_cfg,
                         &mut buttons_state,
                         ALWAYS_PRESS,
                     )?;
