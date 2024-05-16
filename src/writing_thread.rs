@@ -291,19 +291,24 @@ fn writing_thread(
                                     let gradual_scroll = GradualMove::calculate(scroll_diff);
 
                                     for _ in 0..gradual_scroll.both_move {
-                                        input_emulator.scroll_x(gradual_scroll.x_direction)?;
-                                        input_emulator.scroll_y(gradual_scroll.y_direction)?;
+                                        input_emulator.scroll_raw_x(gradual_scroll.x_direction)?;
+                                        input_emulator.scroll_raw_y(gradual_scroll.y_direction)?;
                                     }
                                     for _ in 0..gradual_scroll.move_only_x {
-                                        input_emulator.scroll_x(gradual_scroll.x_direction)?;
+                                        input_emulator.scroll_raw_x(gradual_scroll.x_direction)?;
                                     }
                                     for _ in 0..gradual_scroll.move_only_y {
-                                        input_emulator.scroll_y(gradual_scroll.y_direction)?;
+                                        input_emulator.scroll_raw_y(gradual_scroll.y_direction)?;
                                     }
+                                    input_emulator.finish_operation()?;
                                 }
                                 false => {
-                                    input_emulator.scroll_x(scroll_diff.x)?;
-                                    input_emulator.scroll_y(scroll_diff.y)?;
+                                    if scroll_diff.x != 0 {
+                                        input_emulator.scroll_x(scroll_diff.x)?;
+                                    }
+                                    if scroll_diff.y != 0 {
+                                        input_emulator.scroll_y(scroll_diff.y)?;
+                                    }
                                 }
                             }
                         }
