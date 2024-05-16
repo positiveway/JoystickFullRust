@@ -42,7 +42,6 @@ triggers_threshold_pct = 20
 mouse_speed = 400
 [GradualMove]
 mouse = true
-scroll = false
 [JitterThreshold]
 left_pad = 0.01
 right_pad = 0.01

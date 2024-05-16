@@ -45,7 +45,7 @@ speed = 600
 horizontal_threshold = 0.08
 [GradualMove]
 mouse = true
-scroll = false
+scroll = true
 [JitterThreshold]
 left_pad = 0.01
 right_pad = 0.01

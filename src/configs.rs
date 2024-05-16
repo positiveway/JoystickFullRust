@@ -143,8 +143,22 @@ impl GradualMoveConfigs {
         if !gaming_mode && self._scroll.is_none() {
             bail!("[GradualMove][Scroll] has to be specified in Desktop mode");
         }
-        self.scroll = self._scroll.unwrap_or(false);
+        self.scroll = self._scroll.unwrap_or(true);
         Ok(())
+    }
+
+    pub fn load_and_return(cfg: Option<Self>, gaming_mode: bool) -> Result<Self> {
+        Ok(match cfg {
+            None => Self {
+                mouse: true,
+                _scroll: None,
+                scroll: true,
+            },
+            Some(mut value) => {
+                value.load(gaming_mode)?;
+                value
+            }
+        })
     }
 }
 
@@ -177,6 +191,8 @@ pub struct LayoutConfigs {
     pub general: GeneralConfigs,
 
     #[serde(alias = "GradualMove")]
+    pub _gradual_move_cfg: Option<GradualMoveConfigs>,
+    #[serde(skip)]
     pub gradual_move_cfg: GradualMoveConfigs,
 
     #[serde(alias = "FingerRotation")]
@@ -232,7 +248,10 @@ impl LayoutConfigs {
             },
         }
 
-        layout_configs.gradual_move_cfg.load(gaming_mode)?;
+        layout_configs.gradual_move_cfg = GradualMoveConfigs::load_and_return(
+            layout_configs._gradual_move_cfg.clone(),
+            gaming_mode,
+        )?;
         layout_configs.stick_zones_cfg.load()?;
         layout_configs.finger_rotation_cfg = layout_configs._finger_rotation_cfg.unwrap_or_else(|| FingerRotationConfigs {
             use_rotation: false,
