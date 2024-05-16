@@ -257,14 +257,15 @@ fn writing_thread(
                             let gradual_move = GradualMove::calculate(mouse_diff);
 
                             for _ in 0..gradual_move.both_move {
-                                input_emulator.move_mouse(gradual_move.x_direction, gradual_move.y_direction)?;
+                                input_emulator.move_mouse_raw(gradual_move.x_direction, gradual_move.y_direction)?;
                             }
                             for _ in 0..gradual_move.move_only_x {
-                                input_emulator.move_mouse_x(gradual_move.x_direction)?;
+                                input_emulator.move_mouse_raw_x(gradual_move.x_direction)?;
                             }
                             for _ in 0..gradual_move.move_only_y {
-                                input_emulator.move_mouse_y(gradual_move.y_direction)?;
+                                input_emulator.move_mouse_raw_y(gradual_move.y_direction)?;
                             }
+                            input_emulator.finish_operation()?;
                         }
                         false => {
                             input_emulator.move_mouse(mouse_diff.x, mouse_diff.y)?;
