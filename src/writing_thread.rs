@@ -265,7 +265,7 @@ fn writing_thread(
                             for _ in 0..gradual_move.move_only_y {
                                 input_emulator.move_mouse_raw_y(gradual_move.y_direction)?;
                             }
-                            input_emulator.finish_operation()?;
+                            input_emulator.finish_operation_mouse()?;
                         }
                         false => {
                             input_emulator.move_mouse(mouse_diff.x, mouse_diff.y)?;
@@ -300,7 +300,7 @@ fn writing_thread(
                                     for _ in 0..gradual_scroll.move_only_y {
                                         input_emulator.scroll_raw_y(gradual_scroll.y_direction)?;
                                     }
-                                    input_emulator.finish_operation()?;
+                                    input_emulator.finish_operation_mouse()?;
                                 }
                                 false => {
                                     if scroll_diff.x != 0 {
