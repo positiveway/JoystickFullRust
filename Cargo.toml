@@ -29,6 +29,7 @@ log = "0.4"
 #lazy_static = "1.4"
 
 universal_input = { git = "https://github.com/positiveway/universal_input", branch = "master" }
+#universal_input = { git = "https://github.com/positiveway/universal_input", branch = "master", features = ["enigo-always"] }
 steamy_base = { git = "https://github.com/positiveway/steamy_base", branch = "master" }
 
 [target.'cfg(target_os = "windows")'.dependencies]
