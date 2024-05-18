@@ -21,7 +21,7 @@ pub fn match_button(button: &SteamyButton) -> Result<ButtonName> {
         SteamyButton::Left => ButtonName::PadLeft_SideL,
         SteamyButton::Right => ButtonName::PadRight_SideL,
         SteamyButton::Up => ButtonName::PadUp_SideL,
-        SteamyButton::LeftPadPressed => ButtonName::PadAsBtn_SideL, //unreliable: triggered for both stick and left pad
+        SteamyButton::LeftPadPressed => ButtonName::PadAsBtn_SideL,
         SteamyButton::LeftPadTouch => ButtonName::PadAsTouch_SideL,
         SteamyButton::StickTouch => {
             // println!("StickTouch happened");
