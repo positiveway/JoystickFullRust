@@ -200,6 +200,10 @@ fn writing_thread(
     let mut input_emulator = InputEmulator::new()?;
     let mut mouse_mode = MouseMode::default();
 
+    //For DEBUG purposes
+    const ALWAYS_PRESS: bool = false;
+    const USE_RAW_INPUT: bool = true;
+
     loop {
         let start = Instant::now();
 
@@ -256,16 +260,31 @@ fn writing_thread(
                             // println!("Gradual Mouse");
                             let gradual_move = GradualMove::calculate(mouse_diff);
 
-                            for _ in 0..gradual_move.both_move {
-                                input_emulator.move_mouse_raw(gradual_move.x_direction, gradual_move.y_direction)?;
+                            match USE_RAW_INPUT {
+                                true => {
+                                    for _ in 0..gradual_move.both_move {
+                                        input_emulator.move_mouse_raw(gradual_move.x_direction, gradual_move.y_direction)?;
+                                    }
+                                    for _ in 0..gradual_move.move_only_x {
+                                        input_emulator.move_mouse_raw_x(gradual_move.x_direction)?;
+                                    }
+                                    for _ in 0..gradual_move.move_only_y {
+                                        input_emulator.move_mouse_raw_y(gradual_move.y_direction)?;
+                                    }
+                                    input_emulator.finish_operation_mouse()?;
+                                }
+                                false => {
+                                    for _ in 0..gradual_move.both_move {
+                                        input_emulator.move_mouse(gradual_move.x_direction, gradual_move.y_direction)?;
+                                    }
+                                    for _ in 0..gradual_move.move_only_x {
+                                        input_emulator.move_mouse_x(gradual_move.x_direction)?;
+                                    }
+                                    for _ in 0..gradual_move.move_only_y {
+                                        input_emulator.move_mouse_y(gradual_move.y_direction)?;
+                                    }
+                                }
                             }
-                            for _ in 0..gradual_move.move_only_x {
-                                input_emulator.move_mouse_raw_x(gradual_move.x_direction)?;
-                            }
-                            for _ in 0..gradual_move.move_only_y {
-                                input_emulator.move_mouse_raw_y(gradual_move.y_direction)?;
-                            }
-                            input_emulator.finish_operation_mouse()?;
                         }
                         false => {
                             input_emulator.move_mouse(mouse_diff.x, mouse_diff.y)?;
@@ -290,17 +309,33 @@ fn writing_thread(
                                     // println!("Gradual Scroll");
                                     let gradual_scroll = GradualMove::calculate(scroll_diff);
 
-                                    for _ in 0..gradual_scroll.both_move {
-                                        input_emulator.scroll_raw_x(gradual_scroll.x_direction)?;
-                                        input_emulator.scroll_raw_y(gradual_scroll.y_direction)?;
+                                    match USE_RAW_INPUT {
+                                        true => {
+                                            for _ in 0..gradual_scroll.both_move {
+                                                input_emulator.scroll_raw_x(gradual_scroll.x_direction)?;
+                                                input_emulator.scroll_raw_y(gradual_scroll.y_direction)?;
+                                            }
+                                            for _ in 0..gradual_scroll.move_only_x {
+                                                input_emulator.scroll_raw_x(gradual_scroll.x_direction)?;
+                                            }
+                                            for _ in 0..gradual_scroll.move_only_y {
+                                                input_emulator.scroll_raw_y(gradual_scroll.y_direction)?;
+                                            }
+                                            input_emulator.finish_operation_mouse()?;
+                                        }
+                                        false => {
+                                            for _ in 0..gradual_scroll.both_move {
+                                                input_emulator.scroll_x(gradual_scroll.x_direction)?;
+                                                input_emulator.scroll_y(gradual_scroll.y_direction)?;
+                                            }
+                                            for _ in 0..gradual_scroll.move_only_x {
+                                                input_emulator.scroll_x(gradual_scroll.x_direction)?;
+                                            }
+                                            for _ in 0..gradual_scroll.move_only_y {
+                                                input_emulator.scroll_y(gradual_scroll.y_direction)?;
+                                            }
+                                        }
                                     }
-                                    for _ in 0..gradual_scroll.move_only_x {
-                                        input_emulator.scroll_raw_x(gradual_scroll.x_direction)?;
-                                    }
-                                    for _ in 0..gradual_scroll.move_only_y {
-                                        input_emulator.scroll_raw_y(gradual_scroll.y_direction)?;
-                                    }
-                                    input_emulator.finish_operation_mouse()?;
                                 }
                                 false => {
                                     if scroll_diff.x != 0 {
@@ -315,8 +350,6 @@ fn writing_thread(
                     }
                 }
                 true => {
-                    const ALWAYS_PRESS: bool = false; //For DEBUG purposes
-
                     pads_coords.left_pad.send_commands_diff(
                         &mut wasd_zone_mapper,
                         &WASD_zones_cfg,
