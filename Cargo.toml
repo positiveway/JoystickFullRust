@@ -20,9 +20,9 @@ strum_macros = "0.26"
 env_logger = "0.11"
 log = "0.4"
 
-#rusb = "0.9"
-#gilrs = "0.10"
-#regex = "1.10"
+rusb = "0.9"
+gilrs = "0.10"
+regex = "1.10"
 
 #bytes = "1.6"
 #validator = "0.18"
@@ -37,5 +37,5 @@ steamy_base = { git = "https://github.com/positiveway/steamy_base", branch = "ma
 #steamy_base = { path = "steamy_base" }
 
 [target.'cfg(target_os = "linux")'.dependencies]
-#universal_input = { path = "/home/user/RustroverProjects/universal_input" }
+#universal_input = { path = "/media/user/15cf4ce3-6174-4270-bdb5-807280c6813b/home/user/RustroverProjects/universal_input", features = [] }
 #steamy_base = { path = "/home/user/RustroverProjects/steamy_base" }

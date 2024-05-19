@@ -9,7 +9,7 @@ use std::io::prelude::*;
 use std::thread::{JoinHandle, sleep};
 use std::time::Duration;
 use color_eyre::eyre::{bail, Result};
-use crate::writing_thread::{check_thread_handle, ThreadHandle};
+use crate::utils::{check_thread_handle, ThreadHandleOption};
 
 pub fn match_button(button: &SteamyButton) -> Result<ButtonName> {
     Ok(match button {
@@ -132,13 +132,14 @@ fn read_events(
     mut controller: steamy_base::Controller,
     controller_state: &mut ControllerState,
     configs: MainConfigs,
-    thread_handle: &ThreadHandle,
+    thread_handle: ThreadHandleOption,
 ) -> Result<()> {
     let impl_cfg = ImplementationSpecificCfg::new(0.0, 1.0);
     let usb_input_refresh_interval = configs.usb_input_refresh_interval;
     let mut state = SteamyState::default();
 
     //DEBUG
+    let is_debug = configs.debugging_cfg.is_debug;
     let (mut subject_file, mut subject_endings_file, mut cmp_file) = init_debug_files()?;
     let mut msg_counter: u32 = 0;
     //DEBUG
@@ -155,7 +156,7 @@ fn read_events(
             debug!("{:?}", &event);
             let is_disconnected = event == SteamyEvent::Disconnected;
 
-            if configs.debug {
+            if is_debug {
                 match event {
                     SteamyEvent::PadStickF32(pad_stick_f32) => match pad_stick_f32 {
                         SteamyPadStickF32::LeftPadX(_)
@@ -192,7 +193,7 @@ fn read_events(
 pub fn run_steamy_loop(
     mut controller_state: ControllerState,
     configs: MainConfigs,
-    thread_handle: &ThreadHandle,
+    thread_handle: ThreadHandleOption,
 ) -> Result<()> {
     let mut manager = steamy_base::Manager::new()?;
 

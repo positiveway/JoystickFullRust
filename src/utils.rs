@@ -1,10 +1,28 @@
 use ahash::{AHashMap, AHasher, HashSet, HashSetExt, RandomState};
+use color_eyre::eyre::{bail, Result};
 use std::collections::hash_set::Difference;
 use std::fmt::Display;
 use std::hash::Hash;
+use std::thread::JoinHandle;
 use trait_set::trait_set;
-use color_eyre::eyre::Result;
 
+pub type ThreadHandle = JoinHandle<()>;
+pub type ThreadHandleOption<'a> = Option<&'a ThreadHandle>;
+
+pub fn check_thread_handle(thread_handle: ThreadHandleOption) -> Result<()> {
+    if let Some(thread_handle) = thread_handle {
+        if thread_handle.is_finished() {
+            bail!("Thread panicked")
+        }
+    }
+    Ok(())
+}
+
+pub fn try_unwrap_thread(thread_handle: ThreadHandle) {
+    if thread_handle.is_finished() {
+        thread_handle.join().unwrap();
+    };
+}
 
 trait_set! {
     pub trait ContainerElement = Copy + Eq + Sized + Display;

@@ -1,6 +1,11 @@
-debug = false
-is_steamy = true
+[Debugging]
+is_debug = false
+use_steamy = true
+use_raw_input = true
+always_press = false
+main_as_thread = true
+[Layouts]
 #buttons_layout = "desktop"
-#buttons_layout = "raft"
-buttons_layout = "wmd"
+buttons_layout = "raft"
+#buttons_layout = "wmd"
 typing_layout = "typing"

@@ -14,6 +14,7 @@ use crate::math_ops::{ZoneAllowedRange, ZonesMapper};
 use crate::pads_ops::{ConvertedCoordsDiff, Coords, CoordsHistoryState, discard_jitter_for_pad, discard_jitter_for_stick, MouseMode, PadsCoords};
 use crate::pads_ops::CoordState::Value;
 use crate::process_event::{ButtonEvent, ButtonReceiver, MouseEvent, MouseReceiver, PadStickEvent};
+use crate::utils::{check_thread_handle, ThreadHandle, ThreadHandleOption};
 
 #[inline]
 fn assign_pad_event(
@@ -136,10 +137,11 @@ impl GradualMove {
     }
 }
 
-fn writing_thread(
+pub fn write_events(
     mouse_receiver: MouseReceiver,
     button_receiver: ButtonReceiver,
     configs: MainConfigs,
+    thread_handle: ThreadHandleOption,
 ) -> Result<()> {
     //Loading Configs
     let writing_interval = configs.mouse_refresh_interval;
@@ -148,6 +150,9 @@ fn writing_thread(
     let scroll_cfg = layout_configs.scroll_cfg;
     let mouse_speed = layout_configs.general.mouse_speed;
     let gradual_move_cfg = layout_configs.gradual_move_cfg;
+
+    let always_press = configs.debugging_cfg.always_press;
+    let use_raw_input = configs.debugging_cfg.use_raw_input;
 
     let mut pads_coords = PadsCoords::new(
         &layout_configs.finger_rotation_cfg,
@@ -200,12 +205,12 @@ fn writing_thread(
     let mut input_emulator = InputEmulator::new()?;
     let mut mouse_mode = MouseMode::default();
 
-    //For DEBUG purposes
-    const ALWAYS_PRESS: bool = false;
-    const USE_RAW_INPUT: bool = true;
-
     loop {
         let start = Instant::now();
+
+        if check_thread_handle(thread_handle).is_err() {
+            return Ok(())
+        };
 
         //MOUSE
         // for event in mouse_receiver.try_iter() {
@@ -260,7 +265,7 @@ fn writing_thread(
                             // println!("Gradual Mouse");
                             let gradual_move = GradualMove::calculate(mouse_diff);
 
-                            match USE_RAW_INPUT {
+                            match use_raw_input {
                                 true => {
                                     for _ in 0..gradual_move.both_move {
                                         input_emulator.move_mouse_raw(gradual_move.x_direction, gradual_move.y_direction)?;
@@ -309,7 +314,7 @@ fn writing_thread(
                                     // println!("Gradual Scroll");
                                     let gradual_scroll = GradualMove::calculate(scroll_diff);
 
-                                    match USE_RAW_INPUT {
+                                    match use_raw_input {
                                         true => {
                                             for _ in 0..gradual_scroll.both_move {
                                                 input_emulator.scroll_raw_x(gradual_scroll.x_direction)?;
@@ -354,7 +359,7 @@ fn writing_thread(
                         &mut wasd_zone_mapper,
                         &WASD_zones_cfg,
                         &mut buttons_state,
-                        ALWAYS_PRESS,
+                        always_press,
                     )?;
                 }
             }
@@ -404,21 +409,7 @@ fn writing_thread(
     }
 }
 
-pub type ThreadHandle = JoinHandle<()>;
 
-pub fn check_thread_handle(thread_handle: &ThreadHandle) -> Result<()> {
-    if thread_handle.is_finished() {
-        bail!("Thread panicked")
-    } else {
-        Ok(())
-    }
-}
-
-pub fn try_unwrap_thread(thread_handle: ThreadHandle) {
-    if thread_handle.is_finished() {
-        thread_handle.join().unwrap();
-    };
-}
 
 pub fn create_writing_thread(
     mouse_receiver: MouseReceiver,
@@ -426,6 +417,6 @@ pub fn create_writing_thread(
     configs: MainConfigs,
 ) -> ThreadHandle {
     thread::spawn(move || {
-        writing_thread(mouse_receiver, button_receiver, configs).unwrap()
+        write_events(mouse_receiver, button_receiver, configs, None).unwrap()
     })
 }

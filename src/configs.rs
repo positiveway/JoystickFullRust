@@ -48,14 +48,30 @@ pub struct ScrollConfigs {
     pub horizontal_threshold: f32,
 }
 
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+pub struct MainDebuggingConfigs {
+    pub is_debug: bool,
+    pub use_steamy: bool,
+    pub use_raw_input: bool,
+    pub always_press: bool,
+    pub main_as_thread: bool,
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct MainConfigs {
-    pub debug: bool,
-    pub is_steamy: bool,
+pub struct LayoutNamesConfigs {
     #[serde(alias = "typing_layout")]
     pub typing_layout_name: String,
     #[serde(alias = "buttons_layout")]
     pub buttons_layout_name: String,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct MainConfigs {
+    #[serde(alias = "Debugging")]
+    pub debugging_cfg: MainDebuggingConfigs,
+    #[serde(alias = "Layouts")]
+    pub layout_names_cfg: LayoutNamesConfigs,
+
     #[serde(skip)]
     pub channel_size: usize,
     #[serde(skip)]
@@ -81,7 +97,7 @@ impl MainConfigs {
         main_configs.mouse_refresh_interval = Duration::from_millis(1);
 
         main_configs.layout_configs =
-            LayoutConfigs::load(main_configs.buttons_layout_name.as_str(), layouts_dir.as_path())?;
+            LayoutConfigs::load(main_configs.layout_names_cfg.buttons_layout_name.as_str(), layouts_dir.as_path())?;
 
         Ok(main_configs)
     }
@@ -163,7 +179,7 @@ impl GradualMoveConfigs {
 }
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
-pub struct GeneralConfigs {
+pub struct LayoutGeneralConfigs {
     pub gaming_mode: bool,
     pub repeat_keys: bool,
     #[serde(alias = "triggers_threshold_pct")]
@@ -173,7 +189,7 @@ pub struct GeneralConfigs {
     pub mouse_speed: u16,
 }
 
-impl GeneralConfigs {
+impl LayoutGeneralConfigs {
     pub fn load(&mut self) -> Result<()> {
         self.triggers_threshold = convert_pct(self._triggers_threshold_pct);
         Ok(())
@@ -188,7 +204,7 @@ pub struct LayoutConfigs {
     pub buttons_layout: ButtonsLayout,
 
     #[serde(alias = "General")]
-    pub general: GeneralConfigs,
+    pub general: LayoutGeneralConfigs,
 
     #[serde(alias = "GradualMove")]
     pub _gradual_move_cfg: Option<GradualMoveConfigs>,
