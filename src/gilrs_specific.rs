@@ -10,6 +10,7 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::thread::sleep;
 use std::time::Duration;
+use crate::configs::MainConfigs;
 use crate::utils::{check_thread_handle, ThreadHandleOption};
 
 #[derive(PartialEq, Default, Copy, Clone, Debug, Serialize, Deserialize)]
@@ -52,9 +53,12 @@ pub fn print_deadzones(gilrs: &Gilrs, id: usize) -> Result<()> {
 fn read_events(
     gilrs: &mut Gilrs,
     controller_state: &mut ControllerState,
+    configs: MainConfigs,
     thread_handle: ThreadHandleOption,
 ) -> Result<()> {
     let impl_cfg = ImplementationSpecificCfg::new(-1.0, 1.0);
+
+    let usb_input_refresh_interval = configs.general.usb_input_refresh_interval;
 
     // gilrs.next_event().filter_ev()
     print_deadzones(gilrs, 0)?;
@@ -78,7 +82,8 @@ fn read_events(
                 return Ok(());
             }
         }
-        sleep(Duration::from_millis(4)); //4 = USB min latency
+        sleep(usb_input_refresh_interval);
+        // sleep(Duration::from_millis(4)); //4 = USB min latency
     }
 }
 
@@ -161,6 +166,7 @@ fn init_gilrs() -> Result<Gilrs> {
 
 pub fn run_gilrs_loop(
     mut controller_state: ControllerState,
+    configs: MainConfigs,
     thread_handle: ThreadHandleOption,
 ) -> Result<()> {
     // let usb_holder = find_usb_device()?;
@@ -188,7 +194,7 @@ pub fn run_gilrs_loop(
             }
             1 => {
                 wait_msg_is_printed = false;
-                read_events(&mut gilrs, &mut controller_state, thread_handle)?;
+                read_events(&mut gilrs, &mut controller_state, configs.clone(), thread_handle)?;
             }
             _ => {
                 println!("Only one gamepad is supported. Disconnect other gamepads");

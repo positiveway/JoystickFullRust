@@ -48,13 +48,39 @@ pub struct ScrollConfigs {
     pub horizontal_threshold: f32,
 }
 
-#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct MainDebuggingConfigs {
     pub is_debug: bool,
     pub use_steamy: bool,
     pub use_raw_input: bool,
     pub always_press: bool,
     pub main_as_thread: bool,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct MainGeneralConfigs {
+    pub channel_size: usize,
+
+    #[serde(alias = "usb_input_refresh_interval")]
+    pub _usb_input_refresh_interval: u16,
+    #[serde(skip)]
+    pub usb_input_refresh_interval: Duration,
+
+    #[serde(alias = "mouse_refresh_interval")]
+    pub _mouse_refresh_interval: u16,
+    #[serde(skip)]
+    pub mouse_refresh_interval: Duration,
+}
+
+impl MainGeneralConfigs {
+    pub fn load(&mut self) {
+        self.usb_input_refresh_interval = Duration::from_millis(
+            self._usb_input_refresh_interval as u64
+        );
+        self.mouse_refresh_interval = Duration::from_millis(
+            self._mouse_refresh_interval as u64
+        );
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -71,13 +97,9 @@ pub struct MainConfigs {
     pub debugging_cfg: MainDebuggingConfigs,
     #[serde(alias = "Layouts")]
     pub layout_names_cfg: LayoutNamesConfigs,
+    #[serde(alias = "General")]
+    pub general: MainGeneralConfigs,
 
-    #[serde(skip)]
-    pub channel_size: usize,
-    #[serde(skip)]
-    pub usb_input_refresh_interval: Duration,
-    #[serde(skip)]
-    pub mouse_refresh_interval: Duration,
     #[serde(skip)]
     pub layout_configs: LayoutConfigs,
 }
@@ -92,9 +114,8 @@ impl MainConfigs {
         let layouts_dir = configs_dir.join("layouts");
 
         let mut main_configs: Self = read_toml(configs_dir.as_path(), "configs")?;
-        main_configs.channel_size = 100;
-        main_configs.usb_input_refresh_interval = Duration::from_millis(1);
-        main_configs.mouse_refresh_interval = Duration::from_millis(1);
+
+        main_configs.general.load();
 
         main_configs.layout_configs =
             LayoutConfigs::load(main_configs.layout_names_cfg.buttons_layout_name.as_str(), layouts_dir.as_path())?;

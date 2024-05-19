@@ -144,7 +144,7 @@ pub fn write_events(
     thread_handle: ThreadHandleOption,
 ) -> Result<()> {
     //Loading Configs
-    let writing_interval = configs.mouse_refresh_interval;
+    let writing_interval = configs.general.mouse_refresh_interval;
     let layout_configs = configs.layout_configs;
     let gaming_mode = layout_configs.general.gaming_mode;
     let scroll_cfg = layout_configs.scroll_cfg;

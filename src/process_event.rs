@@ -53,8 +53,8 @@ pub struct ControllerState {
 
 impl ControllerState {
     pub fn new(configs: MainConfigs) -> Self {
-        let (mouse_sender, mouse_receiver) = bounded(configs.channel_size);
-        let (button_sender, button_receiver) = bounded(configs.channel_size);
+        let (mouse_sender, mouse_receiver) = bounded(configs.general.channel_size);
+        let (button_sender, button_receiver) = bounded(configs.general.channel_size);
         let layout_configs = configs.layout_configs;
         Self {
             mouse_sender,

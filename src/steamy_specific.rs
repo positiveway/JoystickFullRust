@@ -135,7 +135,9 @@ fn read_events(
     thread_handle: ThreadHandleOption,
 ) -> Result<()> {
     let impl_cfg = ImplementationSpecificCfg::new(0.0, 1.0);
-    let usb_input_refresh_interval = configs.usb_input_refresh_interval;
+
+    let usb_input_refresh_interval = configs.general.usb_input_refresh_interval;
+
     let mut state = SteamyState::default();
 
     //DEBUG
@@ -185,7 +187,6 @@ fn read_events(
                 return Ok(());
             }
         }
-
         sleep(usb_input_refresh_interval);
     }
 }

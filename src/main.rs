@@ -92,7 +92,7 @@ fn init_controller() -> Result<()> {
                 },
                 false => {
                     use crate::gilrs_specific::run_gilrs_loop;
-                    run_gilrs_loop(controller_state, Some(&thread_handle))?;
+                    run_gilrs_loop(controller_state, configs, Some(&thread_handle))?;
                 }
             };
 

@@ -4,6 +4,10 @@ use_steamy = true
 use_raw_input = true
 always_press = false
 main_as_thread = true
+[General]
+channel_size = 100
+usb_input_refresh_interval = 1
+mouse_refresh_interval = 2
 [Layouts]
 #buttons_layout = "desktop"
 buttons_layout = "raft"
