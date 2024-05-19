@@ -7,7 +7,7 @@ use crate::steamy_state::SteamyState;
 use log::{debug, error, warn};
 use std::io::prelude::*;
 use std::thread::{JoinHandle, sleep};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use color_eyre::eyre::{bail, Result};
 use crate::utils::{check_thread_handle, ThreadHandleOption};
 
@@ -136,7 +136,8 @@ fn read_events(
 ) -> Result<()> {
     let impl_cfg = ImplementationSpecificCfg::new(0.0, 1.0);
 
-    let usb_input_refresh_interval = configs.general.usb_input_refresh_interval;
+    let input_raw_refresh_interval = configs.general.input_raw_refresh_interval;
+    let input_buffer_refresh_interval = configs.general.input_buffer_refresh_interval;
 
     let mut state = SteamyState::default();
 
@@ -146,7 +147,13 @@ fn read_events(
     let mut msg_counter: u32 = 0;
     //DEBUG
 
+    let mut events_buffer: Vec<SteamyEvent> = vec![];
+    let mut last_buffer_flush = Instant::now();
+    ;
+
     loop {
+        let loop_start_time = Instant::now();
+
         if check_thread_handle(thread_handle).is_err() {
             return Ok(())
         };
@@ -178,16 +185,31 @@ fn read_events(
                 }
             }
 
-            let event = normalize_event(&event, controller_state.RESET_BTN)?;
-            process_event(event, controller_state, &impl_cfg)?;
-
             if is_disconnected {
                 controller_state.release_all_hard()?;
                 println!("Gamepad disconnected");
                 return Ok(());
             }
+
+            events_buffer.push(event);
         }
-        sleep(usb_input_refresh_interval);
+
+        let time_since_last_flush = last_buffer_flush.elapsed();
+
+        if input_buffer_refresh_interval.checked_sub(time_since_last_flush) == None {
+            for event in &events_buffer {
+                let event = normalize_event(event, controller_state.RESET_BTN)?;
+                process_event(event, controller_state, &impl_cfg)?;
+            }
+            last_buffer_flush = Instant::now();
+            events_buffer.clear();
+        }
+
+        let loop_iteration_runtime = loop_start_time.elapsed();
+
+        if let Some(remaining) = input_raw_refresh_interval.checked_sub(loop_iteration_runtime) {
+            sleep(remaining);
+        }
     }
 }
 

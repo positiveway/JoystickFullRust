@@ -61,10 +61,15 @@ pub struct MainDebuggingConfigs {
 pub struct MainGeneralConfigs {
     pub channel_size: usize,
 
-    #[serde(alias = "usb_input_refresh_interval")]
-    pub _usb_input_refresh_interval: u16,
+    #[serde(alias = "input_raw_refresh_interval")]
+    pub _input_raw_refresh_interval: u16,
     #[serde(skip)]
-    pub usb_input_refresh_interval: Duration,
+    pub input_raw_refresh_interval: Duration,
+
+    #[serde(alias = "input_buffer_refresh_interval")]
+    pub _input_buffer_refresh_interval: u16,
+    #[serde(skip)]
+    pub input_buffer_refresh_interval: Duration,
 
     #[serde(alias = "mouse_refresh_interval")]
     pub _mouse_refresh_interval: u16,
@@ -74,8 +79,11 @@ pub struct MainGeneralConfigs {
 
 impl MainGeneralConfigs {
     pub fn load(&mut self) {
-        self.usb_input_refresh_interval = Duration::from_millis(
-            self._usb_input_refresh_interval as u64
+        self.input_raw_refresh_interval = Duration::from_micros(
+            self._input_raw_refresh_interval as u64
+        );
+        self.input_buffer_refresh_interval = Duration::from_millis(
+            self._input_buffer_refresh_interval as u64
         );
         self.mouse_refresh_interval = Duration::from_millis(
             self._mouse_refresh_interval as u64

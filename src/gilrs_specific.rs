@@ -58,7 +58,7 @@ fn read_events(
 ) -> Result<()> {
     let impl_cfg = ImplementationSpecificCfg::new(-1.0, 1.0);
 
-    let usb_input_refresh_interval = configs.general.usb_input_refresh_interval;
+    let input_buffer_refresh_interval = configs.general.input_buffer_refresh_interval;
 
     // gilrs.next_event().filter_ev()
     print_deadzones(gilrs, 0)?;
@@ -82,7 +82,7 @@ fn read_events(
                 return Ok(());
             }
         }
-        sleep(usb_input_refresh_interval);
+        sleep(input_buffer_refresh_interval);
         // sleep(Duration::from_millis(4)); //4 = USB min latency
     }
 }

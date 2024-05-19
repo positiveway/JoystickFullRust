@@ -206,7 +206,7 @@ pub fn write_events(
     let mut mouse_mode = MouseMode::default();
 
     loop {
-        let start = Instant::now();
+        let loop_start_time = Instant::now();
 
         if check_thread_handle(thread_handle).is_err() {
             return Ok(())
@@ -401,9 +401,9 @@ pub fn write_events(
         buttons_state.queue.clear();
 
         //Scheduler
-        let runtime = start.elapsed();
+        let loop_iteration_runtime = loop_start_time.elapsed();
 
-        if let Some(remaining) = writing_interval.checked_sub(runtime) {
+        if let Some(remaining) = writing_interval.checked_sub(loop_iteration_runtime) {
             sleep(remaining);
         }
     }
