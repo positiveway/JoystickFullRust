@@ -6,10 +6,15 @@ use crate::steamy_event::{SteamyButton, SteamyEvent, SteamyPadStickF32, SteamyTr
 use crate::steamy_state::SteamyState;
 use log::{debug, error, warn};
 use std::io::prelude::*;
+use std::thread;
 use std::thread::{JoinHandle, sleep};
 use std::time::{Duration, Instant};
 use color_eyre::eyre::{bail, Result};
 use crate::utils::{check_thread_handle, ThreadHandleOption};
+use kanal::{bounded, Receiver, Sender};
+
+pub type SteamyEventSender = Sender<SteamyEvent>;
+pub type SteamyEventReceiver = Receiver<SteamyEvent>;
 
 pub fn match_button(button: &SteamyButton) -> Result<ButtonName> {
     Ok(match button {
@@ -130,14 +135,11 @@ pub fn normalize_event(
 
 fn read_events(
     mut controller: steamy_base::Controller,
-    controller_state: &mut ControllerState,
     configs: MainConfigs,
-    thread_handle: ThreadHandleOption,
+    steam_event_sender: SteamyEventSender,
 ) -> Result<()> {
-    let impl_cfg = ImplementationSpecificCfg::new(0.0, 1.0);
-
+    let steamy_read_interrupt_interval = configs.general.steamy_read_interrupt_interval;
     let input_raw_refresh_interval = configs.general.input_raw_refresh_interval;
-    let input_buffer_refresh_interval = configs.general.input_buffer_refresh_interval;
 
     let mut state = SteamyState::default();
 
@@ -147,23 +149,14 @@ fn read_events(
     let mut msg_counter: u32 = 0;
     //DEBUG
 
-    let mut events_buffer: Vec<SteamyEvent> = vec![];
-    let mut last_buffer_flush = Instant::now();
-    ;
-
     loop {
         let loop_start_time = Instant::now();
 
-        if check_thread_handle(thread_handle).is_err() {
-            return Ok(())
-        };
-
         msg_counter += 1;
 
-        let (new_state, buffer) = controller.state(Duration::from_secs(0))?;
+        let (new_state, buffer) = controller.state(steamy_read_interrupt_interval)?;
         for event in state.update(new_state, buffer.clone(), &configs.layout_configs.axis_correction_cfg)? {
             debug!("{:?}", &event);
-            let is_disconnected = event == SteamyEvent::Disconnected;
 
             if is_debug {
                 match event {
@@ -185,24 +178,7 @@ fn read_events(
                 }
             }
 
-            if is_disconnected {
-                controller_state.release_all_hard()?;
-                println!("Gamepad disconnected");
-                return Ok(());
-            }
-
-            events_buffer.push(event);
-        }
-
-        let time_since_last_flush = last_buffer_flush.elapsed();
-
-        if input_buffer_refresh_interval.checked_sub(time_since_last_flush) == None {
-            for event in &events_buffer {
-                let event = normalize_event(event, controller_state.RESET_BTN)?;
-                process_event(event, controller_state, &impl_cfg)?;
-            }
-            last_buffer_flush = Instant::now();
-            events_buffer.clear();
+            steam_event_sender.send(event)?;
         }
 
         let loop_iteration_runtime = loop_start_time.elapsed();
@@ -213,17 +189,74 @@ fn read_events(
     }
 }
 
+fn process_event_loop(
+    controller_state: &mut ControllerState,
+    configs: MainConfigs,
+    steam_event_receiver: SteamyEventReceiver,
+    writing_thread_handle: ThreadHandleOption,
+    steamy_thread_handle: ThreadHandleOption,
+) -> Result<()> {
+    let impl_cfg = ImplementationSpecificCfg::new(0.0, 1.0);
+    let input_buffer_refresh_interval = configs.general.input_buffer_refresh_interval;
+
+    loop {
+        let loop_start_time = Instant::now();
+
+        if check_thread_handle(writing_thread_handle).is_err() {
+            return Ok(())
+        };
+
+        if check_thread_handle(steamy_thread_handle).is_err() {
+            return Ok(())
+        };
+
+        while let Some(event) = steam_event_receiver.try_recv()? {
+            let is_disconnected = event == SteamyEvent::Disconnected;
+
+            let event = normalize_event(&event, controller_state.RESET_BTN)?;
+            process_event(event, controller_state, &impl_cfg)?;
+
+            if is_disconnected {
+                controller_state.release_all_hard()?;
+                println!("Gamepad disconnected");
+                return Ok(());
+            }
+        }
+
+        let loop_iteration_runtime = loop_start_time.elapsed();
+
+        if let Some(remaining) = input_buffer_refresh_interval.checked_sub(loop_iteration_runtime) {
+            sleep(remaining);
+        }
+    }
+}
+
 pub fn run_steamy_loop(
     mut controller_state: ControllerState,
     configs: MainConfigs,
-    thread_handle: ThreadHandleOption,
+    writing_thread_handle: ThreadHandleOption,
 ) -> Result<()> {
     let mut manager = steamy_base::Manager::new()?;
 
     loop {
+        let steamy_channel_size = configs.clone().general.steamy_channel_size;
+        let configs_copy = configs.clone();
+
         match manager.open() {
             Ok(mut controller) => {
-                read_events(controller, &mut controller_state, configs.clone(), thread_handle)?;
+                let (steam_event_sender, steam_event_receiver) = bounded(steamy_channel_size);
+
+                let steamy_thread_handle = thread::spawn(move || {
+                    read_events(controller, configs_copy, steam_event_sender).unwrap();
+                });
+
+                process_event_loop(
+                    &mut controller_state,
+                    configs.clone(),
+                    steam_event_receiver,
+                    writing_thread_handle,
+                    Some(&steamy_thread_handle),
+                )?;
             }
             Err(_) => {
                 println!("Gamepad is not connected. Waiting...");

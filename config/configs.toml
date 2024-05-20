@@ -5,9 +5,11 @@ use_raw_input = true
 always_press = false
 main_as_thread = false
 [General]
-channel_size = 100
-input_raw_refresh_interval = 500
-input_buffer_refresh_interval = 2
+steamy_channel_size = 100
+commands_channel_size = 100
+steamy_read_interrupt_interval = 0
+input_raw_refresh_interval = 100
+input_buffer_refresh_interval = 1
 mouse_refresh_interval = 1
 [Layouts]
 #buttons_layout = "desktop"

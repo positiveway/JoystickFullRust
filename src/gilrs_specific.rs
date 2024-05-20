@@ -54,7 +54,7 @@ fn read_events(
     gilrs: &mut Gilrs,
     controller_state: &mut ControllerState,
     configs: MainConfigs,
-    thread_handle: ThreadHandleOption,
+    writing_thread_handle: ThreadHandleOption,
 ) -> Result<()> {
     let impl_cfg = ImplementationSpecificCfg::new(-1.0, 1.0);
 
@@ -64,7 +64,7 @@ fn read_events(
     print_deadzones(gilrs, 0)?;
 
     loop {
-        if check_thread_handle(thread_handle).is_err() {
+        if check_thread_handle(writing_thread_handle).is_err() {
             return Ok(())
         };
 
@@ -167,7 +167,7 @@ fn init_gilrs() -> Result<Gilrs> {
 pub fn run_gilrs_loop(
     mut controller_state: ControllerState,
     configs: MainConfigs,
-    thread_handle: ThreadHandleOption,
+    writing_thread_handle: ThreadHandleOption,
 ) -> Result<()> {
     // let usb_holder = find_usb_device()?;
 
@@ -194,7 +194,7 @@ pub fn run_gilrs_loop(
             }
             1 => {
                 wait_msg_is_printed = false;
-                read_events(&mut gilrs, &mut controller_state, configs.clone(), thread_handle)?;
+                read_events(&mut gilrs, &mut controller_state, configs.clone(), writing_thread_handle)?;
             }
             _ => {
                 println!("Only one gamepad is supported. Disconnect other gamepads");

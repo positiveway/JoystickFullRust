@@ -59,7 +59,13 @@ pub struct MainDebuggingConfigs {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct MainGeneralConfigs {
-    pub channel_size: usize,
+    pub commands_channel_size: usize,
+    pub steamy_channel_size: usize,
+
+    #[serde(alias = "steamy_read_interrupt_interval")]
+    pub _steamy_read_interrupt_interval: u16,
+    #[serde(skip)]
+    pub steamy_read_interrupt_interval: Duration,
 
     #[serde(alias = "input_raw_refresh_interval")]
     pub _input_raw_refresh_interval: u16,
@@ -79,6 +85,9 @@ pub struct MainGeneralConfigs {
 
 impl MainGeneralConfigs {
     pub fn load(&mut self) {
+        self.steamy_read_interrupt_interval = Duration::from_millis(
+            self._steamy_read_interrupt_interval as u64
+        );
         self.input_raw_refresh_interval = Duration::from_micros(
             self._input_raw_refresh_interval as u64
         );
