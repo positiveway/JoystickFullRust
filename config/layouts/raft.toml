@@ -43,8 +43,6 @@ mouse_speed = 400
 [Scroll]
 speed = 600
 horizontal_threshold = 0.08
-[GradualMove]
-mouse = true
 [JitterThreshold]
 left_pad = 0.01
 right_pad = 0.01

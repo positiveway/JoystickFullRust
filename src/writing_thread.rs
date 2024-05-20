@@ -5,7 +5,7 @@ use std::time::Instant;
 use color_eyre::eyre::{bail, Result};
 use log::debug;
 use serde::{Deserialize, Serialize};
-use universal_input::{InputEmulator, KeyCode, OS_Input_Coord};
+use universal_input::{InputEmulator, KeyCode, OS_Input_Coord, EventParams};
 use crate::buttons_state::{ButtonsState, Command};
 use crate::configs::MainConfigs;
 use crate::exec_or_eyre;
@@ -149,7 +149,7 @@ pub fn write_events(
     let gaming_mode = layout_configs.general.gaming_mode;
     let scroll_cfg = layout_configs.scroll_cfg;
     let mouse_speed = layout_configs.general.mouse_speed;
-    let gradual_move_cfg = layout_configs.gradual_move_cfg;
+    let gradual_move_cfg = configs.gradual_move_cfg;
 
     let always_press = configs.debugging_cfg.always_press;
     let use_raw_input = configs.debugging_cfg.use_raw_input;
@@ -211,6 +211,8 @@ pub fn write_events(
         if check_thread_handle(thread_handle).is_err() {
             return Ok(())
         };
+
+        let mut write_buffer: Vec<EventParams> = vec![];
 
         //MOUSE
         // for event in mouse_receiver.try_iter() {
@@ -280,13 +282,13 @@ pub fn write_events(
                                 }
                                 false => {
                                     for _ in 0..gradual_move.both_move {
-                                        input_emulator.move_mouse(gradual_move.x_direction, gradual_move.y_direction)?;
+                                        write_buffer.extend(input_emulator.buffered_move_mouse(gradual_move.x_direction, gradual_move.y_direction));
                                     }
                                     for _ in 0..gradual_move.move_only_x {
-                                        input_emulator.move_mouse_x(gradual_move.x_direction)?;
+                                        write_buffer.extend(input_emulator.buffered_move_mouse_x(gradual_move.x_direction));
                                     }
                                     for _ in 0..gradual_move.move_only_y {
-                                        input_emulator.move_mouse_y(gradual_move.y_direction)?;
+                                        write_buffer.extend(input_emulator.buffered_move_mouse_y(gradual_move.y_direction));
                                     }
                                 }
                             }
@@ -330,14 +332,14 @@ pub fn write_events(
                                         }
                                         false => {
                                             for _ in 0..gradual_scroll.both_move {
-                                                input_emulator.scroll_x(gradual_scroll.x_direction)?;
-                                                input_emulator.scroll_y(gradual_scroll.y_direction)?;
+                                                write_buffer.extend(input_emulator.buffered_scroll_x(gradual_scroll.x_direction));
+                                                write_buffer.extend(input_emulator.buffered_scroll_y(gradual_scroll.y_direction));
                                             }
                                             for _ in 0..gradual_scroll.move_only_x {
-                                                input_emulator.scroll_x(gradual_scroll.x_direction)?;
+                                                write_buffer.extend(input_emulator.buffered_scroll_x(gradual_scroll.x_direction));
                                             }
                                             for _ in 0..gradual_scroll.move_only_y {
-                                                input_emulator.scroll_y(gradual_scroll.y_direction)?;
+                                                write_buffer.extend(input_emulator.buffered_scroll_y(gradual_scroll.y_direction));
                                             }
                                         }
                                     }
@@ -390,15 +392,17 @@ pub fn write_events(
             match command {
                 Command::Pressed(key_code) => {
                     // println!("Send Pressed: {}", key_code);
-                    exec_or_eyre!(input_emulator.press(*key_code))?
+                    write_buffer.extend(input_emulator.buffered_press(*key_code)?);
                 }
                 Command::Released(key_code) => {
                     // println!("Send Released: {}", key_code);
-                    exec_or_eyre!(input_emulator.release(*key_code))?
+                    write_buffer.extend(input_emulator.buffered_release(*key_code)?);
                 }
             }
         }
         buttons_state.queue.clear();
+
+        input_emulator.write_buffer(write_buffer)?;
 
         //Scheduler
         let loop_iteration_runtime = loop_start_time.elapsed();
