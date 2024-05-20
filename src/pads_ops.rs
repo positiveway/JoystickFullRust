@@ -210,10 +210,12 @@ pub fn convert_diff(value: f32, multiplier: u16) -> OS_Input_Coord {
 pub struct CoordsHistoryState {
     pub prev: Coords,
     pub cur: Coords,
+    pub new_x: f32,
+    pub new_y: f32,
     pub finger_rotation: i16,
     pub use_rotation: bool,
-    pub axis_correction: AxisCorrection,
-    pub use_correction: bool,
+    pub zero_x: f32,
+    pub zero_y: f32,
     pub jitter_threshold: f32,
 }
 
@@ -225,13 +227,24 @@ impl CoordsHistoryState {
         use_correction: bool,
         jitter_threshold: f32,
     ) -> Self {
+        let (zero_x, zero_y) = match use_correction {
+            true => (
+                axis_correction.x,
+                axis_correction.y
+            ),
+            false => (0, 0)
+        };
+        let (zero_x, zero_y) = (zero_x as f32, zero_y as f32);
+
         Self {
             prev: Default::default(),
             cur: Default::default(),
+            new_x: zero_x,
+            new_y: zero_y,
             finger_rotation,
             use_rotation,
-            axis_correction,
-            use_correction,
+            zero_x,
+            zero_y,
             jitter_threshold,
         }
     }
@@ -504,13 +517,8 @@ pub fn discard_jitter_for_stick(
     prev_value: CoordState,
     new_value: f32,
     jitter_threshold: f32,
-    correction: SteamyInputCoord,
-    use_correction: bool,
+    zero_value: f32,
 ) -> CoordState {
-    let zero_value: f32 = match use_correction {
-        true => correction as f32,
-        false => 0.0
-    };
     if prev_value != Value(new_value) && new_value == zero_value {
         Value(zero_value)
     } else {

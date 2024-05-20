@@ -4,6 +4,7 @@ use_steamy = true
 use_raw_input = false
 always_press = false
 main_as_thread = false
+use_only_last_coords = true
 [GradualMove]
 mouse = true
 scroll = true

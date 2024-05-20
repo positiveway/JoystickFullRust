@@ -55,6 +55,7 @@ pub struct MainDebuggingConfigs {
     pub use_raw_input: bool,
     pub always_press: bool,
     pub main_as_thread: bool,
+    pub use_only_last_coords: bool
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

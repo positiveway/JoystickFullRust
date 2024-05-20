@@ -21,23 +21,31 @@ fn assign_pad_event(
     coords_state: &mut CoordsHistoryState,
     pad_stick_event: PadStickEvent,
 ) {
+    let (zero_x, zero_y) = (coords_state.zero_x, coords_state.zero_y);
+
     let jitter_threshold = coords_state.jitter_threshold;
 
     match pad_stick_event {
         PadStickEvent::FingerLifted => {
             coords_state.set_to_discard_next();
+            coords_state.new_x = zero_x;
+            coords_state.new_y = zero_y;
             debug!("\nFinger lifted\n")
         },
         PadStickEvent::FingerPut => {
             coords_state.reset_all();
+            coords_state.new_x = zero_x;
+            coords_state.new_y = zero_y;
             debug!("\nFinger put\n")
         },
         PadStickEvent::MovedX(value) => {
             coords_state.cur.x = discard_jitter_for_pad(coords_state.prev.x, value, jitter_threshold);
+            coords_state.new_x = value;
             // println!("X: {value}")
         }
         PadStickEvent::MovedY(value) => {
             coords_state.cur.y = discard_jitter_for_pad(coords_state.prev.y, value, jitter_threshold);
+            coords_state.new_y = value;
             // println!("Y: {value}")
         }
     }
@@ -48,8 +56,8 @@ fn assign_stick_event(
     coords_state: &mut CoordsHistoryState,
     pad_stick_event: PadStickEvent,
 ) -> Result<()> {
-    let axis_correction = coords_state.axis_correction;
-    let use_correction = coords_state.use_correction;
+    let (zero_x, zero_y) = (coords_state.zero_x, coords_state.zero_y);
+
     let jitter_threshold = coords_state.jitter_threshold;
 
     match pad_stick_event {
@@ -59,8 +67,7 @@ fn assign_stick_event(
                 coords_state.prev.x,
                 value,
                 jitter_threshold,
-                axis_correction.x,
-                use_correction,
+                zero_x,
             );
             // println!("X: {value}")
         }
@@ -69,26 +76,19 @@ fn assign_stick_event(
                 coords_state.prev.y,
                 value,
                 jitter_threshold,
-                axis_correction.y,
-                use_correction,
+                zero_y,
             );
             // println!("Y: {value}")
         }
     }
 
+    let zero_coords = Coords {
+        x: Value(zero_x),
+        y: Value(zero_y),
+    };
+
     if coords_state.any_changes() {
         let cur_pos = coords_state.cur_pos();
-        let zero_coords = match use_correction {
-            true => Coords {
-                x: Value(axis_correction.x as f32),
-                y: Value(axis_correction.y as f32),
-            },
-            false => Coords {
-                x: Value(0.0),
-                y: Value(0.0),
-            }
-        };
-
         if cur_pos == zero_coords {
             // if coords_state.cur.x == Some(0.0) || coords_state.cur.y == Some(0.0){
             //Finger lifted
@@ -151,8 +151,11 @@ pub fn write_events(
     let mouse_speed = layout_configs.general.mouse_speed;
     let gradual_move_cfg = configs.gradual_move_cfg;
 
+    //DEBUG
     let always_press = configs.debugging_cfg.always_press;
     let use_raw_input = configs.debugging_cfg.use_raw_input;
+    let use_only_last_coords = configs.debugging_cfg.use_only_last_coords;
+    //DEBUG
 
     let mut pads_coords = PadsCoords::new(
         &layout_configs.finger_rotation_cfg,
@@ -246,6 +249,29 @@ pub fn write_events(
                     )?;
                 },
             }
+        }
+
+        if use_only_last_coords {
+            pads_coords.left_pad.cur.x = discard_jitter_for_pad(
+                pads_coords.left_pad.prev.x,
+                pads_coords.left_pad.new_x,
+                pads_coords.left_pad.jitter_threshold,
+            );
+            pads_coords.left_pad.cur.y = discard_jitter_for_pad(
+                pads_coords.left_pad.prev.y,
+                pads_coords.left_pad.new_y,
+                pads_coords.left_pad.jitter_threshold,
+            );
+            pads_coords.right_pad.cur.x = discard_jitter_for_pad(
+                pads_coords.right_pad.prev.x,
+                pads_coords.right_pad.new_x,
+                pads_coords.right_pad.jitter_threshold,
+            );
+            pads_coords.right_pad.cur.y = discard_jitter_for_pad(
+                pads_coords.right_pad.prev.y,
+                pads_coords.right_pad.new_y,
+                pads_coords.right_pad.jitter_threshold,
+            );
         }
 
         // pads_coords.set_prev_if_cur_is_none();
