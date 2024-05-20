@@ -1,4 +1,3 @@
-use std::cmp::min;
 use std::thread;
 use std::thread::{JoinHandle, sleep};
 use std::time::Instant;
@@ -97,44 +96,6 @@ fn assign_stick_event(
     }
 
     Ok(())
-}
-
-#[derive(PartialEq, Copy, Clone, Default, Debug, Serialize, Deserialize)]
-pub struct GradualMove {
-    pub x_direction: OS_Input_Coord,
-    pub y_direction: OS_Input_Coord,
-    pub both_move: OS_Input_Coord,
-    pub move_only_x: OS_Input_Coord,
-    pub move_only_y: OS_Input_Coord,
-}
-
-impl GradualMove {
-    pub fn calculate(mouse_diff: ConvertedCoordsDiff) -> Self {
-        // println!("Diff X: {}, Diff Y: {}", mouse_diff.x, mouse_diff.y);
-
-        let x_direction = mouse_diff.x.signum();
-        let y_direction = mouse_diff.y.signum();
-
-        let move_x = mouse_diff.x.abs();
-        let move_y = mouse_diff.y.abs();
-
-        let both_move = min(move_x, move_y);
-
-        // println!("Dir X: {}, Dir Y: {}, Move both: {}", x_direction, y_direction, both_move);
-
-        let move_only_x = move_x - both_move;
-        let move_only_y = move_y - both_move;
-
-        // println!("Only X: {}, Only Y: {}\n", move_only_x, move_only_y);
-
-        Self {
-            x_direction,
-            y_direction,
-            both_move,
-            move_only_x,
-            move_only_y,
-        }
-    }
 }
 
 pub fn write_events(
@@ -291,31 +252,12 @@ pub fn write_events(
                     match gradual_move_cfg.mouse {
                         true => {
                             // println!("Gradual Mouse");
-                            let gradual_move = GradualMove::calculate(mouse_diff);
-
                             match use_raw_input {
                                 true => {
-                                    for _ in 0..gradual_move.both_move {
-                                        input_emulator.move_mouse_raw(gradual_move.x_direction, gradual_move.y_direction)?;
-                                    }
-                                    for _ in 0..gradual_move.move_only_x {
-                                        input_emulator.move_mouse_raw_x(gradual_move.x_direction)?;
-                                    }
-                                    for _ in 0..gradual_move.move_only_y {
-                                        input_emulator.move_mouse_raw_y(gradual_move.y_direction)?;
-                                    }
-                                    input_emulator.finish_operation_mouse()?;
+                                    input_emulator.gradual_move_mouse_raw(mouse_diff.x, mouse_diff.y)?;
                                 }
                                 false => {
-                                    for _ in 0..gradual_move.both_move {
-                                        write_buffer.extend(input_emulator.buffered_move_mouse(gradual_move.x_direction, gradual_move.y_direction));
-                                    }
-                                    for _ in 0..gradual_move.move_only_x {
-                                        write_buffer.extend(input_emulator.buffered_move_mouse_x(gradual_move.x_direction));
-                                    }
-                                    for _ in 0..gradual_move.move_only_y {
-                                        write_buffer.extend(input_emulator.buffered_move_mouse_y(gradual_move.y_direction));
-                                    }
+                                    write_buffer.extend(input_emulator.buffered_gradual_move_mouse(mouse_diff.x, mouse_diff.y));
                                 }
                             }
                         }
@@ -340,33 +282,12 @@ pub fn write_events(
                             match gradual_move_cfg.scroll {
                                 true => {
                                     // println!("Gradual Scroll");
-                                    let gradual_scroll = GradualMove::calculate(scroll_diff);
-
                                     match use_raw_input {
                                         true => {
-                                            for _ in 0..gradual_scroll.both_move {
-                                                input_emulator.scroll_raw_x(gradual_scroll.x_direction)?;
-                                                input_emulator.scroll_raw_y(gradual_scroll.y_direction)?;
-                                            }
-                                            for _ in 0..gradual_scroll.move_only_x {
-                                                input_emulator.scroll_raw_x(gradual_scroll.x_direction)?;
-                                            }
-                                            for _ in 0..gradual_scroll.move_only_y {
-                                                input_emulator.scroll_raw_y(gradual_scroll.y_direction)?;
-                                            }
-                                            input_emulator.finish_operation_mouse()?;
+                                            input_emulator.gradual_scroll_raw(scroll_diff.x, scroll_diff.y)?;
                                         }
                                         false => {
-                                            for _ in 0..gradual_scroll.both_move {
-                                                write_buffer.extend(input_emulator.buffered_scroll_x(gradual_scroll.x_direction));
-                                                write_buffer.extend(input_emulator.buffered_scroll_y(gradual_scroll.y_direction));
-                                            }
-                                            for _ in 0..gradual_scroll.move_only_x {
-                                                write_buffer.extend(input_emulator.buffered_scroll_x(gradual_scroll.x_direction));
-                                            }
-                                            for _ in 0..gradual_scroll.move_only_y {
-                                                write_buffer.extend(input_emulator.buffered_scroll_y(gradual_scroll.y_direction));
-                                            }
+                                            write_buffer.extend(input_emulator.buffered_gradual_scroll(scroll_diff.x, scroll_diff.y));
                                         }
                                     }
                                 }

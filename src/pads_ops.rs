@@ -1,3 +1,4 @@
+use std::cmp::min;
 use std::fmt::{Display, Formatter};
 use crate::configs::{AxisCorrection, AxisCorrectionConfigs, FingerRotationConfigs, JitterThresholdConfigs, ZoneMappingConfigs};
 use crate::math_ops::{rotate_around_center, Vector, ZonesMapper, ZoneValue};
@@ -486,6 +487,44 @@ impl PadsCoords {
     //     self.right_pad.update_if_not_init();
     //     self.stick.update_if_not_init();
     // }
+}
+
+#[derive(PartialEq, Copy, Clone, Default, Debug, Serialize, Deserialize)]
+pub struct GradualMove {
+    pub x_direction: OS_Input_Coord,
+    pub y_direction: OS_Input_Coord,
+    pub both_move: OS_Input_Coord,
+    pub move_only_x: OS_Input_Coord,
+    pub move_only_y: OS_Input_Coord,
+}
+
+impl GradualMove {
+    pub fn calculate(mouse_diff: ConvertedCoordsDiff) -> Self {
+        // println!("Diff X: {}, Diff Y: {}", mouse_diff.x, mouse_diff.y);
+
+        let x_direction = mouse_diff.x.signum();
+        let y_direction = mouse_diff.y.signum();
+
+        let move_x = mouse_diff.x.abs();
+        let move_y = mouse_diff.y.abs();
+
+        let both_move = min(move_x, move_y);
+
+        // println!("Dir X: {}, Dir Y: {}, Move both: {}", x_direction, y_direction, both_move);
+
+        let move_only_x = move_x - both_move;
+        let move_only_y = move_y - both_move;
+
+        // println!("Only X: {}, Only Y: {}\n", move_only_x, move_only_y);
+
+        Self {
+            x_direction,
+            y_direction,
+            both_move,
+            move_only_x,
+            move_only_y,
+        }
+    }
 }
 
 #[inline(always)]
