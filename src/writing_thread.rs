@@ -179,9 +179,9 @@ pub fn write_events(
         let mut write_buffer: Vec<EventParams> = vec![];
 
         //MOUSE
-        // for event in mouse_receiver.try_iter() {
+        for event in mouse_receiver.try_iter() {
         //TODO: test try_recv_realtime. fallback: try_recv()
-        while let Some(event) = mouse_receiver.try_recv()? {
+            // while let Some(event) = mouse_receiver.try_recv()? {
             match event {
                 MouseEvent::ModeSwitched => match mouse_mode {
                     MouseMode::CursorMove => {
@@ -321,9 +321,9 @@ pub fn write_events(
         pads_coords.reset_current();
 
         //BUTTONS
-        // for event in button_receiver.try_iter() {
+        for event in button_receiver.try_iter() {
         //TODO: test try_recv_realtime. fallback: try_recv()
-        while let Some(event) = button_receiver.try_recv()? {
+            // while let Some(event) = button_receiver.try_recv()? {
             match event {
                 //Press goes first to check if already pressed
                 ButtonEvent::Pressed(button_name) => {

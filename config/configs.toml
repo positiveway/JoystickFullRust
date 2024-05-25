@@ -17,6 +17,6 @@ input_buffer_refresh_interval = 2
 mouse_refresh_interval = 1
 [Layouts]
 #buttons_layout = "desktop"
-buttons_layout = "raft"
-#buttons_layout = "wmd"
+#buttons_layout = "raft"
+buttons_layout = "wmd"
 typing_layout = "typing"

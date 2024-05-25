@@ -6,8 +6,8 @@ use crate::process_event::PadStickEvent::{FingerLifted, FingerPut};
 use color_eyre::eyre::{bail, Result};
 use serde::{Deserialize, Serialize};
 use strum_macros::Display;
-// use crossbeam_channel::{bounded, Receiver, Sender};
-use kanal::{bounded, Receiver, Sender};
+use crossbeam_channel::{bounded, Receiver, Sender};
+// use kanal::{bounded, Receiver, Sender};
 
 #[derive(Display, Copy, Clone, Debug, Serialize, Deserialize)]
 pub enum PadStickEvent {

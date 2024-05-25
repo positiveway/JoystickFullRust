@@ -11,7 +11,8 @@ use std::thread::{JoinHandle, sleep};
 use std::time::{Duration, Instant};
 use color_eyre::eyre::{bail, Result};
 use crate::utils::{check_thread_handle, ThreadHandleOption};
-use kanal::{bounded, Receiver, Sender};
+use crossbeam_channel::{bounded, Receiver, Sender};
+// use kanal::{bounded, Receiver, Sender};
 
 pub type SteamyEventSender = Sender<SteamyEvent>;
 pub type SteamyEventReceiver = Receiver<SteamyEvent>;
@@ -210,7 +211,8 @@ fn process_event_loop(
             return Ok(())
         };
 
-        while let Some(event) = steam_event_receiver.try_recv()? {
+        for event in steam_event_receiver.try_iter() {
+            // while let Some(event) = steam_event_receiver.try_recv()? {
             let is_disconnected = event == SteamyEvent::Disconnected;
 
             let event = normalize_event(&event, controller_state.RESET_BTN)?;
