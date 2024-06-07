@@ -10,9 +10,12 @@ use std::thread::{JoinHandle, sleep};
 use std::time::{Duration, Instant};
 use color_eyre::eyre::{bail, Result};
 use crate::utils::{check_thread_handle, ThreadHandleOption};
+
+#[cfg(not(feature = "use_kanal"))]
 use crossbeam_channel::{bounded, Receiver, Sender};
-use crate::steamy_debug::init_debug_files;
-// use kanal::{bounded, Receiver, Sender};
+#[cfg(feature = "use_kanal")]
+use kanal::{bounded, Receiver, Sender};
+
 
 pub type SteamyEventSender = Sender<SteamyEvent>;
 pub type SteamyEventReceiver = Receiver<SteamyEvent>;
