@@ -193,6 +193,7 @@ pub fn run_gilrs_loop(
                 }
             }
             1 => {
+                println!("Gamepad connected");
                 wait_msg_is_printed = false;
                 read_events(&mut gilrs, &mut controller_state, configs.clone(), writing_thread_handle)?;
             }

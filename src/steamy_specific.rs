@@ -246,6 +246,8 @@ pub fn run_steamy_loop(
 
         match manager.open() {
             Ok(mut controller) => {
+                println!("Gamepad connected");
+
                 let (steam_event_sender, steam_event_receiver) = bounded(steamy_channel_size);
 
                 let steamy_thread_handle = thread::spawn(move || {

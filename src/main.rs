@@ -50,6 +50,8 @@ fn load_configs() -> Result<(ControllerState, MainConfigs)> {
 }
 
 fn init_controller() -> Result<()> {
+    println!("App started");
+
     let (mut controller_state, configs) = load_configs()?;
 
     let main_as_thread = configs.debugging_cfg.main_as_thread;
