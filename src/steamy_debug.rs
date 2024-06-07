@@ -28,7 +28,7 @@ pub fn align_num(val: String, padding: usize) -> String {
     }
 }
 
-pub fn buf_to_string_raw(msg_counter: u32, buf: Vec<u8>) -> String {
+pub fn buf_to_string_raw(msg_counter: u32, buf: &[u8]) -> String {
     let mut res = format!("[{}] ", align_num(format!("{}", msg_counter), 3));
     for (ind, num) in buf.iter().enumerate() {
         let num = align_num(format!("{:08b}", num), 8);
@@ -38,10 +38,10 @@ pub fn buf_to_string_raw(msg_counter: u32, buf: Vec<u8>) -> String {
     res
 }
 
-pub fn buf_to_string(msg_counter: u32, buf: Vec<u8>) -> (String, String) {
-    let res = buf_to_string_raw(msg_counter, buf.clone());
+pub fn buf_to_string(msg_counter: u32, buf: &[u8]) -> (String, String) {
+    let res = buf_to_string_raw(msg_counter, buf);
 
-    if &buf[12..=15] == [0, 0, 0, 0] {
+    if buf[12..=15] == [0, 0, 0, 0] {
         (format!("{}{}", res, get_header()), res)
     } else {
         (res, String::from(""))

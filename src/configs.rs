@@ -48,15 +48,6 @@ pub struct ScrollConfigs {
     pub horizontal_threshold: f32,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct MainDebuggingConfigs {
-    pub is_debug: bool,
-    pub use_steamy: bool,
-    pub use_buffered_input: bool,
-    pub zones_always_press: bool,
-    pub main_as_thread: bool,
-    pub use_only_last_coords: bool
-}
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct MainGeneralConfigs {
@@ -111,15 +102,10 @@ pub struct LayoutNamesConfigs {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct MainConfigs {
-    #[serde(alias = "Debugging")]
-    pub debugging_cfg: MainDebuggingConfigs,
     #[serde(alias = "Layouts")]
     pub layout_names_cfg: LayoutNamesConfigs,
     #[serde(alias = "General")]
     pub general: MainGeneralConfigs,
-
-    #[serde(alias = "GradualMove")]
-    pub gradual_move_cfg: GradualMoveConfigs,
 
     #[serde(skip)]
     pub layout_configs: LayoutConfigs,
@@ -185,12 +171,6 @@ impl ZoneMappingConfigs {
         res.load()?;
         Ok(res)
     }
-}
-
-#[derive(Clone, Debug, Default, Serialize, Deserialize)]
-pub struct GradualMoveConfigs {
-    pub mouse: bool,
-    pub scroll: bool,
 }
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]

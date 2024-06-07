@@ -1,7 +1,6 @@
 use crate::configs::MainConfigs;
 use crate::match_event::{AxisName, ButtonName, EventTypeName, TransformStatus, TransformedEvent};
 use crate::process_event::{process_event, ControllerState, ImplementationSpecificCfg};
-use crate::steamy_debug::{buf_to_string, init_debug_files};
 use crate::steamy_event::{SteamyButton, SteamyEvent, SteamyPadStickF32, SteamyTrigger};
 use crate::steamy_state::SteamyState;
 use log::{debug, error, warn};
@@ -12,6 +11,7 @@ use std::time::{Duration, Instant};
 use color_eyre::eyre::{bail, Result};
 use crate::utils::{check_thread_handle, ThreadHandleOption};
 use crossbeam_channel::{bounded, Receiver, Sender};
+use crate::steamy_debug::init_debug_files;
 // use kanal::{bounded, Receiver, Sender};
 
 pub type SteamyEventSender = Sender<SteamyEvent>;
@@ -144,29 +144,31 @@ fn read_events(
 
     let mut state = SteamyState::default();
 
-    //DEBUG
-    let is_debug = configs.debugging_cfg.is_debug;
+    // DEBUG
+    use crate::steamy_debug::{buf_to_string, init_debug_files};
     let (mut subject_file, mut subject_endings_file, mut cmp_file) = init_debug_files()?;
     let mut msg_counter: u32 = 0;
-    //DEBUG
+    // DEBUG
 
     loop {
         let loop_start_time = Instant::now();
 
-        msg_counter += 1;
+        #[cfg(feature = "debug_mode")] {
+            msg_counter += 1;
+        }
 
         let (new_state, buffer) = controller.state(steamy_read_interrupt_interval)?;
-        for event in state.update(new_state, buffer.clone(), &configs.layout_configs.axis_correction_cfg)? {
-            debug!("{:?}", &event);
+        for event in state.update(new_state, &buffer, &configs.layout_configs.axis_correction_cfg)? {
+            #[cfg(feature = "debug_mode")] {
+                debug!("{:?}", &event);
 
-            if is_debug {
                 match event {
                     SteamyEvent::PadStickF32(pad_stick_f32) => match pad_stick_f32 {
                         SteamyPadStickF32::LeftPadX(_)
                         | SteamyPadStickF32::LeftPadY(_)
                         | SteamyPadStickF32::StickX(_)
                         | SteamyPadStickF32::StickY(_) => {
-                            let (content, ending) = buf_to_string(msg_counter, buffer.clone());
+                            let (content, ending) = buf_to_string(msg_counter, &buffer);
                             subject_file.write_all(content.as_bytes())?;
 
                             if ending != "" {

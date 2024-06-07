@@ -1,13 +1,3 @@
-[Debugging]
-is_debug = false
-use_steamy = true
-use_buffered_input = false
-zones_always_press = false
-main_as_thread = false
-use_only_last_coords = true
-[GradualMove]
-mouse = true
-scroll = true
 [General]
 steamy_channel_size = 100
 commands_channel_size = 100

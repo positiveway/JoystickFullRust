@@ -140,7 +140,7 @@ fn steamy_coord_to_f32(value: SteamyInputCoord, correction: SteamyInputCoord, us
 
 impl SteamyState {
     #[inline]
-    pub fn update(&mut self, state: steamy_base::State, buffer: Vec<u8>, axis_correction_cfg: &AxisCorrectionConfigs) -> Result<Vec<SteamyEvent>> {
+    pub fn update(&mut self, state: steamy_base::State, buffer: &[u8], axis_correction_cfg: &AxisCorrectionConfigs) -> Result<Vec<SteamyEvent>> {
         let mut events = Vec::new();
         let _steamy_coord_to_f32 = |value: SteamyInputCoord, correction: SteamyInputCoord| -> Result<f32>{
             steamy_coord_to_f32(value, correction, axis_correction_cfg.use_correction)

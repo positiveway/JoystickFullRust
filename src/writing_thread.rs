@@ -110,13 +110,6 @@ pub fn write_events(
     let gaming_mode = layout_configs.general.gaming_mode;
     let scroll_cfg = layout_configs.scroll_cfg;
     let mouse_speed = layout_configs.general.mouse_speed;
-    let gradual_move_cfg = configs.gradual_move_cfg;
-
-    //DEBUG
-    let zones_always_press = configs.debugging_cfg.zones_always_press;
-    let use_buffered_input = configs.debugging_cfg.use_buffered_input;
-    let use_only_last_coords = configs.debugging_cfg.use_only_last_coords;
-    //DEBUG
 
     let mut pads_coords = PadsCoords::new(
         &layout_configs.finger_rotation_cfg,
@@ -212,7 +205,7 @@ pub fn write_events(
             }
         }
 
-        if use_only_last_coords {
+        #[cfg(feature = "use_only_last_coords")]{
             pads_coords.left_pad.cur.x = discard_jitter_for_pad(
                 pads_coords.left_pad.prev.x,
                 pads_coords.left_pad.new_x,
@@ -241,7 +234,6 @@ pub fn write_events(
             &mut stick_zone_mapper,
             &stick_zones_cfg,
             &mut buttons_state,
-            false,
         )?;
 
         if mouse_mode != MouseMode::Typing {
@@ -249,21 +241,22 @@ pub fn write_events(
                 let mouse_diff = pads_coords.right_pad.diff();
                 let mouse_diff = mouse_diff.convert(mouse_speed);
                 if mouse_diff.is_any_changes() {
-                    match gradual_move_cfg.mouse {
-                        true => {
-                            // println!("Gradual Mouse");
-                            match use_buffered_input {
-                                false => {
-                                    input_emulator.gradual_move_mouse_raw(mouse_diff.x, mouse_diff.y)?;
-                                }
-                                true => {
-                                    write_buffer.extend(input_emulator.buffered_gradual_move_mouse(mouse_diff.x, mouse_diff.y));
-                                }
+                    #[cfg(feature = "gradual_mouse")]{
+                        // println!("Gradual Mouse");
+                        #[cfg(feature = "use_buffered_input")]{
+                            write_buffer.extend(input_emulator.buffered_gradual_move_mouse(mouse_diff.x, mouse_diff.y));
+                        }
+                        #[cfg(not(feature = "use_buffered_input"))]{
+                            #[cfg(feature = "use_raw_input")]{
+                                input_emulator.gradual_move_mouse_raw(mouse_diff.x, mouse_diff.y)?;
+                            }
+                            #[cfg(not(feature = "use_raw_input"))]{
+                                input_emulator.gradual_move_mouse(mouse_diff.x, mouse_diff.y)?;
                             }
                         }
-                        false => {
-                            input_emulator.move_mouse(mouse_diff.x, mouse_diff.y)?;
-                        }
+                    }
+                    #[cfg(not(feature = "gradual_mouse"))]{
+                        input_emulator.move_mouse(mouse_diff.x, mouse_diff.y)?;
                     }
                 }
             }
@@ -279,25 +272,26 @@ pub fn write_events(
 
                         let scroll_diff = scroll_diff.convert(scroll_cfg.speed);
                         if scroll_diff.is_any_changes() {
-                            match gradual_move_cfg.scroll {
-                                true => {
-                                    // println!("Gradual Scroll");
-                                    match use_buffered_input {
-                                        false => {
-                                            input_emulator.gradual_scroll_raw(scroll_diff.x, scroll_diff.y)?;
-                                        }
-                                        true => {
-                                            write_buffer.extend(input_emulator.buffered_gradual_scroll(scroll_diff.x, scroll_diff.y));
-                                        }
+                            #[cfg(feature = "gradual_scroll")]{
+                                // println!("Gradual Scroll");
+                                #[cfg(feature = "use_buffered_input")]{
+                                    write_buffer.extend(input_emulator.buffered_gradual_scroll(scroll_diff.x, scroll_diff.y));
+                                }
+                                #[cfg(not(feature = "use_buffered_input"))]{
+                                    #[cfg(feature = "use_raw_input")]{
+                                        input_emulator.gradual_scroll_raw(scroll_diff.x, scroll_diff.y)?;
+                                    }
+                                    #[cfg(not(feature = "use_raw_input"))]{
+                                        input_emulator.gradual_scroll(scroll_diff.x, scroll_diff.y)?;
                                     }
                                 }
-                                false => {
-                                    if scroll_diff.x != 0 {
-                                        input_emulator.scroll_x(scroll_diff.x)?;
-                                    }
-                                    if scroll_diff.y != 0 {
-                                        input_emulator.scroll_y(scroll_diff.y)?;
-                                    }
+                            }
+                            #[cfg(not(feature = "gradual_scroll"))]{
+                                if scroll_diff.x != 0 {
+                                    input_emulator.scroll_x(scroll_diff.x)?;
+                                }
+                                if scroll_diff.y != 0 {
+                                    input_emulator.scroll_y(scroll_diff.y)?;
                                 }
                             }
                         }
@@ -308,7 +302,6 @@ pub fn write_events(
                         &mut wasd_zone_mapper,
                         &WASD_zones_cfg,
                         &mut buttons_state,
-                        zones_always_press,
                     )?;
                 }
             }
@@ -335,30 +328,28 @@ pub fn write_events(
             }
         }
 
-        match use_buffered_input {
-            false => {
-                for command in &buttons_state.queue {
-                    match command {
-                        Command::Pressed(key_code) => {
-                            input_emulator.press(*key_code)?;
-                        }
-                        Command::Released(key_code) => {
-                            input_emulator.release(*key_code)?;
-                        }
+        #[cfg(feature = "use_buffered_input")]{
+            for command in &buttons_state.queue {
+                match command {
+                    Command::Pressed(key_code) => {
+                        // println!("Send Pressed: {}", key_code);
+                        write_buffer.extend(input_emulator.buffered_press(*key_code)?);
+                    }
+                    Command::Released(key_code) => {
+                        // println!("Send Released: {}", key_code);
+                        write_buffer.extend(input_emulator.buffered_release(*key_code)?);
                     }
                 }
             }
-            true => {
-                for command in &buttons_state.queue {
-                    match command {
-                        Command::Pressed(key_code) => {
-                            // println!("Send Pressed: {}", key_code);
-                            write_buffer.extend(input_emulator.buffered_press(*key_code)?);
-                        }
-                        Command::Released(key_code) => {
-                            // println!("Send Released: {}", key_code);
-                            write_buffer.extend(input_emulator.buffered_release(*key_code)?);
-                        }
+        }
+        #[cfg(not(feature = "use_buffered_input"))]{
+            for command in &buttons_state.queue {
+                match command {
+                    Command::Pressed(key_code) => {
+                        input_emulator.press(*key_code)?;
+                    }
+                    Command::Released(key_code) => {
+                        input_emulator.release(*key_code)?;
                     }
                 }
             }
@@ -366,7 +357,7 @@ pub fn write_events(
 
         buttons_state.queue.clear();
 
-        if use_buffered_input {
+        #[cfg(feature = "use_buffered_input")]{
             input_emulator.write_buffer(&write_buffer)?;
             write_buffer.clear()
         }

@@ -377,7 +377,6 @@ impl CoordsHistoryState {
         zone_mapper: &mut ZonesMapper<KeyCode>,
         mapping_configs: &ZoneMappingConfigs,
         buttons_state: &mut ButtonsState,
-        zones_always_press: bool,
     ) -> Result<()> {
         let cur_pos = self.cur_pos().try_rotate(self.finger_rotation);
 
@@ -387,10 +386,13 @@ impl CoordsHistoryState {
         //     println!("To release: '{:?}'; To press: '{:?}'", to_release, to_press)
         // }
 
-        let to_press = if zones_always_press {
-            to_press_full
-        } else {
-            to_press
+        let (to_press, zones_always_press) = {
+            #[cfg(feature = "zones_always_press")]{
+                (to_press_full, true)
+            }
+            #[cfg(not(feature = "zones_always_press"))]{
+                (to_press, false)
+            }
         };
 
         //Press goes first to check if already pressed

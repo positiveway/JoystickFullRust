@@ -25,14 +25,17 @@ use std::{env, thread};
 
 fn load_configs() -> Result<(ControllerState, MainConfigs)> {
     let configs = MainConfigs::load()?;
-    let is_debug = configs.debugging_cfg.is_debug;
 
     if env::var("RUST_LOG").is_err() {
         env::set_var(
             "RUST_LOG",
-            match is_debug {
-                true => "debug",
-                false => "warn",
+            {
+                #[cfg(feature = "debug_mode")] {
+                    "debug"
+                }
+                #[cfg(not(feature = "debug_mode"))]{
+                    "warn"
+                }
             },
         )
     }
@@ -54,49 +57,42 @@ fn init_controller() -> Result<()> {
 
     let (mut controller_state, configs) = load_configs()?;
 
-    let main_as_thread = configs.debugging_cfg.main_as_thread;
-    let use_steamy = configs.debugging_cfg.use_steamy;
-
-    let thread_handle = match main_as_thread {
-        true => {
+    let thread_handle = {
+        #[cfg(feature = "main_as_thread")] {
             let mouse_receiver = controller_state.mouse_receiver.clone();
             let button_receiver = controller_state.button_receiver.clone();
             let configs_copy = configs.clone();
 
             let thread_handle = thread::spawn(move || {
-                match use_steamy {
-                    true => {
-                        use crate::steamy_specific::run_steamy_loop;
-                        run_steamy_loop(controller_state, configs, None).unwrap();
-                    }
-                    false => {
-                        // use crate::gilrs_specific::run_gilrs_loop;
-                        // run_gilrs_loop(controller_state, None).unwrap();
-                    }
-                };
+                #[cfg(feature = "use_steamy")] {
+                    use crate::steamy_specific::run_steamy_loop;
+                    run_steamy_loop(controller_state, configs, None).unwrap();
+                }
+                #[cfg(not(feature = "use_steamy"))]{
+                    // use crate::gilrs_specific::run_gilrs_loop;
+                    // run_gilrs_loop(controller_state, None).unwrap();
+                }
             });
 
-            write_events(mouse_receiver, button_receiver, configs_copy, Some(&thread_handle))?;
+            crate::writing_thread::write_events(mouse_receiver, button_receiver, configs_copy, Some(&thread_handle))?;
 
             thread_handle
         }
-        false => {
+        #[cfg(not(feature = "main_as_thread"))]{
             let thread_handle = create_writing_thread(
                 controller_state.mouse_receiver.clone(),
                 controller_state.button_receiver.clone(),
                 configs.clone(),
             );
 
-            match use_steamy {
-                true => {
-                    use crate::steamy_specific::run_steamy_loop;
-                    run_steamy_loop(controller_state, configs, Some(&thread_handle))?;
-                },
-                false => {
-                    use crate::gilrs_specific::run_gilrs_loop;
-                    run_gilrs_loop(controller_state, configs, Some(&thread_handle))?;
-                }
-            };
+            #[cfg(feature = "use_steamy")] {
+                use crate::steamy_specific::run_steamy_loop;
+                crate::steamy_specific::run_steamy_loop(controller_state, configs, Some(&thread_handle))?;
+            }
+            #[cfg(not(feature = "use_steamy"))]{
+                use crate::gilrs_specific::run_gilrs_loop;
+                run_gilrs_loop(controller_state, configs, Some(&thread_handle))?;
+            }
 
             thread_handle
         }

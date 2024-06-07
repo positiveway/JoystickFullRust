@@ -3,10 +3,22 @@ name = "JoystickFullRust"
 version = "0.1.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[features]
+default = ["use_steamy", "use_only_last_coords", "gradual_mouse", "gradual_scroll"]
+use_raw_input = []
+use_buffered_input = []
+gradual_mouse = []
+gradual_scroll = []
+use_only_last_coords = []
+zones_always_press = []
+use_steamy = []
+main_as_thread = []
+debug_mode = []
+use_kanal = ["dep:kanal"]
+
 [dependencies]
 homedir = "0.2"
-#kanal = "0.1.0-pre8"
+kanal = { version = "0.1.0-pre8", optional = true }
 crossbeam-channel = "0.5"
 ahash = { version = "0.8", features = ["serde"] }
 color-eyre = "0.6"
@@ -31,11 +43,11 @@ regex = "1.10"
 steamy_base = { git = "https://github.com/positiveway/steamy_base", branch = "master" }
 
 [target.'cfg(target_os = "windows")'.dependencies]
-#universal_input = { path = "universal_input", features = ["use-tfc"] }
+#universal_input = { path = "universal_input", features = ["use_tfc"] }
 #steamy_base = { path = "steamy_base" }
 
 [target.'cfg(target_os = "linux")'.dependencies]
-universal_input = { git = "https://github.com/positiveway/universal_input", branch = "master", features = ["use-mki", "mki-separate"] }
-#universal_input = { path = "/home/user/RustroverProjects/universal_input", features = ["use-mki", "mki-separate"] }
+universal_input = { git = "https://github.com/positiveway/universal_input", branch = "master", features = ["use_mki", "mki_separate"] }
+#universal_input = { path = "/home/user/RustroverProjects/universal_input", features = ["use_mki", "mki_separate"] }
 
 #steamy_base = { path = "/home/user/RustroverProjects/steamy_base" }
