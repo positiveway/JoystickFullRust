@@ -113,8 +113,8 @@ pub fn write_events(
     let gradual_move_cfg = configs.gradual_move_cfg;
 
     //DEBUG
-    let always_press = configs.debugging_cfg.always_press;
-    let use_raw_input = configs.debugging_cfg.use_raw_input;
+    let zones_always_press = configs.debugging_cfg.zones_always_press;
+    let use_buffered_input = configs.debugging_cfg.use_buffered_input;
     let use_only_last_coords = configs.debugging_cfg.use_only_last_coords;
     //DEBUG
 
@@ -252,11 +252,11 @@ pub fn write_events(
                     match gradual_move_cfg.mouse {
                         true => {
                             // println!("Gradual Mouse");
-                            match use_raw_input {
-                                true => {
+                            match use_buffered_input {
+                                false => {
                                     input_emulator.gradual_move_mouse_raw(mouse_diff.x, mouse_diff.y)?;
                                 }
-                                false => {
+                                true => {
                                     write_buffer.extend(input_emulator.buffered_gradual_move_mouse(mouse_diff.x, mouse_diff.y));
                                 }
                             }
@@ -282,11 +282,11 @@ pub fn write_events(
                             match gradual_move_cfg.scroll {
                                 true => {
                                     // println!("Gradual Scroll");
-                                    match use_raw_input {
-                                        true => {
+                                    match use_buffered_input {
+                                        false => {
                                             input_emulator.gradual_scroll_raw(scroll_diff.x, scroll_diff.y)?;
                                         }
-                                        false => {
+                                        true => {
                                             write_buffer.extend(input_emulator.buffered_gradual_scroll(scroll_diff.x, scroll_diff.y));
                                         }
                                     }
@@ -308,7 +308,7 @@ pub fn write_events(
                         &mut wasd_zone_mapper,
                         &WASD_zones_cfg,
                         &mut buttons_state,
-                        always_press,
+                        zones_always_press,
                     )?;
                 }
             }

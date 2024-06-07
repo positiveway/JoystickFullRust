@@ -377,7 +377,7 @@ impl CoordsHistoryState {
         zone_mapper: &mut ZonesMapper<KeyCode>,
         mapping_configs: &ZoneMappingConfigs,
         buttons_state: &mut ButtonsState,
-        always_press: bool,
+        zones_always_press: bool,
     ) -> Result<()> {
         let cur_pos = self.cur_pos().try_rotate(self.finger_rotation);
 
@@ -387,7 +387,7 @@ impl CoordsHistoryState {
         //     println!("To release: '{:?}'; To press: '{:?}'", to_release, to_press)
         // }
 
-        let to_press = if always_press {
+        let to_press = if zones_always_press {
             to_press_full
         } else {
             to_press
@@ -395,7 +395,7 @@ impl CoordsHistoryState {
 
         //Press goes first to check if already pressed
         for keycode in to_press {
-            buttons_state.press_keycodes(vec![keycode], always_press)?;
+            buttons_state.press_keycodes(vec![keycode], zones_always_press)?;
         }
         for keycode in to_release {
             buttons_state.release_keycodes(vec![keycode], false)?;
@@ -403,7 +403,7 @@ impl CoordsHistoryState {
 
         if mapping_configs.use_shift {
             if cur_pos.magnitude() > mapping_configs.shift_threshold {
-                buttons_state.press_keycodes(vec![KEY_LEFTSHIFT], always_press)?;
+                buttons_state.press_keycodes(vec![KEY_LEFTSHIFT], zones_always_press)?;
             } else {
                 buttons_state.release_keycodes(vec![KEY_LEFTSHIFT], false)?;
             }

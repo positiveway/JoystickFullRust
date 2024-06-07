@@ -1,8 +1,8 @@
 [Debugging]
 is_debug = false
 use_steamy = true
-use_raw_input = false
-always_press = false
+use_buffered_input = false
+zones_always_press = false
 main_as_thread = false
 use_only_last_coords = true
 [GradualMove]

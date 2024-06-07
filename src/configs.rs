@@ -52,8 +52,8 @@ pub struct ScrollConfigs {
 pub struct MainDebuggingConfigs {
     pub is_debug: bool,
     pub use_steamy: bool,
-    pub use_raw_input: bool,
-    pub always_press: bool,
+    pub use_buffered_input: bool,
+    pub zones_always_press: bool,
     pub main_as_thread: bool,
     pub use_only_last_coords: bool
 }

@@ -36,6 +36,6 @@ steamy_base = { git = "https://github.com/positiveway/steamy_base", branch = "ma
 
 [target.'cfg(target_os = "linux")'.dependencies]
 universal_input = { git = "https://github.com/positiveway/universal_input", branch = "master", features = ["use-mki"] }
-#universal_input = { path = "/home/user/RustroverProjects/universal_input", features = ["use-tfc"] }
+#universal_input = { path = "/home/user/RustroverProjects/universal_input", features = ["use-mki"] }
 
 #steamy_base = { path = "/home/user/RustroverProjects/steamy_base" }
