@@ -28,14 +28,14 @@ regex = "1.10"
 #validator = "0.18"
 #lazy_static = "1.4"
 
-universal_input = { git = "https://github.com/positiveway/universal_input", branch = "master" }
-#universal_input = { git = "https://github.com/positiveway/universal_input", branch = "master", features = ["enigo-always"] }
 steamy_base = { git = "https://github.com/positiveway/steamy_base", branch = "master" }
 
 [target.'cfg(target_os = "windows")'.dependencies]
-#universal_input = { path = "universal_input" }
+#universal_input = { path = "universal_input", features = ["use-tfc"] }
 #steamy_base = { path = "steamy_base" }
 
 [target.'cfg(target_os = "linux")'.dependencies]
-#universal_input = { path = "/media/user/15cf4ce3-6174-4270-bdb5-807280c6813b/home/user/RustroverProjects/universal_input", features = [] }
+universal_input = { git = "https://github.com/positiveway/universal_input", branch = "master", features = ["use-mki"] }
+#universal_input = { path = "/home/user/RustroverProjects/universal_input", features = ["use-tfc"] }
+
 #steamy_base = { path = "/home/user/RustroverProjects/steamy_base" }
