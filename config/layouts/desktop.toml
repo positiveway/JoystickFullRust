@@ -4,9 +4,9 @@ BtnRight_SideR = ["KEY_RIGHT"]
 BtnDown_SideR = ["KEY_DOWN"]
 BtnLeft_SideR = ["KEY_LEFT"]
 
-BtnUp_SideL = ["KEY_F1"]
+BtnUp_SideL = ["KEY_SPACE"]
 BtnRight_SideL = ["KEY_F2"]
-BtnDown_SideL = ["KEY_F3"]
+BtnDown_SideL = ["KEY_F11"]
 BtnLeft_SideL = ["KEY_F4"]
 
 Wing_SideL = ["MOUSE_MIDDLE"]
@@ -18,9 +18,10 @@ LowerTriggerAsBtn_SideR = ["MOUSE_LEFT"]
 UpperTrigger_SideL = ["KEY_LEFTCTRL", "KEY_Z"]
 UpperTrigger_SideR = ["KEY_LEFTCTRL", "KEY_LEFTSHIFT", "KEY_Z"]
 
-PadAsBtn_SideL = ["KEY_LEFTCTRL", "KEY_X"]
-PadAsBtn_SideR = ["KEY_LEFTCTRL", "KEY_V"]
-StickAsBtn = ["KEY_LEFTCTRL", "KEY_C"]
+# Causes instability
+#PadAsBtn_SideL = ["KEY_LEFTCTRL", "KEY_X"]
+#PadAsBtn_SideR = ["KEY_LEFTCTRL", "KEY_V"]
+#StickAsBtn = ["KEY_LEFTCTRL", "KEY_C"]
 
 ExtraBtn_SideL = ["KEY_ESC"]
 ExtraBtnCentral = ["RESET_BTN"]

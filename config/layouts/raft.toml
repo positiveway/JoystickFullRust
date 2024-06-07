@@ -18,9 +18,10 @@ LowerTriggerAsBtn_SideR = ["MOUSE_LEFT"]
 UpperTrigger_SideL = ["KEY_SCROLLDOWN"]
 UpperTrigger_SideR = ["KEY_SCROLLUP"]
 
-PadAsBtn_SideL = ["KEY_LEFTCTRL", "KEY_X"]
-PadAsBtn_SideR = ["KEY_LEFTCTRL", "KEY_V"]
-StickAsBtn = ["KEY_LEFTCTRL", "KEY_C"]
+# Causes instability
+#PadAsBtn_SideL = ["KEY_LEFTCTRL", "KEY_X"]
+#PadAsBtn_SideR = ["KEY_LEFTCTRL", "KEY_V"]
+#StickAsBtn = ["KEY_LEFTCTRL", "KEY_C"]
 
 ExtraBtn_SideL = ["KEY_ESC"]
 ExtraBtnCentral = ["RESET_BTN"]
