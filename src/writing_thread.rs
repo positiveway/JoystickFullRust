@@ -169,14 +169,14 @@ pub fn write_events(
     let mut input_emulator = InputEmulator::new()?;
     let mut mouse_mode = MouseMode::default();
 
+    let mut write_buffer: Vec<EventParams> = vec![];
+
     loop {
         let loop_start_time = Instant::now();
 
         if check_thread_handle(thread_handle).is_err() {
             return Ok(())
         };
-
-        let mut write_buffer: Vec<EventParams> = vec![];
 
         //MOUSE
         for event in mouse_receiver.try_iter() {
@@ -335,21 +335,41 @@ pub fn write_events(
             }
         }
 
-        for command in &buttons_state.queue {
-            match command {
-                Command::Pressed(key_code) => {
-                    // println!("Send Pressed: {}", key_code);
-                    write_buffer.extend(input_emulator.buffered_press(*key_code)?);
+        match use_buffered_input {
+            false => {
+                for command in &buttons_state.queue {
+                    match command {
+                        Command::Pressed(key_code) => {
+                            input_emulator.press(*key_code)?;
+                        }
+                        Command::Released(key_code) => {
+                            input_emulator.release(*key_code)?;
+                        }
+                    }
                 }
-                Command::Released(key_code) => {
-                    // println!("Send Released: {}", key_code);
-                    write_buffer.extend(input_emulator.buffered_release(*key_code)?);
+            }
+            true => {
+                for command in &buttons_state.queue {
+                    match command {
+                        Command::Pressed(key_code) => {
+                            // println!("Send Pressed: {}", key_code);
+                            write_buffer.extend(input_emulator.buffered_press(*key_code)?);
+                        }
+                        Command::Released(key_code) => {
+                            // println!("Send Released: {}", key_code);
+                            write_buffer.extend(input_emulator.buffered_release(*key_code)?);
+                        }
+                    }
                 }
             }
         }
+
         buttons_state.queue.clear();
 
-        input_emulator.write_buffer(write_buffer)?;
+        if use_buffered_input {
+            input_emulator.write_buffer(&write_buffer)?;
+            write_buffer.clear()
+        }
 
         //Scheduler
         let loop_iteration_runtime = loop_start_time.elapsed();
