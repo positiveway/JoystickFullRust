@@ -225,17 +225,9 @@ impl CoordsHistoryState {
         finger_rotation: i16,
         use_rotation: bool,
         axis_correction: AxisCorrection,
-        use_correction: bool,
         jitter_threshold: f32,
     ) -> Self {
-        let (zero_x, zero_y) = match use_correction {
-            true => (
-                axis_correction.x,
-                axis_correction.y
-            ),
-            false => (0, 0)
-        };
-        let (zero_x, zero_y) = (zero_x as f32, zero_y as f32);
+        let (zero_x, zero_y) = (axis_correction.x, axis_correction.y);
 
         Self {
             prev: Default::default(),
@@ -429,28 +421,24 @@ impl PadsCoords {
         jitter_threshold_cfg: &JitterThresholdConfigs,
     ) -> Self {
         let use_rotation = finger_rotation_cfg.use_rotation;
-        let use_correction = axis_correction_cfg.use_correction;
 
         Self {
             left_pad: CoordsHistoryState::new(
                 finger_rotation_cfg.left_pad,
                 use_rotation,
                 axis_correction_cfg.left_pad,
-                use_correction,
                 jitter_threshold_cfg.left_pad,
             ),
             right_pad: CoordsHistoryState::new(
                 finger_rotation_cfg.right_pad,
                 use_rotation,
                 axis_correction_cfg.right_pad,
-                use_correction,
                 jitter_threshold_cfg.right_pad,
             ),
             stick: CoordsHistoryState::new(
                 finger_rotation_cfg.stick,
                 use_rotation,
                 axis_correction_cfg.stick,
-                use_correction,
                 jitter_threshold_cfg.stick,
             ),
         }

@@ -1,6 +1,6 @@
 use crate::key_codes::key_code_from_config;
 use crate::match_event::ButtonName;
-use crate::math_ops::Angle;
+use crate::math_ops::{Angle, coord_to_f32};
 use ahash::AHashMap;
 use color_eyre::eyre::{bail, OptionExt, Result};
 use serde::{Deserialize, Serialize};
@@ -30,8 +30,29 @@ pub struct FingerRotationConfigs {
 
 #[derive(Clone, Debug, Copy, Default, Serialize, Deserialize)]
 pub struct AxisCorrection {
-    pub x: SteamyInputCoord,
-    pub y: SteamyInputCoord,
+    #[serde(alias = "x")]
+    pub _x: i16,
+    #[serde(skip)]
+    pub x: f32,
+
+    #[serde(alias = "y")]
+    pub _y: i16,
+    #[serde(skip)]
+    pub y: f32,
+}
+
+impl AxisCorrection {
+    pub fn clear(&mut self) {
+        self._x = 0;
+        self.x = 0.0;
+        self._y = 0;
+        self.y = 0.0;
+    }
+
+    pub fn load(&mut self) {
+        self.x = coord_to_f32(self._x);
+        self.y = coord_to_f32(self._y);
+    }
 }
 
 #[derive(Clone, Debug, Copy, Default, Serialize, Deserialize)]
@@ -40,6 +61,19 @@ pub struct AxisCorrectionConfigs {
     pub left_pad: AxisCorrection,
     pub right_pad: AxisCorrection,
     pub stick: AxisCorrection,
+}
+
+impl AxisCorrectionConfigs {
+    pub fn load(&mut self) {
+        if !self.use_correction {
+            self.left_pad.clear();
+            self.right_pad.clear();
+            self.stick.clear();
+        }
+        self.left_pad.load();
+        self.right_pad.load();
+        self.stick.load();
+    }
 }
 
 #[derive(Clone, Debug, Copy, Default, Serialize, Deserialize)]
@@ -256,6 +290,7 @@ impl LayoutConfigs {
         }
 
         layout_configs.stick_zones_cfg.load()?;
+        layout_configs.axis_correction_cfg.load();
         layout_configs.finger_rotation_cfg = layout_configs._finger_rotation_cfg.unwrap_or_else(|| FingerRotationConfigs {
             use_rotation: false,
             left_pad: 0,

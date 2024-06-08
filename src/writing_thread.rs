@@ -205,7 +205,7 @@ pub fn write_events(
             }
         }
 
-        #[cfg(feature = "use_only_last_coords")]{
+        #[cfg(all(feature = "use_steamy", feature = "use_only_last_coords"))]{
             pads_coords.left_pad.cur.x = discard_jitter_for_pad(
                 pads_coords.left_pad.prev.x,
                 pads_coords.left_pad.new_x,

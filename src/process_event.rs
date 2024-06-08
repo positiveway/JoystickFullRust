@@ -1,6 +1,6 @@
-use crate::configs::{LayoutConfigs, MainConfigs};
+use crate::configs::{AxisCorrectionConfigs, LayoutConfigs, MainConfigs};
 use crate::match_event::*;
-use crate::math_ops::RangeConverterBuilder;
+use crate::math_ops::{apply_pad_stick_correction, RangeConverterBuilder};
 use crate::process_event::ButtonEvent::{Pressed, Released};
 use crate::process_event::PadStickEvent::{FingerLifted, FingerPut};
 use color_eyre::eyre::{bail, Result};
@@ -133,7 +133,7 @@ pub fn process_event(
         TransformStatus::Unchanged => {}
     };
 
-    match process_pad_stick(&event, controller_state)? {
+    match process_pad_stick(&mut event, controller_state)? {
         TransformStatus::Discarded | TransformStatus::Handled => {
             return Ok(());
         }
@@ -185,8 +185,37 @@ fn convert_to_pad_event(event_type: EventTypeName) -> Result<PadStickEvent> {
     Ok(result)
 }
 
+fn apply_correction(
+    event: &mut TransformedEvent,
+    controller_state: &ControllerState,
+) {
+    let axis_correction_cfg = controller_state.layout_configs.axis_correction_cfg;
+
+    let correction = match event.axis {
+        AxisName::PadX_SideL => axis_correction_cfg.left_pad.x,
+        AxisName::PadY_SideL => axis_correction_cfg.left_pad.y,
+        AxisName::PadX_SideR => axis_correction_cfg.right_pad.x,
+        AxisName::PadY_SideR => axis_correction_cfg.right_pad.y,
+        AxisName::StickX => axis_correction_cfg.stick.x,
+        AxisName::StickY => axis_correction_cfg.stick.y,
+        _ => 0.0
+    };
+
+    match event.axis {
+        AxisName::PadX_SideL
+        | AxisName::PadY_SideL
+        | AxisName::PadX_SideR
+        | AxisName::PadY_SideR
+        | AxisName::StickX
+        | AxisName::StickY => {
+            event.value = apply_pad_stick_correction(event.value, correction);
+        }
+        _ => {}
+    }
+}
+
 pub fn process_pad_stick(
-    event: &TransformedEvent,
+    event: &mut TransformedEvent,
     controller_state: &ControllerState,
 ) -> Result<TransformStatus> {
     let send_mouse_event = |mouse_event: MouseEvent| -> Result<()> {
@@ -220,19 +249,24 @@ pub fn process_pad_stick(
     };
 
     if event.event_type == EventTypeName::AxisChanged {
-        //Was needed for gilrs. Now causes various bugs
-        //Discard 0.0 events for pads
-        // match event.axis {
-        //     AxisName::PadX_SideL
-        //     | AxisName::PadY_SideL
-        //     | AxisName::PadX_SideR
-        //     | AxisName::PadY_SideR => {
-        //         if event.value == 0.0 {
-        //             return Ok(TransformStatus::Discarded);
-        //         };
-        //     }
-        //     _ => {}
-        // }
+        #[cfg(not(feature = "use_steamy"))]{
+            // Was needed for gilrs. Now causes various bugs
+            // Discard 0.0 events for pads
+
+            match event.axis {
+                AxisName::PadX_SideL
+                | AxisName::PadY_SideL
+                | AxisName::PadX_SideR
+                | AxisName::PadY_SideR => {
+                    if event.value == 0.0 {
+                        return Ok(TransformStatus::Discarded);
+                    };
+                }
+                _ => {}
+            }
+        }
+
+        apply_correction(event, controller_state);
 
         if let Some(event_to_send) = match event.axis {
             AxisName::PadX_SideL => Some(MouseEvent::LeftPad(PadStickEvent::MovedX(event.value))),

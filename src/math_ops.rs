@@ -588,3 +588,24 @@ impl<T: ZoneValue> ZonesMapper<T> {
         angle_to_value
     }
 }
+
+const MAX_COORD_VALUE: f32 = i16::MAX as f32;
+const MIN_COORD_VALUE: f32 = i16::MIN as f32;
+
+pub fn coord_to_f32(value: i16) -> f32 {
+    let mut value = value as f32; //first convert to f32 otherwise i16 will overflow
+
+    if value == 0.0 {
+        0.0
+    } else if value > 0.0 {
+        value / MAX_COORD_VALUE
+    } else {
+        value / MIN_COORD_VALUE.abs()
+    }
+}
+
+pub fn apply_pad_stick_correction(orig: f32, correction: f32) -> f32 {
+    let mut value = orig + correction;
+    value = value.clamp(-1.0, 1.0);
+    value
+}

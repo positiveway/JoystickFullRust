@@ -6,7 +6,9 @@ edition = "2021"
 [features]
 #default = ["use_steamy", "use_only_last_coords", "gradual_mouse", "gradual_scroll"]
 #default = ["use_steamy", "use_only_last_coords", "gradual_mouse", "gradual_scroll", "debug_mode"]
-default = ["use_steamy", "use_only_last_coords", "gradual_mouse", "gradual_scroll", "use_raw_input"]
+#default = ["use_steamy", "use_only_last_coords", "gradual_mouse", "gradual_scroll", "use_raw_input"]
+# Don't use 'use_only_last_coords' for gilrs. Cursor will jump around
+default = ["gradual_mouse", "gradual_scroll", "use_raw_input"]
 use_raw_input = []
 use_buffered_input = []
 gradual_mouse = []

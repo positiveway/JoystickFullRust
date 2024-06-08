@@ -23,9 +23,7 @@ use env_logger::builder;
 use log::debug;
 use std::{env, thread};
 
-fn load_configs() -> Result<(ControllerState, MainConfigs)> {
-    let configs = MainConfigs::load()?;
-
+fn init_logger() {
     if env::var("RUST_LOG").is_err() {
         env::set_var(
             "RUST_LOG",
@@ -45,6 +43,10 @@ fn load_configs() -> Result<(ControllerState, MainConfigs)> {
         .format_indent(None)
         .format_timestamp(None)
         .init();
+}
+
+fn load_configs() -> Result<(ControllerState, MainConfigs)> {
+    let mut configs = MainConfigs::load()?;
 
     debug!("Layout: {}", configs.layout_names_cfg.buttons_layout_name);
 
@@ -54,6 +56,8 @@ fn load_configs() -> Result<(ControllerState, MainConfigs)> {
 
 fn init_controller() -> Result<()> {
     println!("App started");
+
+    init_logger();
 
     let (mut controller_state, configs) = load_configs()?;
 

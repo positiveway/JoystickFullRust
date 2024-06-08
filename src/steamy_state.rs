@@ -1,6 +1,7 @@
 use color_eyre::eyre::{bail, Result};
 use steamy_base::Axis;
 use crate::configs::AxisCorrectionConfigs;
+use crate::math_ops::coord_to_f32;
 use crate::steamy_event::{SteamyButton, SteamyEvent, SteamyPadStickF32, SteamyTrigger};
 
 macro_rules! button_converter {
@@ -99,52 +100,43 @@ fn _print_cur_axis(axis: &Axis) {
     println!("X: {}, Y: {}", axis.x, axis.y)
 }
 
-// const MAX_COORD_VALUE: f32 = 32766f32;
-// const MIN_COORD_VALUE: f32 = -32768f32;
-
-const MAX_COORD_VALUE: f32 = i16::MAX as f32;
-const MIN_COORD_VALUE: f32 = i16::MIN as f32;
-
-#[inline(always)]
-fn steamy_coord_to_f32(value: SteamyInputCoord, correction: SteamyInputCoord, use_correction: bool) -> Result<f32> {
-    let mut value = value as f32; //first convert to f32 otherwise i16 will overflow
-
-    if use_correction {
-        value += correction as f32;
-        value = value.clamp(MIN_COORD_VALUE, MAX_COORD_VALUE);
-    } else {
-        if value > MAX_COORD_VALUE {
-            bail!(
-                "Cur value: '{}' is higher than Max allowed: '{}'",
-                value,
-                MAX_COORD_VALUE
-            )
-        };
-        if value < MIN_COORD_VALUE {
-            bail!(
-                "Cur value: '{}' is lower than Min allowed: '{}'",
-                value,
-                MIN_COORD_VALUE
-            )
-        };
-    }
-
-    Ok(if value == 0.0 {
-        0.0
-    } else if value > 0.0 {
-        value / MAX_COORD_VALUE
-    } else {
-        value / MIN_COORD_VALUE.abs()
-    })
-}
+// #[inline(always)]
+// fn steamy_coord_to_f32(value: SteamyInputCoord, correction: SteamyInputCoord, use_correction: bool) -> Result<f32> {
+//     let mut value = value as f32; //first convert to f32 otherwise i16 will overflow
+//
+//     if use_correction {
+//         value += correction as f32;
+//         value = value.clamp(MIN_COORD_VALUE, MAX_COORD_VALUE);
+//     } else {
+//         if value > MAX_COORD_VALUE {
+//             bail!(
+//                 "Cur value: '{}' is higher than Max allowed: '{}'",
+//                 value,
+//                 MAX_COORD_VALUE
+//             )
+//         };
+//         if value < MIN_COORD_VALUE {
+//             bail!(
+//                 "Cur value: '{}' is lower than Min allowed: '{}'",
+//                 value,
+//                 MIN_COORD_VALUE
+//             )
+//         };
+//     }
+//
+//     Ok(if value == 0.0 {
+//         0.0
+//     } else if value > 0.0 {
+//         value / MAX_COORD_VALUE
+//     } else {
+//         value / MIN_COORD_VALUE.abs()
+//     })
+// }
 
 impl SteamyState {
     #[inline]
-    pub fn update(&mut self, state: steamy_base::State, is_left_pad: bool, axis_correction_cfg: &AxisCorrectionConfigs) -> Result<Vec<SteamyEvent>> {
+    pub fn update(&mut self, state: steamy_base::State, is_left_pad: bool) -> Result<Vec<SteamyEvent>> {
         let mut events = Vec::new();
-        let _steamy_coord_to_f32 = |value: SteamyInputCoord, correction: SteamyInputCoord| -> Result<f32>{
-            steamy_coord_to_f32(value, correction, axis_correction_cfg.use_correction)
-        };
 
         match state {
             steamy_base::State::Power(true) => {
@@ -210,26 +202,26 @@ impl SteamyState {
                         // _print_max_min(pad.left.x, true, &mut self.pad_stick._left_pad_min, &mut self.pad_stick._left_pad_max);
 
                         events.push(SteamyEvent::PadStickF32(SteamyPadStickF32::LeftPadX(
-                            _steamy_coord_to_f32(pad.left.x, axis_correction_cfg.left_pad.x)?,
+                            coord_to_f32(pad.left.x),
                         )));
                     }
                     if self.pad_stick.left_pad.y != pad.left.y {
                         // _print_max_min(pad.left.y, false, &mut self.pad_stick._left_pad_min, &mut self.pad_stick._left_pad_max);
 
                         events.push(SteamyEvent::PadStickF32(SteamyPadStickF32::LeftPadY(
-                            _steamy_coord_to_f32(pad.left.y, axis_correction_cfg.left_pad.y)?,
+                            coord_to_f32(pad.left.y),
                         )));
                     }
                     self.pad_stick.left_pad = pad.left;
                 } else {
                     if self.pad_stick.stick.x != pad.left.x {
                         events.push(SteamyEvent::PadStickF32(SteamyPadStickF32::StickX(
-                            _steamy_coord_to_f32(pad.left.x, axis_correction_cfg.stick.x)?,
+                            coord_to_f32(pad.left.x),
                         )));
                     }
                     if self.pad_stick.stick.y != pad.left.y {
                         events.push(SteamyEvent::PadStickF32(SteamyPadStickF32::StickY(
-                            _steamy_coord_to_f32(pad.left.y, axis_correction_cfg.stick.y)?,
+                            coord_to_f32(pad.left.y),
                         )));
                     }
                     self.pad_stick.stick = pad.left;
@@ -239,14 +231,14 @@ impl SteamyState {
                     // _print_max_min(pad.right.x, true, &mut self.pad_stick._right_pad_min, &mut self.pad_stick._right_pad_max);
 
                     events.push(SteamyEvent::PadStickF32(SteamyPadStickF32::RightPadX(
-                        _steamy_coord_to_f32(pad.right.x, axis_correction_cfg.right_pad.x)?,
+                        coord_to_f32(pad.right.x),
                     )));
                 }
                 if self.pad_stick.right_pad.y != pad.right.y {
                     // _print_max_min(pad.right.y, false, &mut self.pad_stick._right_pad_min, &mut self.pad_stick._right_pad_max);
 
                     events.push(SteamyEvent::PadStickF32(SteamyPadStickF32::RightPadY(
-                        _steamy_coord_to_f32(pad.right.y, axis_correction_cfg.right_pad.y)?,
+                        coord_to_f32(pad.right.y),
                     )));
                 }
 

@@ -160,9 +160,9 @@ fn read_events(
 
         #[cfg(not(feature = "debug_mode"))]{
             let (new_state, is_left_pad) = controller.state(steamy_read_interrupt_interval)?;
-            for event in state.update(new_state, true, &configs.layout_configs.axis_correction_cfg)? {
-                // for event in state.update(new_state, is_left_pad, &configs.layout_configs.axis_correction_cfg)? {
-                // for event in state.update(new_state, left_pad_active, &configs.layout_configs.axis_correction_cfg)? {
+            for event in state.update(new_state, true)? {
+                // for event in state.update(new_state, is_left_pad)? {
+                // for event in state.update(new_state, left_pad_active)? {
                 match event {
                     SteamyEvent::Button(button, pressed) => {
                         match button {
