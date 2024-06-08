@@ -5,7 +5,9 @@ use std::io::prelude::*;
 use log::debug;
 use crate::file_ops::get_home_dir;
 
-const BUF_SIZE: usize = 60;
+// const BUF_SIZE: usize = 60;
+const BUF_SIZE: usize = 64;
+const BUF_OFFSET: usize = 4;
 
 #[cfg(target_os = "linux")]
 const DUMP_DIR: &str = "Documents/bytes";
@@ -36,10 +38,16 @@ pub fn buf_to_string_raw(msg_counter: u32, buf: &[u8]) -> String {
     res
 }
 
+fn is_ending(buf: &[u8]) -> bool {
+    let pad_data_start = BUF_OFFSET + 12;
+    let pad_data_end = pad_data_start + 4;
+    buf[pad_data_start..pad_data_end] == [0, 0, 0, 0]
+}
+
 pub fn buf_to_string(msg_counter: u32, buf: &[u8]) -> (String, String) {
     let res = buf_to_string_raw(msg_counter, buf);
 
-    if buf[12..=15] == [0, 0, 0, 0] {
+    if is_ending(buf) {
         (format!("{}{}", res, get_header()), res)
     } else {
         (res, String::from(""))

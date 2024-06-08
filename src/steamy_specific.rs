@@ -153,12 +153,30 @@ fn read_events(
     let mut msg_counter: u32 = 0;
     // DEBUG
 
+    let mut left_pad_active = false;
+
     loop {
         let loop_start_time = Instant::now();
 
         #[cfg(not(feature = "debug_mode"))]{
             let (new_state, is_left_pad) = controller.state(steamy_read_interrupt_interval)?;
-            for event in state.update(new_state, is_left_pad, &configs.layout_configs.axis_correction_cfg)? {
+            for event in state.update(new_state, true, &configs.layout_configs.axis_correction_cfg)? {
+                // for event in state.update(new_state, is_left_pad, &configs.layout_configs.axis_correction_cfg)? {
+                // for event in state.update(new_state, left_pad_active, &configs.layout_configs.axis_correction_cfg)? {
+                match event {
+                    SteamyEvent::Button(button, pressed) => {
+                        match button {
+                            SteamyButton::LeftPadTouch => {
+                                left_pad_active = pressed;
+                            },
+                            SteamyButton::StickTouch | SteamyButton::StickPressed => {
+                                println!("Stick touch: {}", pressed)
+                            },
+                            _ => {}
+                        }
+                    }
+                    _ => {}
+                }
                 steam_event_sender.send(event)?;
             }
         }

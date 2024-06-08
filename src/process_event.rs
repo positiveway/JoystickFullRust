@@ -11,6 +11,7 @@ use strum_macros::Display;
 use crossbeam_channel::{bounded, Receiver, Sender};
 #[cfg(feature = "use_kanal")]
 use kanal::{bounded, Receiver, Sender};
+use log::debug;
 
 #[derive(Display, Copy, Clone, Debug, Serialize, Deserialize)]
 pub enum PadStickEvent {
@@ -175,13 +176,13 @@ pub fn process_buttons(
 }
 
 fn convert_to_pad_event(event_type: EventTypeName) -> Result<PadStickEvent> {
-    Ok(
-        match event_type {
-            EventTypeName::ButtonReleased => FingerLifted,
-            EventTypeName::ButtonPressed => FingerPut,
-            _ => { bail!("Cannot happen") }
-        }
-    )
+    let result = match event_type {
+        EventTypeName::ButtonReleased => FingerLifted,
+        EventTypeName::ButtonPressed => FingerPut,
+        _ => bail!("Cannot happen")
+    };
+    debug!("{}", result);
+    Ok(result)
 }
 
 pub fn process_pad_stick(

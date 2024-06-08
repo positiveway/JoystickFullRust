@@ -5,6 +5,7 @@ edition = "2021"
 
 [features]
 default = ["use_steamy", "use_only_last_coords", "gradual_mouse", "gradual_scroll"]
+#default = ["use_steamy", "use_only_last_coords", "gradual_mouse", "gradual_scroll", "debug_mode"]
 #default = ["use_steamy", "use_only_last_coords", "gradual_mouse", "gradual_scroll", "use_raw_input"]
 use_raw_input = []
 use_buffered_input = []
@@ -16,6 +17,7 @@ use_steamy = []
 main_as_thread = []
 debug_mode = []
 use_kanal = ["dep:kanal"]
+no_input = []
 
 [dependencies]
 homedir = "0.2"
@@ -48,7 +50,8 @@ steamy_base = { git = "https://github.com/positiveway/steamy_base", branch = "ma
 #steamy_base = { path = "steamy_base" }
 
 [target.'cfg(target_os = "linux")'.dependencies]
-universal_input = { git = "https://github.com/positiveway/universal_input", branch = "master", features = ["use_mki"] }
+universal_input = { git = "https://github.com/positiveway/universal_input", branch = "master", features = ["use_tfc"] }
 #universal_input = { path = "/home/user/RustroverProjects/universal_input", features = ["use_mki", "mki_separate"] }
 
 #steamy_base = { path = "/home/user/RustroverProjects/steamy_base" }
+#steamy_base = { path = "/home/user/RustroverProjects/steamy_base", features = ["debug_mode"] }
