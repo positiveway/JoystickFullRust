@@ -102,6 +102,7 @@ pub struct LayoutNamesConfigs {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct MainConfigs {
+    pub is_left_pad_bytes_dump: bool,
     #[serde(alias = "Layouts")]
     pub layout_names_cfg: LayoutNamesConfigs,
     #[serde(alias = "General")]

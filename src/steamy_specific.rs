@@ -149,7 +149,7 @@ fn read_events(
 
     // DEBUG
     use crate::steamy_debug::{buf_to_string, init_debug_files};
-    let (mut subject_file, mut subject_endings_file, mut cmp_file) = init_debug_files()?;
+    let (mut subject_file, mut subject_endings_file, mut cmp_file) = init_debug_files(configs.is_left_pad_bytes_dump)?;
     let mut msg_counter: u32 = 0;
     // DEBUG
 

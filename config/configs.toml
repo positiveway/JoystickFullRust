@@ -1,3 +1,4 @@
+is_left_pad_bytes_dump = false
 [General]
 steamy_channel_size = 100
 commands_channel_size = 100

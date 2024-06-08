@@ -372,7 +372,6 @@ pub fn write_events(
 }
 
 
-
 pub fn create_writing_thread(
     mouse_receiver: MouseReceiver,
     button_receiver: ButtonReceiver,

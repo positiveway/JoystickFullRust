@@ -5,8 +5,6 @@ use std::io::prelude::*;
 use log::debug;
 use crate::file_ops::get_home_dir;
 
-const IS_PAD: bool = false;
-
 const BUF_SIZE: usize = 60;
 
 #[cfg(target_os = "linux")]
@@ -101,8 +99,8 @@ pub fn create_file(subject: &str, endings: bool) -> Result<File> {
     Ok(file)
 }
 
-pub fn init_debug_files() -> Result<(File, File, File)> {
-    let subject = if IS_PAD { "pad" } else { "stick" };
+pub fn init_debug_files(is_left_pad_bytes_dump: bool) -> Result<(File, File, File)> {
+    let subject = if is_left_pad_bytes_dump { "pad" } else { "stick" };
 
     let mut subject_file = create_file(subject, false)?;
     let mut subject_endings_file = create_file(subject, true)?;
