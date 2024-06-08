@@ -212,6 +212,7 @@ impl ZoneMappingConfigs {
 pub struct LayoutGeneralConfigs {
     pub gaming_mode: bool,
     pub repeat_keys: bool,
+    pub steamy_use_left_pad: bool,
     #[serde(alias = "triggers_threshold_pct")]
     _triggers_threshold_pct: u8,
     #[serde(skip)]

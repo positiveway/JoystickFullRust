@@ -41,6 +41,7 @@ gaming_mode = true
 repeat_keys = false
 triggers_threshold_pct = 20
 mouse_speed = 400
+steamy_use_left_pad = true
 [JitterThreshold]
 left_pad = 0.01
 right_pad = 0.01

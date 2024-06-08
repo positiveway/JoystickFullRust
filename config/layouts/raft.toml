@@ -41,6 +41,7 @@ gaming_mode = true
 repeat_keys = false
 triggers_threshold_pct = 20
 mouse_speed = 400
+steamy_use_left_pad = true
 [Scroll]
 speed = 600
 horizontal_threshold = 0.08

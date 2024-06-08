@@ -144,6 +144,7 @@ fn read_events(
 ) -> Result<()> {
     let steamy_read_interrupt_interval = configs.general.steamy_read_interrupt_interval;
     let input_raw_refresh_interval = configs.general.input_raw_refresh_interval;
+    let steamy_use_left_pad = configs.layout_configs.general.steamy_use_left_pad;
 
     let mut state = SteamyState::default();
 
@@ -160,7 +161,7 @@ fn read_events(
 
         #[cfg(not(feature = "debug_mode"))]{
             let (new_state, is_left_pad) = controller.state(steamy_read_interrupt_interval)?;
-            for event in state.update(new_state, true)? {
+            for event in state.update(new_state, steamy_use_left_pad)? {
                 // for event in state.update(new_state, is_left_pad)? {
                 // for event in state.update(new_state, left_pad_active)? {
                 match event {
