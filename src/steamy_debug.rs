@@ -12,7 +12,7 @@ const BUF_OFFSET: usize = 4;
 #[cfg(target_os = "linux")]
 const DUMP_DIR: &str = "Documents/bytes";
 #[cfg(target_os = "windows")]
-const BASE_PATH: &str = "Documents\\bytes";
+const DUMP_DIR: &str = "Documents\\bytes";
 
 
 pub fn align_num(val: String, padding: usize) -> String {
