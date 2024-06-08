@@ -156,13 +156,18 @@ fn read_events(
     loop {
         let loop_start_time = Instant::now();
 
-        #[cfg(feature = "debug_mode")] {
-            msg_counter += 1;
+        #[cfg(not(feature = "debug_mode"))]{
+            let (new_state, is_left_pad) = controller.state(steamy_read_interrupt_interval)?;
+            for event in state.update(new_state, is_left_pad, &configs.layout_configs.axis_correction_cfg)? {
+                steam_event_sender.send(event)?;
+            }
         }
 
-        let (new_state, buffer) = controller.state(steamy_read_interrupt_interval)?;
-        for event in state.update(new_state, &buffer, &configs.layout_configs.axis_correction_cfg)? {
-            #[cfg(feature = "debug_mode")] {
+        #[cfg(feature = "debug_mode")] {
+            msg_counter += 1;
+
+            let (new_state, buffer) = controller.state(steamy_read_interrupt_interval)?;
+            for event in state.update(new_state, false, &configs.layout_configs.axis_correction_cfg)? {
                 debug!("{:?}", &event);
 
                 match event {
@@ -182,9 +187,9 @@ fn read_events(
                     },
                     _ => {}
                 }
-            }
 
-            steam_event_sender.send(event)?;
+                steam_event_sender.send(event)?;
+            }
         }
 
         let loop_iteration_runtime = loop_start_time.elapsed();
