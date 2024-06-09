@@ -42,6 +42,10 @@ impl TerminationStatus {
         }
     }
 
+    pub fn check(&self) -> bool {
+        self.receiver.try_recv().is_ok()
+    }
+
     fn _notify_all(&self) -> Result<()> {
         self.sender.send(())?;
         Ok(())
@@ -61,26 +65,28 @@ impl TerminationStatus {
     //     }
     // }
 
-    //notify_all_pass_error
-    pub fn run_with_check<F: FnOnce() -> Result<()> + Send + 'static>(&self, f: F) {
-        match f() {
+    pub fn check_result(&self, result: Result<()>) {
+        match result {
             Ok(_) => {}
             Err(err) => {
-                self._notify_and_panic(err)
+                self._notify_and_panic(err);
             }
         }
     }
 
-    pub fn spawn_with_check<F: FnOnce() -> Result<()> + Send + 'static>(&self, f: F) -> ThreadHandle {
-        let self_copy = self.clone();
-        thread::spawn(move || {
-            Self::run_with_check(&self_copy, f);
-        })
-    }
+    //methods below require closures, capturing, and cloning
 
-    pub fn check(&self) -> bool {
-        self.receiver.try_recv().is_ok()
-    }
+    //notify_all_pass_error
+    // pub fn run_with_check<F: FnOnce() -> Result<()> + Send + 'static>(&self, f: F) {
+    //     self.check_result(f());
+    // }
+    //
+    // pub fn spawn_with_check<F: FnOnce() -> Result<()> + Send + 'static>(&self, f: F) -> ThreadHandle {
+    //     let self_copy = self.clone();
+    //     thread::spawn(move || {
+    //         Self::run_with_check(&self_copy, f);
+    //     })
+    // }
 }
 
 pub type ThreadHandle = JoinHandle<()>;

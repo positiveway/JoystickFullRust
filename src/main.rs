@@ -82,55 +82,49 @@ fn init_controller() -> Result<()> {
     let termination_status = TerminationStatus::default();
 
     let termination_status_copy = termination_status.clone();
-    let termination_status_copy2 = termination_status.clone();
     let mouse_receiver = shared_info.mouse_receiver.clone();
     let button_receiver = shared_info.button_receiver.clone();
     let configs_copy = configs.clone();
-    let configs_copy2 = configs.clone();
 
     #[cfg(not(feature = "main_as_thread"))]{
-        termination_status.spawn_with_check(
-            move || -> Result<()>{
+        thread::spawn(move || {
+            termination_status_copy.check_result(
                 write_events(
                     &mouse_receiver,
                     &button_receiver,
                     &configs_copy,
                     &termination_status_copy,
                 )
-            }
-        );
+            );
+        });
 
-        termination_status.run_with_check(
-            move || {
-                run_read_loop(
-                    &shared_info,
-                    &configs_copy2,
-                    &termination_status_copy2,
-                )
-            }
+        termination_status.check_result(
+            run_read_loop(
+                &shared_info,
+                &configs,
+                &termination_status,
+            )
         );
     };
 
     #[cfg(feature = "main_as_thread")] {
-        termination_status.spawn_with_check(
-            move || {
+        thread::spawn(move || {
+            termination_status_copy.check_result(
                 run_read_loop(
                     &shared_info,
-                    &configs_copy2,
-                    &termination_status_copy2,
-                )
-            }
-        );
-
-        termination_status.run_with_check(
-            move || -> Result<()>{
-                write_events(
-                    &mouse_receiver,
-                    &button_receiver,
                     &configs_copy,
                     &termination_status_copy,
                 )
-            }
+            );
+        });
+
+        termination_status.check_result(
+            write_events(
+                &mouse_receiver,
+                &button_receiver,
+                &configs,
+                &termination_status,
+            )
         );
     };
 

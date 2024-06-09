@@ -16,6 +16,7 @@ use crate::utils::{create_channel, TerminationStatus};
 use crossbeam_channel::{Receiver, Sender};
 #[cfg(feature = "use_kanal")]
 use kanal::{Receiver, Sender};
+use steamy_base::Manager;
 
 
 pub type SteamyEventSender = Sender<SteamyEvent>;
@@ -416,54 +417,45 @@ pub fn run_steamy_loop(
     let steamy_channel_size = configs.clone().general.steamy_channel_size;
     let (steam_event_sender, steam_event_receiver) = create_channel(steamy_channel_size);
 
-    let mut manager = steamy_base::Manager::new()?;
+    let mut manager: Manager = Manager::new()?;
 
     let configs_copy = configs.clone();
-    let configs_copy2 = configs.clone();
-    // let steam_event_sender_copy = steam_event_sender.clone();
-    // let steam_event_receiver_copy = steam_event_receiver.clone();
     let termination_status_copy = termination_status.clone();
-    let termination_status_copy2 = termination_status.clone();
-    let shared_info_copy = shared_info.clone();
 
     match manager.open() {
         Ok(mut controller) => {
             #[cfg(not(feature = "steamy_use_threads"))]{
-                termination_status.run_with_check(
-                    move || -> Result<()>{
-                        process_event_loop(
-                            &mut controller,
-                            &shared_info_copy,
-                            &configs_copy,
-                            &steam_event_sender,
-                            &steam_event_receiver,
-                            &termination_status_copy,
-                        )
-                    }
+                termination_status.check_result(
+                    process_event_loop(
+                        &mut controller,
+                        &shared_info,
+                        &configs,
+                        &steam_event_sender,
+                        &steam_event_receiver,
+                        &termination_status,
+                    )
                 );
             }
 
             #[cfg(feature = "steamy_use_threads")] {
-                termination_status.spawn_with_check(
-                    move || -> Result<()>{
+                thread::spawn(move || {
+                    termination_status_copy.check_result(
                         read_events_loop(
                             &mut controller,
                             &configs_copy,
                             &steam_event_sender,
                             &termination_status_copy,
                         )
-                    }
-                );
+                    );
+                });
 
-                termination_status.run_with_check(
-                    move || -> Result<()>{
-                        process_event_loop(
-                            &shared_info_copy,
-                            &configs_copy2,
-                            &steam_event_receiver,
-                            &termination_status_copy2,
-                        )
-                    }
+                termination_status.check_result(
+                    process_event_loop(
+                        &shared_info,
+                        &configs,
+                        &steam_event_receiver,
+                        &termination_status,
+                    )
                 );
             }
         }
