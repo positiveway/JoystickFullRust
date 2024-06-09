@@ -1,10 +1,87 @@
 use ahash::{AHashMap, AHasher, HashSet, HashSetExt, RandomState};
-use color_eyre::eyre::{bail, Result};
+use color_eyre::eyre::{bail, eyre, Result};
 use std::collections::hash_set::Difference;
 use std::fmt::Display;
 use std::hash::Hash;
+use std::thread;
 use std::thread::JoinHandle;
 use trait_set::trait_set;
+
+#[cfg(not(feature = "use_kanal"))]
+use crossbeam_channel::{unbounded, bounded, Receiver, Sender};
+#[cfg(feature = "use_kanal")]
+use kanal::{unbounded, bounded, Receiver, Sender};
+
+pub fn create_channel<T>(size: i32) -> (Sender<T>, Receiver<T>) {
+    if size == -1 {
+        unbounded()
+    } else {
+        bounded(size as usize)
+    }
+}
+
+pub type TerminationSender = Sender<()>;
+pub type TerminationReceiver = Receiver<()>;
+
+#[derive(Clone, Debug)]
+pub struct TerminationStatus {
+    sender: TerminationSender,
+    receiver: TerminationReceiver,
+}
+
+impl TerminationStatus {
+    pub fn default() -> Self {
+        Self::new(-1)
+    }
+
+    pub fn new(size: i32) -> Self {
+        let (sender, receiver) = create_channel(size);
+        Self {
+            sender,
+            receiver,
+        }
+    }
+
+    fn _notify_all(&self) -> Result<()> {
+        self.sender.send(())?;
+        Ok(())
+    }
+
+    fn _notify_and_panic(&self, err: color_eyre::eyre::Report) {
+        self._notify_all().unwrap();
+        panic!("{}", err);
+    }
+
+    // pub fn notify_all_pass_error(&self, thread_handle: ThreadHandle){
+    //     match thread_handle.join(){
+    //         Ok(_) => {}
+    //         Err(err) => {
+    //             self._notify_and_panic(crate::err_eyre!(err));
+    //         }
+    //     }
+    // }
+
+    //notify_all_pass_error
+    pub fn run_with_check<F: FnOnce() -> Result<()> + Send + 'static>(&self, f: F) {
+        match f() {
+            Ok(_) => {}
+            Err(err) => {
+                self._notify_and_panic(err)
+            }
+        }
+    }
+
+    pub fn spawn_with_check<F: FnOnce() -> Result<()> + Send + 'static>(&self, f: F) -> ThreadHandle {
+        let self_copy = self.clone();
+        thread::spawn(move || {
+            Self::run_with_check(&self_copy, f);
+        })
+    }
+
+    pub fn check(&self) -> bool {
+        self.receiver.try_recv().is_ok()
+    }
+}
 
 pub type ThreadHandle = JoinHandle<()>;
 pub type ThreadHandleOption<'a> = Option<&'a ThreadHandle>;

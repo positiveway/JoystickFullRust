@@ -56,5 +56,6 @@ universal_input = { git = "https://github.com/positiveway/universal_input", bran
 #universal_input = { path = "/home/user/RustroverProjects/universal_input", features = ["use_mki", "mki_separate"] }
 #universal_input = { path = "/home/user/RustroverProjects/universal_input", features = ["use_mki"] }
 
-#steamy_base = { path = "/home/user/RustroverProjects/steamy_base" }
+#steamy_base = { path = "/home/user/RustroverProjects/steamy_base"}
+#steamy_base = { path = "/home/user/RustroverProjects/steamy_base", features = ["use_hid"] }
 #steamy_base = { path = "/home/user/RustroverProjects/steamy_base", features = ["debug_mode"] }

@@ -25,6 +25,9 @@ $InstallApt lld mold
 #Debuger
 $InstallApt lldb
 
+#Steamy
+$InstallApt libhidapi-dev
+
 #Controller
 $InstallApt clang lld libsdl2-dev libdrm-dev libhidapi-dev libusb-1.0-0 libusb-1.0-0-dev libudev-dev libevdev-dev
 sudo usermod -a -G input user

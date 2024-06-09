@@ -13,7 +13,7 @@ use crate::math_ops::{ZoneAllowedRange, ZonesMapper};
 use crate::pads_ops::{ConvertedCoordsDiff, Coords, CoordsHistoryState, discard_jitter_for_pad, discard_jitter_for_stick, MouseMode, PadsCoords};
 use crate::pads_ops::CoordState::Value;
 use crate::process_event::{ButtonEvent, ButtonReceiver, MouseEvent, MouseReceiver, PadStickEvent};
-use crate::utils::{check_thread_handle, ThreadHandle, ThreadHandleOption};
+use crate::utils::{TerminationStatus, ThreadHandle};
 
 #[inline]
 fn assign_pad_event(
@@ -102,7 +102,7 @@ pub fn write_events(
     mouse_receiver: MouseReceiver,
     button_receiver: ButtonReceiver,
     configs: MainConfigs,
-    thread_handle: ThreadHandleOption,
+    termination_status: TerminationStatus,
 ) -> Result<()> {
     //Loading Configs
     let writing_interval = configs.general.mouse_refresh_interval;
@@ -167,7 +167,9 @@ pub fn write_events(
     loop {
         let loop_start_time = Instant::now();
 
-        if check_thread_handle(thread_handle).is_err() {
+        // println!("writing thread");
+
+        if termination_status.check() {
             return Ok(())
         };
 
@@ -372,12 +374,20 @@ pub fn write_events(
 }
 
 
-pub fn create_writing_thread(
-    mouse_receiver: MouseReceiver,
-    button_receiver: ButtonReceiver,
-    configs: MainConfigs,
-) -> ThreadHandle {
-    thread::spawn(move || {
-        write_events(mouse_receiver, button_receiver, configs, None).unwrap()
-    })
-}
+// pub fn create_writing_thread(
+//     mouse_receiver: MouseReceiver,
+//     button_receiver: ButtonReceiver,
+//     configs: MainConfigs,
+//     termination_status: TerminationStatus,
+// ) -> ThreadHandle {
+//     termination_status.spawn_with_check(
+//         || -> Result<()>{
+//             write_events(
+//                 mouse_receiver,
+//                 button_receiver,
+//                 configs,
+//                 termination_status
+//             )
+//         }
+//     )
+// }

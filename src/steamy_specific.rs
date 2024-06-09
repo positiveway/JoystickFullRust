@@ -6,15 +6,15 @@ use crate::steamy_state::SteamyState;
 use log::{debug, error, warn};
 use std::io::prelude::*;
 use std::thread;
-use std::thread::{JoinHandle, sleep};
+use std::thread::{sleep};
 use std::time::{Duration, Instant};
 use color_eyre::eyre::{bail, Result};
-use crate::utils::{check_thread_handle, ThreadHandleOption};
+use crate::utils::{create_channel, TerminationStatus};
 
 #[cfg(not(feature = "use_kanal"))]
-use crossbeam_channel::{bounded, Receiver, Sender};
+use crossbeam_channel::{Receiver, Sender};
 #[cfg(feature = "use_kanal")]
-use kanal::{bounded, Receiver, Sender};
+use kanal::{Receiver, Sender};
 
 
 pub type SteamyEventSender = Sender<SteamyEvent>;
@@ -137,10 +137,11 @@ pub fn normalize_event(
     })
 }
 
-fn read_events(
+fn read_events_loop(
     mut controller: steamy_base::Controller,
     configs: MainConfigs,
     steam_event_sender: SteamyEventSender,
+    termination_status: TerminationStatus,
 ) -> Result<()> {
     let steamy_read_interrupt_interval = configs.general.steamy_read_interrupt_interval;
     let input_raw_refresh_interval = configs.general.input_raw_refresh_interval;
@@ -158,6 +159,10 @@ fn read_events(
 
     loop {
         let loop_start_time = Instant::now();
+
+        if termination_status.check() {
+            return Ok(())
+        };
 
         #[cfg(not(feature = "debug_mode"))]{
             let (new_state, is_left_pad) = controller.state(steamy_read_interrupt_interval)?;
@@ -223,8 +228,7 @@ fn process_event_loop(
     controller_state: &mut ControllerState,
     configs: MainConfigs,
     steam_event_receiver: SteamyEventReceiver,
-    writing_thread_handle: ThreadHandleOption,
-    steamy_thread_handle: ThreadHandleOption,
+    termination_status: TerminationStatus,
 ) -> Result<()> {
     let impl_cfg = ImplementationSpecificCfg::new(0.0, 1.0);
     let input_buffer_refresh_interval = configs.general.input_buffer_refresh_interval;
@@ -232,11 +236,7 @@ fn process_event_loop(
     loop {
         let loop_start_time = Instant::now();
 
-        if check_thread_handle(writing_thread_handle).is_err() {
-            return Ok(())
-        };
-
-        if check_thread_handle(steamy_thread_handle).is_err() {
+        if termination_status.check() {
             return Ok(())
         };
 
@@ -265,31 +265,47 @@ fn process_event_loop(
 pub fn run_steamy_loop(
     mut controller_state: ControllerState,
     configs: MainConfigs,
-    writing_thread_handle: ThreadHandleOption,
+    termination_status: TerminationStatus,
 ) -> Result<()> {
+    let steamy_channel_size = configs.clone().general.steamy_channel_size;
+    let (steam_event_sender, steam_event_receiver) = create_channel(steamy_channel_size);
+
     let mut manager = steamy_base::Manager::new()?;
 
     loop {
-        let steamy_channel_size = configs.clone().general.steamy_channel_size;
         let configs_copy = configs.clone();
+        let configs_copy2 = configs.clone();
+        let steam_event_sender_copy = steam_event_sender.clone();
+        let steam_event_receiver_copy = steam_event_receiver.clone();
+        let termination_status_copy = termination_status.clone();
+        let termination_status_copy2 = termination_status.clone();
+        let mut controller_state_copy = controller_state.clone();
 
         match manager.open() {
-            Ok(mut controller) => {
+            Ok(controller) => {
                 println!("Gamepad connected");
 
-                let (steam_event_sender, steam_event_receiver) = bounded(steamy_channel_size);
+                termination_status.spawn_with_check(
+                    move || -> Result<()>{
+                        read_events_loop(
+                            controller,
+                            configs_copy,
+                            steam_event_sender_copy,
+                            termination_status_copy,
+                        )
+                    }
+                );
 
-                let steamy_thread_handle = thread::spawn(move || {
-                    read_events(controller, configs_copy, steam_event_sender).unwrap();
-                });
-
-                process_event_loop(
-                    &mut controller_state,
-                    configs.clone(),
-                    steam_event_receiver,
-                    writing_thread_handle,
-                    Some(&steamy_thread_handle),
-                )?;
+                termination_status.run_with_check(
+                    move || -> Result<()>{
+                        process_event_loop(
+                            &mut controller_state_copy,
+                            configs_copy2,
+                            steam_event_receiver_copy,
+                            termination_status_copy2,
+                        )
+                    }
+                );
             }
             Err(_) => {
                 println!("Gamepad is not connected. Waiting...");

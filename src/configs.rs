@@ -85,8 +85,8 @@ pub struct ScrollConfigs {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct MainGeneralConfigs {
-    pub commands_channel_size: usize,
-    pub steamy_channel_size: usize,
+    pub commands_channel_size: i32,
+    pub steamy_channel_size: i32,
 
     #[serde(alias = "steamy_read_interrupt_interval")]
     pub _steamy_read_interrupt_interval: u16,

@@ -11,81 +11,8 @@ use serde::{Deserialize, Serialize};
 use std::thread::sleep;
 use std::time::Duration;
 use crate::configs::MainConfigs;
-use crate::utils::{check_thread_handle, ThreadHandleOption};
+use crate::utils::{TerminationStatus};
 
-#[derive(PartialEq, Default, Copy, Clone, Debug, Serialize, Deserialize)]
-struct Coords {
-    pub x: f32,
-    pub y: f32,
-}
-
-fn get_deadzone(gamepad: &Gamepad, axis: Axis) -> Result<f32> {
-    gamepad
-        .deadzone(gamepad.axis_code(axis).ok_or_eyre("No such axis")?)
-        .ok_or_eyre("Can't get a deadzone")
-}
-
-fn get_gamepad(gilrs: &Gilrs, id: usize) -> Result<Gamepad> {
-    let mut res: Option<Gamepad> = None;
-    for (_id, gamepad) in gilrs.gamepads() {
-        let _id: usize = _id.into();
-        if _id == id {
-            res = Some(gamepad);
-        }
-    }
-    res.ok_or_eyre("Couldn't get Gamepad by id")
-}
-
-pub fn print_deadzones(gilrs: &Gilrs, id: usize) -> Result<()> {
-    let gamepad0 = get_gamepad(gilrs, id)?;
-    let mut deadzone = Coords::default();
-
-    deadzone.x = get_deadzone(&gamepad0, Axis::LeftStickX)?;
-    deadzone.y = get_deadzone(&gamepad0, Axis::LeftStickY)?;
-    println!("Left joystick deadzones: ({}, {})", deadzone.x, deadzone.y);
-
-    deadzone.x = get_deadzone(&gamepad0, Axis::RightStickX)?;
-    deadzone.y = get_deadzone(&gamepad0, Axis::RightStickY)?;
-    println!("Right joystick deadzones: ({}, {})", deadzone.x, deadzone.y);
-    Ok(())
-}
-
-fn read_events(
-    gilrs: &mut Gilrs,
-    controller_state: &mut ControllerState,
-    configs: MainConfigs,
-    writing_thread_handle: ThreadHandleOption,
-) -> Result<()> {
-    let impl_cfg = ImplementationSpecificCfg::new(-1.0, 1.0);
-
-    let input_buffer_refresh_interval = configs.general.input_buffer_refresh_interval;
-
-    // gilrs.next_event().filter_ev()
-    print_deadzones(gilrs, 0)?;
-
-    loop {
-        if check_thread_handle(writing_thread_handle).is_err() {
-            return Ok(())
-        };
-
-        // Examine new events
-        while let Some(Event { id, event, time }) = gilrs.next_event() {
-            let is_disconnected = event == Disconnected;
-            debug!("{}", print_event(&event)?);
-
-            let event = normalize_event(&event, controller_state.RESET_BTN)?;
-            process_event(event, controller_state, &impl_cfg)?;
-
-            if is_disconnected {
-                controller_state.release_all_hard()?;
-                println!("Gamepad disconnected");
-                return Ok(());
-            }
-        }
-        sleep(input_buffer_refresh_interval);
-        // sleep(Duration::from_millis(4)); //4 = USB min latency
-    }
-}
 
 const VENDOR_ID: u16 = 0x28de;
 const PRODUCT_ID: [u16; 2] = [0x1102, 0x1142];
@@ -160,6 +87,81 @@ fn find_usb_device() -> Result<UsbHolder> {
     bail!("Device not found")
 }
 
+
+#[derive(PartialEq, Default, Copy, Clone, Debug, Serialize, Deserialize)]
+struct Coords {
+    pub x: f32,
+    pub y: f32,
+}
+
+fn get_deadzone(gamepad: &Gamepad, axis: Axis) -> Result<f32> {
+    gamepad
+        .deadzone(gamepad.axis_code(axis).ok_or_eyre("No such axis")?)
+        .ok_or_eyre("Can't get a deadzone")
+}
+
+fn get_gamepad(gilrs: &Gilrs, id: usize) -> Result<Gamepad> {
+    let mut res: Option<Gamepad> = None;
+    for (_id, gamepad) in gilrs.gamepads() {
+        let _id: usize = _id.into();
+        if _id == id {
+            res = Some(gamepad);
+        }
+    }
+    res.ok_or_eyre("Couldn't get Gamepad by id")
+}
+
+pub fn print_deadzones(gilrs: &Gilrs, id: usize) -> Result<()> {
+    let gamepad0 = get_gamepad(gilrs, id)?;
+    let mut deadzone = Coords::default();
+
+    deadzone.x = get_deadzone(&gamepad0, Axis::LeftStickX)?;
+    deadzone.y = get_deadzone(&gamepad0, Axis::LeftStickY)?;
+    println!("Left joystick deadzones: ({}, {})", deadzone.x, deadzone.y);
+
+    deadzone.x = get_deadzone(&gamepad0, Axis::RightStickX)?;
+    deadzone.y = get_deadzone(&gamepad0, Axis::RightStickY)?;
+    println!("Right joystick deadzones: ({}, {})", deadzone.x, deadzone.y);
+    Ok(())
+}
+
+fn read_events(
+    gilrs: &mut Gilrs,
+    controller_state: &mut ControllerState,
+    configs: MainConfigs,
+    termination_status: TerminationStatus,
+) -> Result<()> {
+    let impl_cfg = ImplementationSpecificCfg::new(-1.0, 1.0);
+
+    let input_buffer_refresh_interval = configs.general.input_buffer_refresh_interval;
+
+    // gilrs.next_event().filter_ev()
+    print_deadzones(gilrs, 0)?;
+
+    loop {
+        if termination_status.check() {
+            return Ok(())
+        };
+
+        // Examine new events
+        while let Some(Event { id, event, time }) = gilrs.next_event() {
+            let is_disconnected = event == Disconnected;
+            debug!("{}", print_event(&event)?);
+
+            let event = normalize_event(&event, controller_state.RESET_BTN)?;
+            process_event(event, controller_state, &impl_cfg)?;
+
+            if is_disconnected {
+                controller_state.release_all_hard()?;
+                println!("Gamepad disconnected");
+                return Ok(());
+            }
+        }
+        sleep(input_buffer_refresh_interval);
+        // sleep(Duration::from_millis(4)); //4 = USB min latency
+    }
+}
+
 fn init_gilrs() -> Result<Gilrs> {
     exec_or_eyre!(Gilrs::new())
 }
@@ -167,7 +169,7 @@ fn init_gilrs() -> Result<Gilrs> {
 pub fn run_gilrs_loop(
     mut controller_state: ControllerState,
     configs: MainConfigs,
-    writing_thread_handle: ThreadHandleOption,
+    termination_status: TerminationStatus,
 ) -> Result<()> {
     // let usb_holder = find_usb_device()?;
 
@@ -195,7 +197,12 @@ pub fn run_gilrs_loop(
             1 => {
                 println!("Gamepad connected");
                 wait_msg_is_printed = false;
-                read_events(&mut gilrs, &mut controller_state, configs.clone(), writing_thread_handle)?;
+                read_events(
+                    &mut gilrs,
+                    &mut controller_state,
+                    configs.clone(),
+                    termination_status.clone(),
+                )?;
             }
             _ => {
                 println!("Only one gamepad is supported. Disconnect other gamepads");

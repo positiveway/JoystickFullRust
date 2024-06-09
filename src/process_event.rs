@@ -4,14 +4,15 @@ use crate::math_ops::{apply_pad_stick_correction, RangeConverterBuilder};
 use crate::process_event::ButtonEvent::{Pressed, Released};
 use crate::process_event::PadStickEvent::{FingerLifted, FingerPut};
 use color_eyre::eyre::{bail, Result};
+use crate::utils::create_channel;
+use log::debug;
 use serde::{Deserialize, Serialize};
 use strum_macros::Display;
 
 #[cfg(not(feature = "use_kanal"))]
-use crossbeam_channel::{bounded, Receiver, Sender};
+use crossbeam_channel::{Receiver, Sender};
 #[cfg(feature = "use_kanal")]
-use kanal::{bounded, Receiver, Sender};
-use log::debug;
+use kanal::{Receiver, Sender};
 
 #[derive(Display, Copy, Clone, Debug, Serialize, Deserialize)]
 pub enum PadStickEvent {
@@ -57,8 +58,11 @@ pub struct ControllerState {
 
 impl ControllerState {
     pub fn new(configs: MainConfigs) -> Self {
-        let (mouse_sender, mouse_receiver) = bounded(configs.general.commands_channel_size);
-        let (button_sender, button_receiver) = bounded(configs.general.commands_channel_size);
+        let commands_channel_size = configs.general.commands_channel_size;
+
+        let (mouse_sender, mouse_receiver) = create_channel(commands_channel_size);
+        let (button_sender, button_receiver) = create_channel(commands_channel_size);
+
         let layout_configs = configs.layout_configs;
         Self {
             mouse_sender,
