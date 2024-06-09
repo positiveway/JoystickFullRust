@@ -4,10 +4,15 @@ version = "0.1.0"
 edition = "2021"
 
 [features]
-#default = ["use_steamy", "use_only_last_coords", "gradual_mouse", "gradual_scroll", "use_raw_input"]
+default = ["use_steamy", "use_only_last_coords", "gradual_mouse", "gradual_scroll", "use_raw_input"]
+#default = ["use_steamy", "use_only_last_coords", "gradual_mouse", "gradual_scroll", "use_raw_input", "steamy_use_threads"]
+#default = ["use_steamy", "use_only_last_coords", "gradual_mouse", "gradual_scroll", "use_raw_input", "main_as_thread"]
 #default = ["use_steamy", "use_only_last_coords", "gradual_mouse", "gradual_scroll", "use_raw_input", "debug_mode"]
+
 # Don't use 'use_only_last_coords' for gilrs. Cursor will jump around
-default = ["gradual_mouse", "gradual_scroll", "use_raw_input"]
+#default = ["gradual_mouse", "gradual_scroll", "use_raw_input"]
+#default = ["gradual_mouse", "gradual_scroll", "use_raw_input", "main_as_thread"]
+
 use_raw_input = []
 use_buffered_input = []
 gradual_mouse = []
@@ -15,6 +20,7 @@ gradual_scroll = []
 use_only_last_coords = []
 zones_always_press = []
 use_steamy = []
+steamy_use_threads = []
 main_as_thread = []
 debug_mode = []
 use_kanal = ["dep:kanal"]
