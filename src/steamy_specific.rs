@@ -1,6 +1,7 @@
+use std::fs::File;
 use crate::configs::MainConfigs;
 use crate::match_event::{AxisName, ButtonName, EventTypeName, TransformStatus, TransformedEvent};
-use crate::process_event::{process_event, ControllerState, ImplementationSpecificCfg};
+use crate::process_event::{process_event, SharedInfo, ImplementationSpecificCfg};
 use crate::steamy_event::{SteamyButton, SteamyEvent, SteamyPadStickF32, SteamyTrigger};
 use crate::steamy_state::SteamyState;
 use log::{debug, error, warn};
@@ -137,20 +138,97 @@ pub fn normalize_event(
     })
 }
 
-fn read_events_loop(
-    mut controller: steamy_base::Controller,
-    configs: MainConfigs,
-    steam_event_sender: SteamyEventSender,
-    termination_status: TerminationStatus,
-) -> Result<()> {
+#[inline(always)]
+fn read_events(
+    controller: &mut steamy_base::Controller,
+    configs: &MainConfigs,
+    steam_event_sender: &SteamyEventSender,
+    state: &mut SteamyState,
+    left_pad_active: &mut bool,
+    subject_file: &mut File,
+    subject_endings_file: &mut File,
+    cmp_file: &mut File,
+    msg_counter: &mut u32,
+) -> Result<Vec<SteamyEvent>> {
     let steamy_read_interrupt_interval = configs.general.steamy_read_interrupt_interval;
-    let input_raw_refresh_interval = configs.general.input_raw_refresh_interval;
     let steamy_use_left_pad = configs.layout_configs.general.steamy_use_left_pad;
+
+
+    let mut received_events = vec![];
+
+    #[cfg(not(feature = "debug_mode"))]{
+        let (new_state, is_left_pad) = controller.state(steamy_read_interrupt_interval)?;
+        for event in state.update(new_state, steamy_use_left_pad)? {
+            // for event in state.update(new_state, is_left_pad)? {
+            // for event in state.update(new_state, *left_pad_active)? {
+            match event {
+                SteamyEvent::Button(button, pressed) => {
+                    match button {
+                        SteamyButton::LeftPadTouch => {
+                            *left_pad_active = pressed;
+                        },
+                        SteamyButton::StickTouch | SteamyButton::StickPressed => {
+                            println!("Stick touch: {}", pressed)
+                        },
+                        _ => {}
+                    }
+                }
+                _ => {}
+            }
+            // received_events.push(event);
+            steam_event_sender.send(event)?;
+        }
+    }
+
+    #[cfg(feature = "debug_mode")] {
+        use crate::steamy_debug::{buf_to_string};
+
+        *msg_counter += 1;
+
+        let (new_state, buffer) = controller.state(steamy_read_interrupt_interval)?;
+        for event in state.update(new_state, false)? {
+            debug!("{:?}", &event);
+
+            match event {
+                SteamyEvent::PadStickF32(pad_stick_f32) => match pad_stick_f32 {
+                    SteamyPadStickF32::LeftPadX(_)
+                    | SteamyPadStickF32::LeftPadY(_)
+                    | SteamyPadStickF32::StickX(_)
+                    | SteamyPadStickF32::StickY(_) => {
+                        let (content, ending) = buf_to_string(*msg_counter, &buffer);
+                        subject_file.write_all(content.as_bytes())?;
+
+                        if ending != "" {
+                            subject_endings_file.write_all(ending.as_bytes())?;
+                        }
+                    }
+                    _ => {}
+                },
+                _ => {}
+            }
+
+            // received_events.push(event);
+            steam_event_sender.send(event)?;
+        }
+    }
+
+    Ok(received_events)
+}
+
+fn read_events_loop(
+    controller: &mut steamy_base::Controller,
+    configs: &MainConfigs,
+    steam_event_sender: &SteamyEventSender,
+    termination_status: &TerminationStatus,
+) -> Result<()> {
+    // let steamy_read_interrupt_interval = configs.general.steamy_read_interrupt_interval;
+    let input_raw_refresh_interval = configs.general.input_raw_refresh_interval;
+    // let steamy_use_left_pad = configs.layout_configs.general.steamy_use_left_pad;
 
     let mut state = SteamyState::default();
 
     // DEBUG
-    use crate::steamy_debug::{buf_to_string, init_debug_files};
+    use crate::steamy_debug::{init_debug_files};
     let (mut subject_file, mut subject_endings_file, mut cmp_file) = init_debug_files(configs.is_left_pad_bytes_dump)?;
     let mut msg_counter: u32 = 0;
     // DEBUG
@@ -164,57 +242,17 @@ fn read_events_loop(
             return Ok(())
         };
 
-        #[cfg(not(feature = "debug_mode"))]{
-            let (new_state, is_left_pad) = controller.state(steamy_read_interrupt_interval)?;
-            for event in state.update(new_state, steamy_use_left_pad)? {
-                // for event in state.update(new_state, is_left_pad)? {
-                // for event in state.update(new_state, left_pad_active)? {
-                match event {
-                    SteamyEvent::Button(button, pressed) => {
-                        match button {
-                            SteamyButton::LeftPadTouch => {
-                                left_pad_active = pressed;
-                            },
-                            SteamyButton::StickTouch | SteamyButton::StickPressed => {
-                                println!("Stick touch: {}", pressed)
-                            },
-                            _ => {}
-                        }
-                    }
-                    _ => {}
-                }
-                steam_event_sender.send(event)?;
-            }
-        }
-
-        #[cfg(feature = "debug_mode")] {
-            msg_counter += 1;
-
-            let (new_state, buffer) = controller.state(steamy_read_interrupt_interval)?;
-            for event in state.update(new_state, false, &configs.layout_configs.axis_correction_cfg)? {
-                debug!("{:?}", &event);
-
-                match event {
-                    SteamyEvent::PadStickF32(pad_stick_f32) => match pad_stick_f32 {
-                        SteamyPadStickF32::LeftPadX(_)
-                        | SteamyPadStickF32::LeftPadY(_)
-                        | SteamyPadStickF32::StickX(_)
-                        | SteamyPadStickF32::StickY(_) => {
-                            let (content, ending) = buf_to_string(msg_counter, &buffer);
-                            subject_file.write_all(content.as_bytes())?;
-
-                            if ending != "" {
-                                subject_endings_file.write_all(ending.as_bytes())?;
-                            }
-                        }
-                        _ => {}
-                    },
-                    _ => {}
-                }
-
-                steam_event_sender.send(event)?;
-            }
-        }
+        let received_events = read_events(
+            controller,
+            configs,
+            steam_event_sender,
+            &mut state,
+            &mut left_pad_active,
+            &mut subject_file,
+            &mut subject_endings_file,
+            &mut cmp_file,
+            &mut msg_counter,
+        )?;
 
         let loop_iteration_runtime = loop_start_time.elapsed();
 
@@ -225,10 +263,10 @@ fn read_events_loop(
 }
 
 fn process_event_loop(
-    controller_state: &mut ControllerState,
-    configs: MainConfigs,
-    steam_event_receiver: SteamyEventReceiver,
-    termination_status: TerminationStatus,
+    shared_info: &SharedInfo,
+    configs: &MainConfigs,
+    steam_event_receiver: &SteamyEventReceiver,
+    termination_status: &TerminationStatus,
 ) -> Result<()> {
     let impl_cfg = ImplementationSpecificCfg::new(0.0, 1.0);
     let input_buffer_refresh_interval = configs.general.input_buffer_refresh_interval;
@@ -244,11 +282,11 @@ fn process_event_loop(
             // while let Some(event) = steam_event_receiver.try_recv()? {
             let is_disconnected = event == SteamyEvent::Disconnected;
 
-            let event = normalize_event(&event, controller_state.RESET_BTN)?;
-            process_event(event, controller_state, &impl_cfg)?;
+            let event = normalize_event(&event, shared_info.RESET_BTN)?;
+            process_event(event, shared_info, &impl_cfg)?;
 
             if is_disconnected {
-                controller_state.release_all_hard()?;
+                shared_info.release_all_hard()?;
                 println!("Gamepad disconnected");
                 return Ok(());
             }
@@ -262,50 +300,84 @@ fn process_event_loop(
     }
 }
 
-pub fn run_steamy_loop(
-    mut controller_state: ControllerState,
-    configs: MainConfigs,
-    termination_status: TerminationStatus,
-) -> Result<()> {
-    let steamy_channel_size = configs.clone().general.steamy_channel_size;
-    let (steam_event_sender, steam_event_receiver) = create_channel(steamy_channel_size);
+// fn process_event_loop(
+//     controller: &mut steamy_base::Controller,
+//     shared_info: &SharedInfo,
+//     configs: &MainConfigs,
+//     // steam_event_receiver: SteamyEventReceiver,
+//     termination_status: &TerminationStatus,
+// ) -> Result<()> {
+//     let impl_cfg = ImplementationSpecificCfg::new(0.0, 1.0);
+//
+//     let input_buffer_refresh_interval = configs.general.input_buffer_refresh_interval;
+//     let input_raw_refresh_interval = configs.general.input_raw_refresh_interval;
+//
+//     let mut state = SteamyState::default();
+//
+//     // DEBUG
+//     use crate::steamy_debug::{buf_to_string, init_debug_files};
+//     let (mut subject_file, mut subject_endings_file, mut cmp_file) = init_debug_files(configs.is_left_pad_bytes_dump)?;
+//     let mut msg_counter: u32 = 0;
+//     // DEBUG
+//
+//     let mut process_loop_start_time = Instant::now();
+//     let mut events_buffer = vec![];
+//
+//     loop {
+//         let read_loop_start_time = Instant::now();
+//
+//         if termination_status.check() {
+//             return Ok(())
+//         };
+//
+//         let received_events = read_events(
+//             controller,
+//             configs,
+//             &mut state,
+//             &mut subject_file,
+//             &mut subject_endings_file,
+//             &mut cmp_file,
+//             &mut msg_counter,
+//         )?;
+//         events_buffer.extend(received_events);
+//
+//         let process_loop_iteration_runtime = process_loop_start_time.elapsed();
+//
+//         if input_buffer_refresh_interval.checked_sub(process_loop_iteration_runtime) == None{
+//             process_loop_start_time = Instant::now();
+//
+//             for event in &events_buffer {
+//                 // for event in steam_event_receiver.try_iter() {
+//                 // while let Some(event) = steam_event_receiver.try_recv()? {
+//                 let is_disconnected = *event == SteamyEvent::Disconnected;
+//
+//                 let event = normalize_event(event, shared_info.RESET_BTN)?;
+//                 process_event(event, shared_info, &impl_cfg)?;
+//
+//                 if is_disconnected {
+//                     shared_info.release_all_hard()?;
+//                     println!("Gamepad disconnected");
+//                     return Ok(());
+//                 }
+//             }
+//         }
+//
+//         let read_loop_iteration_runtime = read_loop_start_time.elapsed();
+//
+//         if let Some(remaining) = input_raw_refresh_interval.checked_sub(read_loop_iteration_runtime) {
+//             sleep(remaining);
+//         }
+//     }
+// }
 
+fn wait_for_connection() -> Result<()> {
     let mut manager = steamy_base::Manager::new()?;
 
     loop {
-        let configs_copy = configs.clone();
-        let configs_copy2 = configs.clone();
-        let steam_event_sender_copy = steam_event_sender.clone();
-        let steam_event_receiver_copy = steam_event_receiver.clone();
-        let termination_status_copy = termination_status.clone();
-        let termination_status_copy2 = termination_status.clone();
-        let mut controller_state_copy = controller_state.clone();
-
         match manager.open() {
-            Ok(controller) => {
+            Ok(_) => {
                 println!("Gamepad connected");
-
-                termination_status.spawn_with_check(
-                    move || -> Result<()>{
-                        read_events_loop(
-                            controller,
-                            configs_copy,
-                            steam_event_sender_copy,
-                            termination_status_copy,
-                        )
-                    }
-                );
-
-                termination_status.run_with_check(
-                    move || -> Result<()>{
-                        process_event_loop(
-                            &mut controller_state_copy,
-                            configs_copy2,
-                            steam_event_receiver_copy,
-                            termination_status_copy2,
-                        )
-                    }
-                );
+                return Ok(());
             }
             Err(_) => {
                 println!("Gamepad is not connected. Waiting...");
@@ -313,4 +385,66 @@ pub fn run_steamy_loop(
             }
         }
     }
+}
+
+pub fn run_steamy_loop(
+    shared_info: &SharedInfo,
+    configs: &MainConfigs,
+    termination_status: &TerminationStatus,
+) -> Result<()> {
+    wait_for_connection()?;
+
+    let steamy_channel_size = configs.clone().general.steamy_channel_size;
+    let (steam_event_sender, steam_event_receiver) = create_channel(steamy_channel_size);
+
+    let mut manager = steamy_base::Manager::new()?;
+
+    let configs_copy = configs.clone();
+    let configs_copy2 = configs.clone();
+    // let steam_event_sender_copy = steam_event_sender.clone();
+    // let steam_event_receiver_copy = steam_event_receiver.clone();
+    let termination_status_copy = termination_status.clone();
+    let termination_status_copy2 = termination_status.clone();
+    let shared_info_copy = shared_info.clone();
+
+    match manager.open() {
+        Ok(mut controller) => {
+            // termination_status.run_with_check(
+            //     move || -> Result<()>{
+            //         process_event_loop(
+            //             &mut controller,
+            //             &shared_info_copy,
+            //             &configs_copy,
+            //             &termination_status_copy,
+            //         )
+            //     }
+            // );
+            termination_status.spawn_with_check(
+                move || -> Result<()>{
+                    read_events_loop(
+                        &mut controller,
+                        &configs_copy,
+                        &steam_event_sender,
+                        &termination_status_copy,
+                    )
+                }
+            );
+
+            termination_status.run_with_check(
+                move || -> Result<()>{
+                    process_event_loop(
+                        &shared_info_copy,
+                        &configs_copy2,
+                        &steam_event_receiver,
+                        &termination_status_copy2,
+                    )
+                }
+            );
+        }
+        Err(_) => {
+            bail!("Cannot happen")
+        }
+    };
+
+    Ok(())
 }

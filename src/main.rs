@@ -19,7 +19,7 @@ mod file_ops;
 use crate::configs::MainConfigs;
 use crate::writing_thread::{write_events};
 use crate::utils::{TerminationStatus, ThreadHandle};
-use crate::process_event::{process_event, ControllerState};
+use crate::process_event::{process_event, SharedInfo};
 use color_eyre::eyre::Result;
 use env_logger::builder;
 use log::debug;
@@ -47,13 +47,29 @@ fn init_logger() {
         .init();
 }
 
-fn load_configs() -> Result<(ControllerState, MainConfigs)> {
+fn load_configs() -> Result<(SharedInfo, MainConfigs)> {
     let mut configs = MainConfigs::load()?;
 
     debug!("Layout: {}", configs.layout_names_cfg.buttons_layout_name);
 
-    let controller_state = ControllerState::new(configs.clone());
-    Ok((controller_state, configs))
+    let shared_info = SharedInfo::new(&configs);
+    Ok((shared_info, configs))
+}
+
+fn run_read_loop(
+    shared_info: &SharedInfo,
+    configs: &MainConfigs,
+    termination_status: &TerminationStatus,
+) -> Result<()> {
+    #[cfg(feature = "use_steamy")] {
+        use crate::steamy_specific::run_steamy_loop;
+        crate::steamy_specific::run_steamy_loop(shared_info, configs, termination_status)?;
+    }
+    #[cfg(not(feature = "use_steamy"))]{
+        use crate::gilrs_specific::run_gilrs_loop;
+        run_gilrs_loop(shared_info, configs, termination_status)?;
+    }
+    Ok(())
 }
 
 fn init_controller() -> Result<()> {
@@ -61,14 +77,14 @@ fn init_controller() -> Result<()> {
 
     init_logger();
 
-    let (mut controller_state, configs) = load_configs()?;
+    let (mut shared_info, configs) = load_configs()?;
 
     let termination_status = TerminationStatus::default();
 
     let termination_status_copy = termination_status.clone();
     let termination_status_copy2 = termination_status.clone();
-    let mouse_receiver = controller_state.mouse_receiver.clone();
-    let button_receiver = controller_state.button_receiver.clone();
+    let mouse_receiver = shared_info.mouse_receiver.clone();
+    let button_receiver = shared_info.button_receiver.clone();
     let configs_copy = configs.clone();
     let configs_copy2 = configs.clone();
 
@@ -76,24 +92,21 @@ fn init_controller() -> Result<()> {
         termination_status.spawn_with_check(
             move || -> Result<()>{
                 write_events(
-                    mouse_receiver,
-                    button_receiver,
-                    configs_copy2,
-                    termination_status_copy2,
+                    &mouse_receiver,
+                    &button_receiver,
+                    &configs_copy,
+                    &termination_status_copy,
                 )
             }
         );
 
         termination_status.run_with_check(
             move || {
-                #[cfg(feature = "use_steamy")] {
-                    use crate::steamy_specific::run_steamy_loop;
-                    crate::steamy_specific::run_steamy_loop(controller_state, configs_copy, termination_status_copy)
-                }
-                #[cfg(not(feature = "use_steamy"))]{
-                    use crate::gilrs_specific::run_gilrs_loop;
-                    run_gilrs_loop(controller_state, configs_copy, termination_status_copy)
-                }
+                run_read_loop(
+                    &shared_info,
+                    &configs_copy2,
+                    &termination_status_copy2,
+                )
             }
         );
     };
@@ -101,24 +114,21 @@ fn init_controller() -> Result<()> {
     #[cfg(feature = "main_as_thread")] {
         termination_status.spawn_with_check(
             move || {
-                #[cfg(feature = "use_steamy")] {
-                    use crate::steamy_specific::run_steamy_loop;
-                    crate::steamy_specific::run_steamy_loop(controller_state, configs_copy, termination_status_copy)
-                }
-                #[cfg(not(feature = "use_steamy"))]{
-                    use crate::gilrs_specific::run_gilrs_loop;
-                    run_gilrs_loop(controller_state, configs_copy, termination_status_copy)
-                }
+                run_read_loop(
+                    &shared_info,
+                    &configs_copy2,
+                    &termination_status_copy2,
+                )
             }
         );
 
         termination_status.run_with_check(
             move || -> Result<()>{
-                crate::writing_thread::write_events(
-                    mouse_receiver,
-                    button_receiver,
-                    configs_copy2,
-                    termination_status_copy2,
+                write_events(
+                    &mouse_receiver,
+                    &button_receiver,
+                    &configs_copy,
+                    &termination_status_copy,
                 )
             }
         );

@@ -99,14 +99,14 @@ fn assign_stick_event(
 }
 
 pub fn write_events(
-    mouse_receiver: MouseReceiver,
-    button_receiver: ButtonReceiver,
-    configs: MainConfigs,
-    termination_status: TerminationStatus,
+    mouse_receiver: &MouseReceiver,
+    button_receiver: &ButtonReceiver,
+    configs: &MainConfigs,
+    termination_status: &TerminationStatus,
 ) -> Result<()> {
     //Loading Configs
     let writing_interval = configs.general.mouse_refresh_interval;
-    let layout_configs = configs.layout_configs;
+    let layout_configs = &configs.layout_configs;
     let gaming_mode = layout_configs.general.gaming_mode;
     let scroll_cfg = layout_configs.scroll_cfg;
     let mouse_speed = layout_configs.general.mouse_speed;
@@ -123,9 +123,9 @@ pub fn write_events(
     );
 
     //Zone Mapping
-    let WASD_zones_cfg = layout_configs.wasd_zones_cfg;
-    let stick_zones_cfg = layout_configs.stick_zones_cfg;
-    let _buttons_layout = layout_configs.buttons_layout.layout;
+    let WASD_zones_cfg = &layout_configs.wasd_zones_cfg;
+    let stick_zones_cfg = &layout_configs.stick_zones_cfg;
+    let _buttons_layout = &layout_configs.buttons_layout.layout;
 
     let _wasd_zones: [Vec<KeyCode>; 4] = [
         vec![KeyCode::KEY_W],

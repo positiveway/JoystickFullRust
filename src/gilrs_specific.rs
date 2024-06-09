@@ -1,6 +1,6 @@
 use crate::exec_or_eyre;
 use crate::match_event::{AxisName, ButtonName, EventTypeName, TransformStatus, TransformedEvent};
-use crate::process_event::{process_event, ControllerState, ImplementationSpecificCfg};
+use crate::process_event::{process_event, SharedInfo, ImplementationSpecificCfg};
 use color_eyre::eyre::{bail, OptionExt, Result};
 use gilrs::ev::Code;
 use gilrs::EventType::Disconnected;
@@ -127,9 +127,9 @@ pub fn print_deadzones(gilrs: &Gilrs, id: usize) -> Result<()> {
 
 fn read_events(
     gilrs: &mut Gilrs,
-    controller_state: &mut ControllerState,
-    configs: MainConfigs,
-    termination_status: TerminationStatus,
+    shared_info: &SharedInfo,
+    configs: &MainConfigs,
+    termination_status: &TerminationStatus,
 ) -> Result<()> {
     let impl_cfg = ImplementationSpecificCfg::new(-1.0, 1.0);
 
@@ -148,11 +148,11 @@ fn read_events(
             let is_disconnected = event == Disconnected;
             debug!("{}", print_event(&event)?);
 
-            let event = normalize_event(&event, controller_state.RESET_BTN)?;
-            process_event(event, controller_state, &impl_cfg)?;
+            let event = normalize_event(&event, shared_info.RESET_BTN)?;
+            process_event(event, shared_info, &impl_cfg)?;
 
             if is_disconnected {
-                controller_state.release_all_hard()?;
+                shared_info.release_all_hard()?;
                 println!("Gamepad disconnected");
                 return Ok(());
             }
@@ -167,9 +167,9 @@ fn init_gilrs() -> Result<Gilrs> {
 }
 
 pub fn run_gilrs_loop(
-    mut controller_state: ControllerState,
-    configs: MainConfigs,
-    termination_status: TerminationStatus,
+    shared_info: &SharedInfo,
+    configs: &MainConfigs,
+    termination_status: &TerminationStatus,
 ) -> Result<()> {
     // let usb_holder = find_usb_device()?;
 
@@ -199,9 +199,9 @@ pub fn run_gilrs_loop(
                 wait_msg_is_printed = false;
                 read_events(
                     &mut gilrs,
-                    &mut controller_state,
-                    configs.clone(),
-                    termination_status.clone(),
+                    shared_info,
+                    configs,
+                    termination_status,
                 )?;
             }
             _ => {

@@ -44,7 +44,7 @@ pub type ButtonSender = Sender<ButtonEvent>;
 pub type ButtonReceiver = Receiver<ButtonEvent>;
 
 #[derive(Clone, Debug)]
-pub struct ControllerState {
+pub struct SharedInfo {
     pub mouse_sender: MouseSender,
     pub mouse_receiver: MouseReceiver,
     pub button_sender: ButtonSender,
@@ -56,14 +56,14 @@ pub struct ControllerState {
     pub layout_configs: LayoutConfigs,
 }
 
-impl ControllerState {
-    pub fn new(configs: MainConfigs) -> Self {
+impl SharedInfo {
+    pub fn new(configs: &MainConfigs) -> Self {
         let commands_channel_size = configs.general.commands_channel_size;
 
         let (mouse_sender, mouse_receiver) = create_channel(commands_channel_size);
         let (button_sender, button_receiver) = create_channel(commands_channel_size);
 
-        let layout_configs = configs.layout_configs;
+        let layout_configs = configs.layout_configs.clone();
         Self {
             mouse_sender,
             mouse_receiver,
@@ -101,7 +101,7 @@ impl ImplementationSpecificCfg {
 
 pub fn process_event(
     normalized_event: TransformStatus,
-    controller_state: &mut ControllerState,
+    shared_info: &SharedInfo,
     impl_cfg: &ImplementationSpecificCfg,
 ) -> Result<()> {
     let mut event: TransformedEvent;
@@ -117,7 +117,7 @@ pub fn process_event(
         }
     };
 
-    match transform_triggers(&mut event, &controller_state.layout_configs, impl_cfg) {
+    match transform_triggers(&mut event, &shared_info.layout_configs, impl_cfg) {
         TransformStatus::Discarded | TransformStatus::Handled => {
             return Ok(());
         }
@@ -137,7 +137,7 @@ pub fn process_event(
         TransformStatus::Unchanged => {}
     };
 
-    match process_pad_stick(&mut event, controller_state)? {
+    match process_pad_stick(&mut event, shared_info)? {
         TransformStatus::Discarded | TransformStatus::Handled => {
             return Ok(());
         }
@@ -147,7 +147,7 @@ pub fn process_event(
         TransformStatus::Unchanged => {}
     };
 
-    match process_buttons(&event, controller_state)? {
+    match process_buttons(&event, shared_info)? {
         TransformStatus::Discarded | TransformStatus::Handled => {
             return Ok(());
         }
@@ -162,15 +162,15 @@ pub fn process_event(
 
 pub fn process_buttons(
     event: &TransformedEvent,
-    controller_state: &mut ControllerState,
+    shared_info: &SharedInfo,
 ) -> Result<TransformStatus> {
     match event.event_type {
         EventTypeName::ButtonPressed => {
-            controller_state.button_sender.send(Pressed(event.button))?;
+            shared_info.button_sender.send(Pressed(event.button))?;
             Ok(TransformStatus::Handled)
         }
         EventTypeName::ButtonReleased => {
-            controller_state
+            shared_info
                 .button_sender
                 .send(Released(event.button))?;
             Ok(TransformStatus::Handled)
@@ -191,9 +191,9 @@ fn convert_to_pad_event(event_type: EventTypeName) -> Result<PadStickEvent> {
 
 fn apply_correction(
     event: &mut TransformedEvent,
-    controller_state: &ControllerState,
+    shared_info: &SharedInfo,
 ) {
-    let axis_correction_cfg = controller_state.layout_configs.axis_correction_cfg;
+    let axis_correction_cfg = shared_info.layout_configs.axis_correction_cfg;
 
     let correction = match event.axis {
         AxisName::PadX_SideL => axis_correction_cfg.left_pad.x,
@@ -220,10 +220,10 @@ fn apply_correction(
 
 pub fn process_pad_stick(
     event: &mut TransformedEvent,
-    controller_state: &ControllerState,
+    shared_info: &SharedInfo,
 ) -> Result<TransformStatus> {
     let send_mouse_event = |mouse_event: MouseEvent| -> Result<()> {
-        controller_state.mouse_sender.send(mouse_event)?;
+        shared_info.mouse_sender.send(mouse_event)?;
         Ok(())
     };
 
@@ -238,12 +238,12 @@ pub fn process_pad_stick(
             return Ok(TransformStatus::Handled);
         }
         _ => {
-            if event.button == controller_state.RESET_BTN {
+            if event.button == shared_info.RESET_BTN {
                 if event.event_type == EventTypeName::ButtonReleased {
                     send_mouse_event(MouseEvent::Reset)?;
                 }
                 return Ok(TransformStatus::Unchanged);
-            } else if event.button == controller_state.SWITCH_MODE_BTN {
+            } else if event.button == shared_info.SWITCH_MODE_BTN {
                 if event.event_type == EventTypeName::ButtonReleased {
                     send_mouse_event(MouseEvent::ModeSwitched)?;
                 }
@@ -270,7 +270,7 @@ pub fn process_pad_stick(
             }
         }
 
-        apply_correction(event, controller_state);
+        apply_correction(event, shared_info);
 
         if let Some(event_to_send) = match event.axis {
             AxisName::PadX_SideL => Some(MouseEvent::LeftPad(PadStickEvent::MovedX(event.value))),
