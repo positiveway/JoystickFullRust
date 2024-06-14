@@ -43,7 +43,7 @@ triggers_threshold_pct = 30
 mouse_speed = 400
 steamy_use_left_pad = true
 [Scroll]
-speed = 600
+speed = 1200
 horizontal_threshold = 0.06
 [JitterThreshold]
 left_pad = 0.01
