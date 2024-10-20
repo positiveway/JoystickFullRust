@@ -51,6 +51,7 @@ pub enum MouseMode {
     Serialize,
     Deserialize,
 )]
+
 pub enum CoordState {
     #[default]
     NotInit,
