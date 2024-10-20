@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 use universal_input::{KeyCode, KeyCodes};
-use crate::file_ops::{get_project_dir, read_toml};
+use crate::file_ops::{get_project_dir, read_yaml};
 use crate::steamy_state::SteamyInputCoord;
 
 const PROJECT_NAME: &str = "JoystickFullRust";
@@ -152,10 +152,10 @@ pub fn convert_pct(value: u8) -> f32 {
 
 impl MainConfigs {
     pub fn load() -> Result<Self> {
-        let configs_dir = get_project_dir(PROJECT_NAME).unwrap().join("config");
+        let configs_dir = get_project_dir(PROJECT_NAME)?.join("config");
         let layouts_dir = configs_dir.join("layouts");
 
-        let mut main_configs: Self = read_toml(configs_dir.as_path(), "configs")?;
+        let mut main_configs: Self = read_yaml(configs_dir.as_path(), "configs")?;
 
         main_configs.general.load();
 
@@ -264,7 +264,7 @@ pub struct LayoutConfigs {
 
 impl LayoutConfigs {
     pub fn load<S: AsRef<str>, P: AsRef<Path>>(layout_name: S, layout_dir: P) -> Result<Self> {
-        let mut layout_configs: Self = read_toml(layout_dir.as_ref(), layout_name)?;
+        let mut layout_configs: Self = read_yaml(layout_dir.as_ref(), layout_name)?;
 
         layout_configs.general.load()?;
         let gaming_mode = layout_configs.general.gaming_mode;

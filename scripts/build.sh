@@ -1,4 +1,5 @@
 build_clean=false
+update_rust=false
 use_nightly=false
 use_polonius=false
 new_trait_solver=false
@@ -44,8 +45,11 @@ then
   build_flags="-C link-arg=-fuse-ld=lld $build_flags"
 fi
 
+if $update_rust
+then
 rustup install $rust_version
 rustup update
+fi
 
 echo $build_flags
 

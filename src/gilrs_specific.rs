@@ -1,6 +1,8 @@
+use crate::configs::MainConfigs;
 use crate::exec_or_eyre;
 use crate::match_event::{AxisName, ButtonName, EventTypeName, TransformStatus, TransformedEvent};
-use crate::process_event::{process_event, SharedInfo, ImplementationSpecificCfg};
+use crate::process_event::{process_event, ImplementationSpecificCfg, SharedInfo};
+use crate::utils::TerminationStatus;
 use color_eyre::eyre::{bail, OptionExt, Result};
 use gilrs::ev::Code;
 use gilrs::EventType::Disconnected;
@@ -10,9 +12,6 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::thread::sleep;
 use std::time::Duration;
-use crate::configs::MainConfigs;
-use crate::utils::{TerminationStatus};
-
 
 const VENDOR_ID: u16 = 0x28de;
 const PRODUCT_ID: [u16; 2] = [0x1102, 0x1142];
@@ -68,7 +67,7 @@ fn find_usb_device() -> Result<UsbHolder> {
         }
 
         for (&product, (&endpoint, &index)) in
-        PRODUCT_ID.iter().zip(ENDPOINT.iter().zip(INDEX.iter()))
+            PRODUCT_ID.iter().zip(ENDPOINT.iter().zip(INDEX.iter()))
         {
             if descriptor.product_id() != product {
                 continue;
@@ -86,7 +85,6 @@ fn find_usb_device() -> Result<UsbHolder> {
     }
     bail!("Device not found")
 }
-
 
 #[derive(PartialEq, Default, Copy, Clone, Debug, Serialize, Deserialize)]
 struct Coords {
@@ -140,11 +138,14 @@ fn read_events(
 
     loop {
         if termination_status.check() {
-            return Ok(())
+            return Ok(());
         };
 
         // Examine new events
-        while let Some(Event { id, event, time }) = gilrs.next_event() {
+        while let Some(Event {
+                           id, event, time, ..
+                       }) = gilrs.next_event()
+        {
             let is_disconnected = event == Disconnected;
             debug!("{}", print_event(&event)?);
 
@@ -197,12 +198,7 @@ pub fn run_gilrs_loop(
             1 => {
                 println!("Gamepad connected");
                 wait_msg_is_printed = false;
-                read_events(
-                    &mut gilrs,
-                    shared_info,
-                    configs,
-                    termination_status,
-                )?;
+                read_events(&mut gilrs, shared_info, configs, termination_status)?;
             }
             _ => {
                 println!("Only one gamepad is supported. Disconnect other gamepads");
@@ -264,10 +260,7 @@ pub fn match_axis(code: u16) -> Result<AxisName> {
     })
 }
 
-pub fn normalize_event(
-    event: &EventType,
-    RESET_BTN: ButtonName,
-) -> Result<TransformStatus> {
+pub fn normalize_event(event: &EventType, RESET_BTN: ButtonName) -> Result<TransformStatus> {
     Ok(match event {
         AxisChanged(axis, value, code) => {
             let code_as_num = print_code(code)?;
@@ -402,6 +395,8 @@ pub fn print_event(event: &EventType) -> Result<String> {
         Connected => event_type = "Connected",
         Disconnected => event_type = "Disconnected",
         Dropped => event_type = "Dropped",
+        ForceFeedbackEffectCompleted => event_type = "ForceFeedbackEffectCompleted",
+        _ => {}
     };
     Ok(format!("{event_type}; BtnOrAxis: {button_or_axis}; Value: {:.3}; Code: {code_as_str}; Num: {code_as_num}", res_value))
 }
