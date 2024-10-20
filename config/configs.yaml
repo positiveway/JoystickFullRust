@@ -1,4 +1,10 @@
-is_left_pad_bytes_dump: false
+Layouts:
+  #  buttons_layout: "desktop"
+  buttons_layout: "raft"
+  #  buttons_layout: "wmd"
+  #  buttons_layout: "satisfactory"
+
+  typing_layout: "typing"
 General:
   steamy_channel_size: 100
   commands_channel_size: 100
@@ -6,9 +12,5 @@ General:
   input_raw_refresh_interval: 500
   input_buffer_refresh_interval: 2
   mouse_refresh_interval: 1
-Layouts:
-  #  buttons_layout: "desktop"
-  buttons_layout: "raft"
-  #  buttons_layout: "wmd"
-  #  buttons_layout: "islands"
-  typing_layout: "typing"
+
+is_left_pad_bytes_dump: false
