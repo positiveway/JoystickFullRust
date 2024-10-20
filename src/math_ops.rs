@@ -1,4 +1,5 @@
-use crate::pads_ops::{Coords, CoordState};
+use crate::pads_ops::CoordState::Value;
+use crate::pads_ops::{CoordState, Coords};
 use crate::utils::{are_options_different, option_to_string, Container, ContainerElement};
 use color_eyre::eyre::{bail, Result};
 use log::debug;
@@ -7,7 +8,6 @@ use std::fmt::Display;
 use std::ops::Add;
 use strum_macros::{AsRefStr, Display, EnumIter, EnumString};
 use trait_set::trait_set;
-use crate::pads_ops::CoordState::Value;
 
 fn smoothing_factor(t_e: f64, cutoff: f64) -> f64 {
     let r = 2.0 * std::f64::consts::PI * cutoff * t_e;
@@ -236,7 +236,21 @@ pub fn rotate_by_angle(point1: Vector, mut point2: Vector, rotation_angle: f32) 
     rotated_point
 }
 
-#[derive(PartialOrd, EnumIter, EnumString, AsRefStr, Display, Eq, Hash, PartialEq, Copy, Clone, Debug, Serialize, Deserialize, )]
+#[derive(
+    PartialOrd,
+    EnumIter,
+    EnumString,
+    AsRefStr,
+    Display,
+    Eq,
+    Hash,
+    PartialEq,
+    Copy,
+    Clone,
+    Debug,
+    Serialize,
+    Deserialize,
+)]
 pub enum Quadrant {
     Q1,
     Q2,
@@ -344,7 +358,7 @@ impl ZoneAllowedRange {
     pub fn from_one_value(range: Angle, diagonal_zones: bool) -> Result<Self> {
         match diagonal_zones {
             true => Self::new(range, range, range),
-            false => Self::new(range, range, 0)
+            false => Self::new(range, range, 0),
         }
     }
 }
@@ -378,11 +392,7 @@ pub struct ZonesMapper<T: ZoneValue> {
 
 impl<T: ZoneValue> ZonesMapper<T> {
     #[inline]
-    pub fn get_commands_diff(
-        &mut self,
-        x: CoordState,
-        y: CoordState,
-    ) -> (Vec<T>, Vec<T>, Vec<T>) {
+    pub fn get_commands_diff(&mut self, x: CoordState, y: CoordState) -> (Vec<T>, Vec<T>, Vec<T>) {
         let (zone_changed, cur_value) = self.detect_zone(x, y);
         let prev_value = self.prev_value.clone();
         self.prev_value = cur_value.clone();
@@ -454,19 +464,20 @@ impl<T: ZoneValue> ZonesMapper<T> {
         match diagonal_zones {
             true => {
                 if values.len() != 4 {
-                    bail!("4 values have to be provided to build diagonal zone mapper. Provided: {}", values.len())
+                    bail!(
+                        "4 values have to be provided to build diagonal zone mapper. Provided: {}",
+                        values.len()
+                    )
                 }
                 let values: [Vec<T>; 4] = [
                     values[0].clone(),
                     values[1].clone(),
                     values[2].clone(),
-                    values[3].clone()
+                    values[3].clone(),
                 ];
                 Self::_gen_from_4_into_8(values, start_angle, zone_allowed_range, threshold)
             }
-            false => {
-                Self::_gen_from_any(values, start_angle, zone_allowed_range, threshold)
-            }
+            false => Self::_gen_from_any(values, start_angle, zone_allowed_range, threshold),
         }
     }
 
@@ -483,7 +494,8 @@ impl<T: ZoneValue> ZonesMapper<T> {
             expanded_values[ind * 2 + 1] = [
                 values[ind].clone(),
                 values[(ind + 1) % values.len()].clone(),
-            ].concat();
+            ]
+                .concat();
         }
 
         Self::_gen_from_any(

@@ -1,26 +1,56 @@
-use std::cmp::min;
-use std::fmt::{Display, Formatter};
-use crate::configs::{AxisCorrection, AxisCorrectionConfigs, FingerRotationConfigs, JitterThresholdConfigs, ZoneMappingConfigs};
-use crate::math_ops::{rotate_around_center, Vector, ZonesMapper, ZoneValue};
-use log::{debug, info};
-use serde::{Deserialize, Serialize};
-use strum_macros::{AsRefStr, Display, EnumIter, EnumString};
-use universal_input::{OS_Input_Coord, KeyCode};
-use universal_input::KeyCode::KEY_LEFTSHIFT;
-use color_eyre::eyre::Result;
 use crate::buttons_state::ButtonsState;
+use crate::configs::{
+    AxisCorrection, AxisCorrectionConfigs, FingerRotationConfigs, JitterThresholdConfigs,
+    ZoneMappingConfigs,
+};
+use crate::math_ops::{rotate_around_center, Vector, ZoneValue, ZonesMapper};
 use crate::pads_ops::CoordState::Value;
 use crate::steamy_state::SteamyInputCoord;
 use crate::utils::{are_options_different, option_to_string};
+use color_eyre::eyre::Result;
+use log::{debug, info};
+use serde::{Deserialize, Serialize};
+use std::cmp::min;
+use std::fmt::{Display, Formatter};
+use strum_macros::{AsRefStr, Display, EnumIter, EnumString};
+use universal_input::KeyCode::KEY_LEFTSHIFT;
+use universal_input::{KeyCode, OS_Input_Coord};
 
-#[derive(PartialOrd, EnumIter, EnumString, AsRefStr, Display, Default, Eq, Hash, PartialEq, Copy, Clone, Debug, Serialize, Deserialize, )]
+#[derive(
+    PartialOrd,
+    EnumIter,
+    EnumString,
+    AsRefStr,
+    Display,
+    Default,
+    Eq,
+    Hash,
+    PartialEq,
+    Copy,
+    Clone,
+    Debug,
+    Serialize,
+    Deserialize,
+)]
 pub enum MouseMode {
     #[default]
     CursorMove,
     Typing,
 }
 
-#[derive(PartialOrd, EnumIter, EnumString, AsRefStr, Default, PartialEq, Copy, Clone, Debug, Serialize, Deserialize, )]
+#[derive(
+    PartialOrd,
+    EnumIter,
+    EnumString,
+    AsRefStr,
+    Default,
+    PartialEq,
+    Copy,
+    Clone,
+    Debug,
+    Serialize,
+    Deserialize,
+)]
 pub enum CoordState {
     #[default]
     NotInit,
@@ -57,7 +87,7 @@ impl CoordState {
         match self {
             value @ Value(_) => value,
             CoordState::NotInit => other,
-            CoordState::DiscardNext => CoordState::DiscardNext //TODO: Check this invariant
+            CoordState::DiscardNext => CoordState::DiscardNext, //TODO: Check this invariant
         }
     }
 }
@@ -151,12 +181,7 @@ impl Coords {
 
 impl std::fmt::Display for Coords {
     fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
-        write!(
-            f,
-            "[X: {}, Y: {}]",
-            self.x,
-            self.x
-        )
+        write!(f, "[X: {}, Y: {}]", self.x, self.x)
     }
 }
 
@@ -319,16 +344,15 @@ impl CoordsHistoryState {
     pub fn diff(&mut self) -> CoordsDiff {
         debug!(
             "Prev: [X: {}, Y: {}]. Cur: [X: {}, Y: {}]",
-            self.prev.x,
-            self.prev.y,
-            self.cur.x,
-            self.cur.y,
+            self.prev.x, self.prev.y, self.cur.x, self.cur.y,
         );
         let (prev_coords, cur_coords) = match self.use_rotation {
             true => (
                 self.prev.try_rotate(self.finger_rotation),
                 // Calculating diff from self.cur_pos() or self.cur produces equivalent results
-                self.cur_pos().rotate(self.finger_rotation).unwrap_or(self.cur),
+                self.cur_pos()
+                    .rotate(self.finger_rotation)
+                    .unwrap_or(self.cur),
                 // self.cur_pos().try_rotate(self.finger_rotation),
             ),
             false => (self.prev, self.cur),
@@ -379,10 +403,12 @@ impl CoordsHistoryState {
         // }
 
         let (to_press, zones_always_press) = {
-            #[cfg(feature = "zones_always_press")]{
+            #[cfg(feature = "zones_always_press")]
+            {
                 (to_press_full, true)
             }
-            #[cfg(not(feature = "zones_always_press"))]{
+            #[cfg(not(feature = "zones_always_press"))]
+            {
                 (to_press, false)
             }
         };

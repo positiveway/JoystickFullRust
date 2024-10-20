@@ -3,8 +3,8 @@ use crate::match_event::*;
 use crate::math_ops::{apply_pad_stick_correction, RangeConverterBuilder};
 use crate::process_event::ButtonEvent::{Pressed, Released};
 use crate::process_event::PadStickEvent::{FingerLifted, FingerPut};
-use color_eyre::eyre::{bail, Result};
 use crate::utils::create_channel;
+use color_eyre::eyre::{bail, Result};
 use log::debug;
 use serde::{Deserialize, Serialize};
 use strum_macros::Display;
@@ -170,9 +170,7 @@ pub fn process_buttons(
             Ok(TransformStatus::Handled)
         }
         EventTypeName::ButtonReleased => {
-            shared_info
-                .button_sender
-                .send(Released(event.button))?;
+            shared_info.button_sender.send(Released(event.button))?;
             Ok(TransformStatus::Handled)
         }
         _ => Ok(TransformStatus::Unchanged),
@@ -183,16 +181,13 @@ fn convert_to_pad_event(event_type: EventTypeName) -> Result<PadStickEvent> {
     let result = match event_type {
         EventTypeName::ButtonReleased => FingerLifted,
         EventTypeName::ButtonPressed => FingerPut,
-        _ => bail!("Cannot happen")
+        _ => bail!("Cannot happen"),
     };
     debug!("{}", result);
     Ok(result)
 }
 
-fn apply_correction(
-    event: &mut TransformedEvent,
-    shared_info: &SharedInfo,
-) {
+fn apply_correction(event: &mut TransformedEvent, shared_info: &SharedInfo) {
     let axis_correction_cfg = shared_info.layout_configs.axis_correction_cfg;
 
     let correction = match event.axis {
@@ -202,7 +197,7 @@ fn apply_correction(
         AxisName::PadY_SideR => axis_correction_cfg.right_pad.y,
         AxisName::StickX => axis_correction_cfg.stick.x,
         AxisName::StickY => axis_correction_cfg.stick.y,
-        _ => 0.0
+        _ => 0.0,
     };
 
     match event.axis {
@@ -230,7 +225,9 @@ pub fn process_pad_stick(
     match event.button {
         // Important: Act only on Released event, not as Pressed
         ButtonName::PadAsTouch_SideR => {
-            send_mouse_event(MouseEvent::RightPad(convert_to_pad_event(event.event_type)?))?;
+            send_mouse_event(MouseEvent::RightPad(convert_to_pad_event(
+                event.event_type,
+            )?))?;
             return Ok(TransformStatus::Handled);
         }
         ButtonName::PadAsTouch_SideL => {
@@ -253,7 +250,8 @@ pub fn process_pad_stick(
     };
 
     if event.event_type == EventTypeName::AxisChanged {
-        #[cfg(not(feature = "use_steamy"))]{
+        #[cfg(not(feature = "use_steamy"))]
+        {
             // Was needed for gilrs. Now causes various bugs
             // Discard 0.0 events for pads
 

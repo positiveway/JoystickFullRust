@@ -1,23 +1,22 @@
-use std::fs::File;
 use crate::configs::MainConfigs;
 use crate::match_event::{AxisName, ButtonName, EventTypeName, TransformStatus, TransformedEvent};
-use crate::process_event::{process_event, SharedInfo, ImplementationSpecificCfg};
+use crate::process_event::{process_event, ImplementationSpecificCfg, SharedInfo};
 use crate::steamy_event::{SteamyButton, SteamyEvent, SteamyPadStickF32, SteamyTrigger};
 use crate::steamy_state::SteamyState;
+use crate::utils::{create_channel, TerminationStatus};
+use color_eyre::eyre::{bail, Result};
 use log::{debug, error, warn};
+use std::fs::File;
 use std::io::prelude::*;
 use std::thread;
-use std::thread::{sleep};
+use std::thread::sleep;
 use std::time::{Duration, Instant};
-use color_eyre::eyre::{bail, Result};
-use crate::utils::{create_channel, TerminationStatus};
 
 #[cfg(not(feature = "use_kanal"))]
 use crossbeam_channel::{Receiver, Sender};
 #[cfg(feature = "use_kanal")]
 use kanal::{Receiver, Sender};
 use steamy_base::Manager;
-
 
 pub type SteamyEventSender = Sender<SteamyEvent>;
 pub type SteamyEventReceiver = Receiver<SteamyEvent>;
@@ -38,7 +37,7 @@ pub fn match_button(button: &SteamyButton) -> Result<ButtonName> {
             // println!("StickTouch happened");
             warn!("StickTouch happened");
             ButtonName::None
-        },
+        }
         SteamyButton::StickPressed => ButtonName::StickAsBtn,
         SteamyButton::RightPadPressed => ButtonName::PadAsBtn_SideR,
         SteamyButton::RightPadTouch => ButtonName::PadAsTouch_SideR,
@@ -54,10 +53,7 @@ pub fn match_button(button: &SteamyButton) -> Result<ButtonName> {
     })
 }
 
-pub fn normalize_event(
-    event: &SteamyEvent,
-    RESET_BTN: ButtonName,
-) -> Result<TransformStatus> {
+pub fn normalize_event(event: &SteamyEvent, RESET_BTN: ButtonName) -> Result<TransformStatus> {
     Ok(match event {
         SteamyEvent::Button(button, pressed) => {
             let button = match_button(button)?;
@@ -156,23 +152,22 @@ fn read_events(
 
     let mut received_events = vec![];
 
-    #[cfg(not(feature = "debug_mode"))]{
+    #[cfg(not(feature = "debug_mode"))]
+    {
         let (new_state, is_left_pad) = controller.state(steamy_read_interrupt_interval)?;
         for event in state.update(new_state, steamy_use_left_pad)? {
             // for event in state.update(new_state, is_left_pad)? {
             // for event in state.update(new_state, *left_pad_active)? {
             match event {
-                SteamyEvent::Button(button, pressed) => {
-                    match button {
-                        SteamyButton::LeftPadTouch => {
-                            *left_pad_active = pressed;
-                        },
-                        SteamyButton::StickTouch | SteamyButton::StickPressed => {
-                            println!("Stick touch: {}", pressed)
-                        },
-                        _ => {}
+                SteamyEvent::Button(button, pressed) => match button {
+                    SteamyButton::LeftPadTouch => {
+                        *left_pad_active = pressed;
                     }
-                }
+                    SteamyButton::StickTouch | SteamyButton::StickPressed => {
+                        println!("Stick touch: {}", pressed)
+                    }
+                    _ => {}
+                },
                 _ => {}
             }
             // received_events.push(event);
@@ -180,8 +175,9 @@ fn read_events(
         }
     }
 
-    #[cfg(feature = "debug_mode")] {
-        use crate::steamy_debug::{buf_to_string};
+    #[cfg(feature = "debug_mode")]
+    {
+        use crate::steamy_debug::buf_to_string;
 
         *msg_counter += 1;
 
@@ -229,8 +225,9 @@ fn read_events_loop(
     let mut state = SteamyState::default();
 
     // DEBUG
-    use crate::steamy_debug::{init_debug_files};
-    let (mut subject_file, mut subject_endings_file, mut cmp_file) = init_debug_files(configs.is_left_pad_bytes_dump)?;
+    use crate::steamy_debug::init_debug_files;
+    let (mut subject_file, mut subject_endings_file, mut cmp_file) =
+        init_debug_files(configs.is_left_pad_bytes_dump)?;
     let mut msg_counter: u32 = 0;
     // DEBUG
 
@@ -240,7 +237,7 @@ fn read_events_loop(
         let loop_start_time = Instant::now();
 
         if termination_status.check() {
-            return Ok(())
+            return Ok(());
         };
 
         let received_events = read_events(
@@ -281,7 +278,7 @@ fn process_events(
             println!("Gamepad disconnected");
             return Ok(true);
         }
-    };
+    }
 
     Ok(false)
 }
@@ -300,16 +297,12 @@ fn process_event_loop(
         let loop_start_time = Instant::now();
 
         if termination_status.check() {
-            return Ok(())
+            return Ok(());
         };
 
-        let exit_now = process_events(
-            shared_info,
-            &impl_cfg,
-            steam_event_receiver,
-        )?;
+        let exit_now = process_events(shared_info, &impl_cfg, steam_event_receiver)?;
         if exit_now {
-            return Ok(())
+            return Ok(());
         }
 
         let loop_iteration_runtime = loop_start_time.elapsed();
@@ -338,7 +331,8 @@ fn process_event_loop(
 
     // DEBUG
     use crate::steamy_debug::{buf_to_string, init_debug_files};
-    let (mut subject_file, mut subject_endings_file, mut cmp_file) = init_debug_files(configs.is_left_pad_bytes_dump)?;
+    let (mut subject_file, mut subject_endings_file, mut cmp_file) =
+        init_debug_files(configs.is_left_pad_bytes_dump)?;
     let mut msg_counter: u32 = 0;
     // DEBUG
 
@@ -351,7 +345,7 @@ fn process_event_loop(
         let read_loop_start_time = Instant::now();
 
         if termination_status.check() {
-            return Ok(())
+            return Ok(());
         };
 
         let received_events = read_events(
@@ -372,19 +366,16 @@ fn process_event_loop(
         if input_buffer_refresh_interval.checked_sub(process_loop_iteration_runtime) == None {
             process_loop_start_time = Instant::now();
 
-            let exit_now = process_events(
-                shared_info,
-                &impl_cfg,
-                steam_event_receiver,
-            )?;
+            let exit_now = process_events(shared_info, &impl_cfg, steam_event_receiver)?;
             if exit_now {
-                return Ok(())
+                return Ok(());
             }
         }
 
         let read_loop_iteration_runtime = read_loop_start_time.elapsed();
 
-        if let Some(remaining) = input_raw_refresh_interval.checked_sub(read_loop_iteration_runtime) {
+        if let Some(remaining) = input_raw_refresh_interval.checked_sub(read_loop_iteration_runtime)
+        {
             sleep(remaining);
         }
     }
@@ -424,39 +415,35 @@ pub fn run_steamy_loop(
 
     match manager.open() {
         Ok(mut controller) => {
-            #[cfg(not(feature = "steamy_use_threads"))]{
-                termination_status.check_result(
-                    process_event_loop(
-                        &mut controller,
-                        &shared_info,
-                        &configs,
-                        &steam_event_sender,
-                        &steam_event_receiver,
-                        &termination_status,
-                    )
-                );
+            #[cfg(not(feature = "steamy_use_threads"))]
+            {
+                termination_status.check_result(process_event_loop(
+                    &mut controller,
+                    &shared_info,
+                    &configs,
+                    &steam_event_sender,
+                    &steam_event_receiver,
+                    &termination_status,
+                ));
             }
 
-            #[cfg(feature = "steamy_use_threads")] {
+            #[cfg(feature = "steamy_use_threads")]
+            {
                 thread::spawn(move || {
-                    termination_status_copy.check_result(
-                        read_events_loop(
-                            &mut controller,
-                            &configs_copy,
-                            &steam_event_sender,
-                            &termination_status_copy,
-                        )
-                    );
+                    termination_status_copy.check_result(read_events_loop(
+                        &mut controller,
+                        &configs_copy,
+                        &steam_event_sender,
+                        &termination_status_copy,
+                    ));
                 });
 
-                termination_status.check_result(
-                    process_event_loop(
-                        &shared_info,
-                        &configs,
-                        &steam_event_receiver,
-                        &termination_status,
-                    )
-                );
+                termination_status.check_result(process_event_loop(
+                    &shared_info,
+                    &configs,
+                    &steam_event_receiver,
+                    &termination_status,
+                ));
             }
         }
         Err(_) => {

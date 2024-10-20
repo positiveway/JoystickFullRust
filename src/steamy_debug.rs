@@ -1,9 +1,9 @@
-use std::fs::{read_dir, remove_file, File, OpenOptions, create_dir_all};
-use std::path::{Path, PathBuf};
-use color_eyre::eyre::Result;
-use std::io::prelude::*;
-use log::debug;
 use crate::file_ops::get_home_dir;
+use color_eyre::eyre::Result;
+use log::debug;
+use std::fs::{create_dir_all, read_dir, remove_file, File, OpenOptions};
+use std::io::prelude::*;
+use std::path::{Path, PathBuf};
 
 // const BUF_SIZE: usize = 60;
 const BUF_SIZE: usize = 64;
@@ -13,7 +13,6 @@ const BUF_OFFSET: usize = 4;
 const DUMP_DIR: &str = "Documents/bytes";
 #[cfg(target_os = "windows")]
 const DUMP_DIR: &str = "Documents\\bytes";
-
 
 pub fn align_num(val: String, padding: usize) -> String {
     let mut res = String::from("");
@@ -108,7 +107,11 @@ pub fn create_file(subject: &str, endings: bool) -> Result<File> {
 }
 
 pub fn init_debug_files(is_left_pad_bytes_dump: bool) -> Result<(File, File, File)> {
-    let subject = if is_left_pad_bytes_dump { "pad" } else { "stick" };
+    let subject = if is_left_pad_bytes_dump {
+        "pad"
+    } else {
+        "stick"
+    };
 
     let mut subject_file = create_file(subject, false)?;
     let mut subject_endings_file = create_file(subject, true)?;

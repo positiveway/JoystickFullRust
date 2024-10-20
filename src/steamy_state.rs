@@ -1,8 +1,8 @@
-use color_eyre::eyre::{bail, Result};
-use steamy_base::Axis;
 use crate::configs::AxisCorrectionConfigs;
 use crate::math_ops::coord_to_f32;
 use crate::steamy_event::{SteamyButton, SteamyEvent, SteamyPadStickF32, SteamyTrigger};
+use color_eyre::eyre::{bail, Result};
+use steamy_base::Axis;
 
 macro_rules! button_converter {
 	($events:expr, $current:expr, $new:expr, { }) =>
@@ -69,7 +69,12 @@ impl Default for SteamyState {
     }
 }
 
-fn _print_max_min(cur_value: SteamyInputCoord, is_x: bool, min_coords: &mut _Pair, max_coords: &mut _Pair) {
+fn _print_max_min(
+    cur_value: SteamyInputCoord,
+    is_x: bool,
+    min_coords: &mut _Pair,
+    max_coords: &mut _Pair,
+) {
     match is_x {
         true => {
             if cur_value > max_coords.x {
@@ -135,7 +140,11 @@ fn _print_cur_axis(axis: &Axis) {
 
 impl SteamyState {
     #[inline]
-    pub fn update(&mut self, state: steamy_base::State, is_left_pad: bool) -> Result<Vec<SteamyEvent>> {
+    pub fn update(
+        &mut self,
+        state: steamy_base::State,
+        is_left_pad: bool,
+    ) -> Result<Vec<SteamyEvent>> {
         let mut events = Vec::new();
 
         match state {

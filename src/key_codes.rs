@@ -1,5 +1,5 @@
-use color_eyre::eyre::{bail, Result, Report};
 use crate::match_event::ButtonName;
+use color_eyre::eyre::{bail, Report, Result};
 use universal_input::{KeyCode, KeyCodes};
 
 fn assign_special_button(special_button: &mut ButtonName, value: ButtonName) -> Result<KeyCode> {
@@ -14,7 +14,6 @@ fn assign_special_button(special_button: &mut ButtonName, value: ButtonName) -> 
         Ok(KeyCode::None)
     }
 }
-
 
 pub fn key_code_from_config(
     button_name: ButtonName,

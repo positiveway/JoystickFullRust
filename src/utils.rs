@@ -8,9 +8,9 @@ use std::thread::JoinHandle;
 use trait_set::trait_set;
 
 #[cfg(not(feature = "use_kanal"))]
-use crossbeam_channel::{unbounded, bounded, Receiver, Sender};
+use crossbeam_channel::{bounded, unbounded, Receiver, Sender};
 #[cfg(feature = "use_kanal")]
-use kanal::{unbounded, bounded, Receiver, Sender};
+use kanal::{bounded, unbounded, Receiver, Sender};
 
 pub fn create_channel<T>(size: i32) -> (Sender<T>, Receiver<T>) {
     if size == -1 {
@@ -36,10 +36,7 @@ impl TerminationStatus {
 
     pub fn new(size: i32) -> Self {
         let (sender, receiver) = create_channel(size);
-        Self {
-            sender,
-            receiver,
-        }
+        Self { sender, receiver }
     }
 
     pub fn check(&self) -> bool {

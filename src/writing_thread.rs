@@ -1,25 +1,25 @@
-use std::thread;
-use std::thread::{JoinHandle, sleep};
-use std::time::Instant;
-use color_eyre::eyre::{bail, Result};
-use log::debug;
-use serde::{Deserialize, Serialize};
-use universal_input::{InputEmulator, KeyCode, OS_Input_Coord, EventParams};
 use crate::buttons_state::{ButtonsState, Command};
 use crate::configs::MainConfigs;
 use crate::exec_or_eyre;
 use crate::match_event::ButtonName;
 use crate::math_ops::{ZoneAllowedRange, ZonesMapper};
-use crate::pads_ops::{ConvertedCoordsDiff, Coords, CoordsHistoryState, discard_jitter_for_pad, discard_jitter_for_stick, MouseMode, PadsCoords};
 use crate::pads_ops::CoordState::Value;
+use crate::pads_ops::{
+    discard_jitter_for_pad, discard_jitter_for_stick, ConvertedCoordsDiff, Coords,
+    CoordsHistoryState, MouseMode, PadsCoords,
+};
 use crate::process_event::{ButtonEvent, ButtonReceiver, MouseEvent, MouseReceiver, PadStickEvent};
 use crate::utils::{TerminationStatus, ThreadHandle};
+use color_eyre::eyre::{bail, Result};
+use log::debug;
+use serde::{Deserialize, Serialize};
+use std::thread;
+use std::thread::{sleep, JoinHandle};
+use std::time::Instant;
+use universal_input::{EventParams, InputEmulator, KeyCode, OS_Input_Coord};
 
 #[inline]
-fn assign_pad_event(
-    coords_state: &mut CoordsHistoryState,
-    pad_stick_event: PadStickEvent,
-) {
+fn assign_pad_event(coords_state: &mut CoordsHistoryState, pad_stick_event: PadStickEvent) {
     let (zero_x, zero_y) = (coords_state.zero_x, coords_state.zero_y);
 
     let jitter_threshold = coords_state.jitter_threshold;
@@ -30,20 +30,22 @@ fn assign_pad_event(
             coords_state.new_x = zero_x;
             coords_state.new_y = zero_y;
             debug!("\nFinger lifted\n")
-        },
+        }
         PadStickEvent::FingerPut => {
             coords_state.reset_all();
             coords_state.new_x = zero_x;
             coords_state.new_y = zero_y;
             debug!("\nFinger put\n")
-        },
+        }
         PadStickEvent::MovedX(value) => {
-            coords_state.cur.x = discard_jitter_for_pad(coords_state.prev.x, value, jitter_threshold);
+            coords_state.cur.x =
+                discard_jitter_for_pad(coords_state.prev.x, value, jitter_threshold);
             coords_state.new_x = value;
             // println!("X: {value}")
         }
         PadStickEvent::MovedY(value) => {
-            coords_state.cur.y = discard_jitter_for_pad(coords_state.prev.y, value, jitter_threshold);
+            coords_state.cur.y =
+                discard_jitter_for_pad(coords_state.prev.y, value, jitter_threshold);
             coords_state.new_y = value;
             // println!("Y: {value}")
         }
@@ -62,21 +64,13 @@ fn assign_stick_event(
     match pad_stick_event {
         PadStickEvent::FingerLifted | PadStickEvent::FingerPut => bail!("Cannot happen"),
         PadStickEvent::MovedX(value) => {
-            coords_state.cur.x = discard_jitter_for_stick(
-                coords_state.prev.x,
-                value,
-                jitter_threshold,
-                zero_x,
-            );
+            coords_state.cur.x =
+                discard_jitter_for_stick(coords_state.prev.x, value, jitter_threshold, zero_x);
             // println!("X: {value}")
         }
         PadStickEvent::MovedY(value) => {
-            coords_state.cur.y = discard_jitter_for_stick(
-                coords_state.prev.y,
-                value,
-                jitter_threshold,
-                zero_y,
-            );
+            coords_state.cur.y =
+                discard_jitter_for_stick(coords_state.prev.y, value, jitter_threshold, zero_y);
             // println!("Y: {value}")
         }
     }
@@ -133,7 +127,8 @@ pub fn write_events(
         vec![KeyCode::KEY_S],
         vec![KeyCode::KEY_D],
     ];
-    let _wasd_zone_range = ZoneAllowedRange::from_one_value(WASD_zones_cfg.zone_range, WASD_zones_cfg.diagonal_zones)?;
+    let _wasd_zone_range =
+        ZoneAllowedRange::from_one_value(WASD_zones_cfg.zone_range, WASD_zones_cfg.diagonal_zones)?;
     let mut wasd_zone_mapper = ZonesMapper::gen_from(
         _wasd_zones.to_vec(),
         90,
@@ -148,7 +143,10 @@ pub fn write_events(
         _buttons_layout[&ButtonName::BtnLeft_SideL].clone(),
         _buttons_layout[&ButtonName::BtnDown_SideL].clone(),
     ];
-    let _stick_zone_range = ZoneAllowedRange::from_one_value(stick_zones_cfg.zone_range, stick_zones_cfg.diagonal_zones)?;
+    let _stick_zone_range = ZoneAllowedRange::from_one_value(
+        stick_zones_cfg.zone_range,
+        stick_zones_cfg.diagonal_zones,
+    )?;
     let mut stick_zone_mapper = ZonesMapper::gen_from(
         _stick_zones.to_vec(),
         0,
@@ -170,12 +168,12 @@ pub fn write_events(
         // println!("writing thread");
 
         if termination_status.check() {
-            return Ok(())
+            return Ok(());
         };
 
         //MOUSE
         for event in mouse_receiver.try_iter() {
-        //TODO: test try_recv_realtime. fallback: try_recv()
+            //TODO: test try_recv_realtime. fallback: try_recv()
             // while let Some(event) = mouse_receiver.try_recv()? {
             match event {
                 MouseEvent::ModeSwitched => match mouse_mode {
@@ -190,24 +188,20 @@ pub fn write_events(
                     mouse_mode = MouseMode::default();
                     pads_coords.reset_all();
                 }
-                MouseEvent::LeftPad(pad_stick_event) => assign_pad_event(
-                    &mut pads_coords.left_pad,
-                    pad_stick_event,
-                ),
-                MouseEvent::RightPad(pad_stick_event) => assign_pad_event(
-                    &mut pads_coords.right_pad,
-                    pad_stick_event,
-                ),
+                MouseEvent::LeftPad(pad_stick_event) => {
+                    assign_pad_event(&mut pads_coords.left_pad, pad_stick_event)
+                }
+                MouseEvent::RightPad(pad_stick_event) => {
+                    assign_pad_event(&mut pads_coords.right_pad, pad_stick_event)
+                }
                 MouseEvent::Stick(pad_stick_event) => {
-                    assign_stick_event(
-                        &mut pads_coords.stick,
-                        pad_stick_event,
-                    )?;
-                },
+                    assign_stick_event(&mut pads_coords.stick, pad_stick_event)?;
+                }
             }
         }
 
-        #[cfg(all(feature = "use_steamy", feature = "use_only_last_coords"))]{
+        #[cfg(all(feature = "use_steamy", feature = "use_only_last_coords"))]
+        {
             pads_coords.left_pad.cur.x = discard_jitter_for_pad(
                 pads_coords.left_pad.prev.x,
                 pads_coords.left_pad.new_x,
@@ -243,21 +237,31 @@ pub fn write_events(
                 let mouse_diff = pads_coords.right_pad.diff();
                 let mouse_diff = mouse_diff.convert(mouse_speed);
                 if mouse_diff.is_any_changes() {
-                    #[cfg(feature = "gradual_mouse")]{
+                    #[cfg(feature = "gradual_mouse")]
+                    {
                         // println!("Gradual Mouse");
-                        #[cfg(feature = "use_buffered_input")]{
-                            write_buffer.extend(input_emulator.buffered_gradual_move_mouse(mouse_diff.x, mouse_diff.y));
+                        #[cfg(feature = "use_buffered_input")]
+                        {
+                            write_buffer.extend(
+                                input_emulator
+                                    .buffered_gradual_move_mouse(mouse_diff.x, mouse_diff.y),
+                            );
                         }
-                        #[cfg(not(feature = "use_buffered_input"))]{
-                            #[cfg(feature = "use_raw_input")]{
-                                input_emulator.gradual_move_mouse_raw(mouse_diff.x, mouse_diff.y)?;
+                        #[cfg(not(feature = "use_buffered_input"))]
+                        {
+                            #[cfg(feature = "use_raw_input")]
+                            {
+                                input_emulator
+                                    .gradual_move_mouse_raw(mouse_diff.x, mouse_diff.y)?;
                             }
-                            #[cfg(not(feature = "use_raw_input"))]{
+                            #[cfg(not(feature = "use_raw_input"))]
+                            {
                                 input_emulator.gradual_move_mouse(mouse_diff.x, mouse_diff.y)?;
                             }
                         }
                     }
-                    #[cfg(not(feature = "gradual_mouse"))]{
+                    #[cfg(not(feature = "gradual_mouse"))]
+                    {
                         input_emulator.move_mouse(mouse_diff.x, mouse_diff.y)?;
                     }
                 }
@@ -274,21 +278,32 @@ pub fn write_events(
 
                         let scroll_diff = scroll_diff.convert(scroll_cfg.speed);
                         if scroll_diff.is_any_changes() {
-                            #[cfg(feature = "gradual_scroll")]{
+                            #[cfg(feature = "gradual_scroll")]
+                            {
                                 // println!("Gradual Scroll");
-                                #[cfg(feature = "use_buffered_input")]{
-                                    write_buffer.extend(input_emulator.buffered_gradual_scroll(scroll_diff.x, scroll_diff.y));
+                                #[cfg(feature = "use_buffered_input")]
+                                {
+                                    write_buffer.extend(
+                                        input_emulator
+                                            .buffered_gradual_scroll(scroll_diff.x, scroll_diff.y),
+                                    );
                                 }
-                                #[cfg(not(feature = "use_buffered_input"))]{
-                                    #[cfg(feature = "use_raw_input")]{
-                                        input_emulator.gradual_scroll_raw(scroll_diff.x, scroll_diff.y)?;
+                                #[cfg(not(feature = "use_buffered_input"))]
+                                {
+                                    #[cfg(feature = "use_raw_input")]
+                                    {
+                                        input_emulator
+                                            .gradual_scroll_raw(scroll_diff.x, scroll_diff.y)?;
                                     }
-                                    #[cfg(not(feature = "use_raw_input"))]{
-                                        input_emulator.gradual_scroll(scroll_diff.x, scroll_diff.y)?;
+                                    #[cfg(not(feature = "use_raw_input"))]
+                                    {
+                                        input_emulator
+                                            .gradual_scroll(scroll_diff.x, scroll_diff.y)?;
                                     }
                                 }
                             }
-                            #[cfg(not(feature = "gradual_scroll"))]{
+                            #[cfg(not(feature = "gradual_scroll"))]
+                            {
                                 if scroll_diff.x != 0 {
                                     input_emulator.scroll_x(scroll_diff.x)?;
                                 }
@@ -317,7 +332,7 @@ pub fn write_events(
 
         //BUTTONS
         for event in button_receiver.try_iter() {
-        //TODO: test try_recv_realtime. fallback: try_recv()
+            //TODO: test try_recv_realtime. fallback: try_recv()
             // while let Some(event) = button_receiver.try_recv()? {
             match event {
                 //Press goes first to check if already pressed
@@ -330,7 +345,8 @@ pub fn write_events(
             }
         }
 
-        #[cfg(feature = "use_buffered_input")]{
+        #[cfg(feature = "use_buffered_input")]
+        {
             for command in &buttons_state.queue {
                 match command {
                     Command::Pressed(key_code) => {
@@ -344,7 +360,8 @@ pub fn write_events(
                 }
             }
         }
-        #[cfg(not(feature = "use_buffered_input"))]{
+        #[cfg(not(feature = "use_buffered_input"))]
+        {
             for command in &buttons_state.queue {
                 match command {
                     Command::Pressed(key_code) => {
@@ -359,7 +376,8 @@ pub fn write_events(
 
         buttons_state.queue.clear();
 
-        #[cfg(feature = "use_buffered_input")]{
+        #[cfg(feature = "use_buffered_input")]
+        {
             input_emulator.write_buffer(&write_buffer)?;
             write_buffer.clear()
         }
@@ -372,7 +390,6 @@ pub fn write_events(
         }
     }
 }
-
 
 // pub fn create_writing_thread(
 //     mouse_receiver: MouseReceiver,

@@ -1,17 +1,16 @@
+use crate::file_ops::{get_project_dir, read_yaml};
 use crate::key_codes::key_code_from_config;
 use crate::match_event::ButtonName;
-use crate::math_ops::{Angle, coord_to_f32};
+use crate::math_ops::{coord_to_f32, Angle};
+use crate::steamy_state::SteamyInputCoord;
 use ahash::AHashMap;
 use color_eyre::eyre::{bail, OptionExt, Result};
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 use universal_input::{KeyCode, KeyCodes};
-use crate::file_ops::{get_project_dir, read_yaml};
-use crate::steamy_state::SteamyInputCoord;
 
 const PROJECT_NAME: &str = "JoystickFullRust";
-
 
 #[derive(Clone, Debug, Copy, Default, Serialize, Deserialize)]
 pub struct JitterThresholdConfigs {
@@ -82,7 +81,6 @@ pub struct ScrollConfigs {
     pub horizontal_threshold: f32,
 }
 
-
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct MainGeneralConfigs {
     pub commands_channel_size: i32,
@@ -111,18 +109,13 @@ pub struct MainGeneralConfigs {
 
 impl MainGeneralConfigs {
     pub fn load(&mut self) {
-        self.steamy_read_interrupt_interval = Duration::from_millis(
-            self._steamy_read_interrupt_interval as u64
-        );
-        self.input_raw_refresh_interval = Duration::from_micros(
-            self._input_raw_refresh_interval as u64
-        );
-        self.input_buffer_refresh_interval = Duration::from_millis(
-            self._input_buffer_refresh_interval as u64
-        );
-        self.mouse_refresh_interval = Duration::from_millis(
-            self._mouse_refresh_interval as u64
-        );
+        self.steamy_read_interrupt_interval =
+            Duration::from_millis(self._steamy_read_interrupt_interval as u64);
+        self.input_raw_refresh_interval =
+            Duration::from_micros(self._input_raw_refresh_interval as u64);
+        self.input_buffer_refresh_interval =
+            Duration::from_millis(self._input_buffer_refresh_interval as u64);
+        self.mouse_refresh_interval = Duration::from_millis(self._mouse_refresh_interval as u64);
     }
 }
 
@@ -159,8 +152,10 @@ impl MainConfigs {
 
         main_configs.general.load();
 
-        main_configs.layout_configs =
-            LayoutConfigs::load(main_configs.layout_names_cfg.buttons_layout_name.as_str(), layouts_dir.as_path())?;
+        main_configs.layout_configs = LayoutConfigs::load(
+            main_configs.layout_names_cfg.buttons_layout_name.as_str(),
+            layouts_dir.as_path(),
+        )?;
 
         Ok(main_configs)
     }
@@ -270,16 +265,14 @@ impl LayoutConfigs {
         let gaming_mode = layout_configs.general.gaming_mode;
 
         match gaming_mode {
-            true => {
-                match layout_configs._wasd {
-                    None => {
-                        bail!("[WASD] has to be specified in gaming mode")
-                    }
-                    Some(ref wasd) => {
-                        layout_configs.wasd_zones_cfg = wasd.load_and_return()?;
-                    }
+            true => match layout_configs._wasd {
+                None => {
+                    bail!("[WASD] has to be specified in gaming mode")
                 }
-            }
+                Some(ref wasd) => {
+                    layout_configs.wasd_zones_cfg = wasd.load_and_return()?;
+                }
+            },
             false => match layout_configs._scroll {
                 None => {
                     bail!("[Scroll] has to be specified in desktop mode")
@@ -292,12 +285,15 @@ impl LayoutConfigs {
 
         layout_configs.stick_zones_cfg.load()?;
         layout_configs.axis_correction_cfg.load();
-        layout_configs.finger_rotation_cfg = layout_configs._finger_rotation_cfg.unwrap_or_else(|| FingerRotationConfigs {
-            use_rotation: false,
-            left_pad: 0,
-            right_pad: 0,
-            stick: 0,
-        });
+        layout_configs.finger_rotation_cfg =
+            layout_configs
+                ._finger_rotation_cfg
+                .unwrap_or_else(|| FingerRotationConfigs {
+                    use_rotation: false,
+                    left_pad: 0,
+                    right_pad: 0,
+                    stick: 0,
+                });
 
         layout_configs.buttons_layout = ButtonsLayout::load(
             layout_configs._buttons_layout_raw.clone(),
