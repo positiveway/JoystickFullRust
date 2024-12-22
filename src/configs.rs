@@ -259,6 +259,7 @@ pub struct LayoutConfigs {
 
 impl LayoutConfigs {
     pub fn load<S: AsRef<str>, P: AsRef<Path>>(layout_name: S, layout_dir: P) -> Result<Self> {
+        println!("Loading layout: '{}'", layout_name.as_ref());
         let mut layout_configs: Self = read_yaml(layout_dir.as_ref(), layout_name)?;
 
         layout_configs.general.load()?;

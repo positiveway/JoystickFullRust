@@ -1,0 +1,71 @@
+ButtonsLayout:
+  BtnUp_SideR: [ "KEY_E" ]
+  BtnRight_SideR: [ "KEY_R" ]
+  BtnDown_SideR: [ "KEY_SPACE" ]
+  BtnLeft_SideR: [ "KEY_LEFTSHIFT" ]
+
+  BtnUp_SideL: [ "KEY_LEFTCTRL" ]
+  BtnRight_SideL: [ "KEY_TAB" ]
+  BtnDown_SideL: [ "KEY_LEFTSHIFT" ]
+  BtnLeft_SideL: [ "KEY_Q" ]
+
+  Wing_SideL: [ "KEY_LEFTCTRL" ]
+  Wing_SideR: [ "KEY_Q" ]
+
+  LowerTriggerAsBtn_SideL: [ "MOUSE_RIGHT" ]
+  LowerTriggerAsBtn_SideR: [ "MOUSE_LEFT" ]
+
+  UpperTrigger_SideL: [ "KEY_TAB" ]
+  UpperTrigger_SideR: [ "KEY_LEFTSHIFT" ]
+
+  # Causes instability
+  #PadAsBtn_SideL: ["KEY_LEFTCTRL", "KEY_X"]
+  #PadAsBtn_SideR: ["KEY_LEFTCTRL", "KEY_V"]
+  #StickAsBtn: ["KEY_LEFTCTRL", "KEY_C"]
+
+  ExtraBtn_SideL: [ "KEY_ESC" ]
+  ExtraBtnCentral: [ "RESET_BTN" ]
+  ExtraBtn_SideR: [ "KEY_ESC" ]
+
+  #PadUp_SideL: ["PadUp_SideL"]
+  #PadDown_SideL: ["PadDown_SideL"]
+  #PadLeft_SideL: ["PadLeft_SideL"]
+  #PadRight_SideL: ["PadRight_SideL"]
+  #PadUp_SideR: ["PadUp_SideR"]
+  #PadDown_SideR: ["PadDown_SideR"]
+  #PadLeft_SideR: ["PadLeft_SideR"]
+  #PadRight_SideR: ["PadRight_SideR"]
+
+General:
+  gaming_mode: true
+  repeat_keys: false
+  triggers_threshold_pct: 20
+  mouse_speed: 400
+  steamy_use_left_pad: true
+Scroll:
+  speed: 600
+  horizontal_threshold: 0.08
+JitterThreshold:
+  left_pad: 0.01
+  right_pad: 0.01
+  stick: 0.01
+Stick:
+  diagonal_zones: false
+  zone_range: 22
+  start_threshold_pct: 30
+WASD:
+  diagonal_zones: true
+  zone_range: 22
+  start_threshold_pct: 30
+  shift_threshold_pct: 80
+AxisCorrection:
+  use_correction: true
+  left_pad:
+    x: 2000
+    y: 3000
+  right_pad:
+    x: 1000
+    y: 3000
+  stick:
+    x: 0
+    y: 0
