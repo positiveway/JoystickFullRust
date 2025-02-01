@@ -1,3 +1,8 @@
+#!/usr/bin/env bash
+
+# exit when any command fails
+set -e
+
 build_clean=false
 update_rust=false
 use_nightly=false
@@ -5,8 +10,8 @@ use_polonius=false
 new_trait_solver=false
 use_another_linker=false
 
-# exit when any command fails
-set -e
+
+THIS_SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 
 # to request sudo in the beginning
 sudo uname -r
@@ -66,6 +71,6 @@ cargo +$rust_version rustc --release -- $build_flags
 #export RUSTFLAGS="$build_flags"
 #CARGO_BUILD_RUSTFLAGS="-Z polonius" cargo build --release
 
-cd ./scripts
+cd "$THIS_SCRIPT_DIR"
 chmod +x ./run.sh
 ./run.sh
