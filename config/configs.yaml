@@ -1,6 +1,7 @@
 Layouts:
   #  buttons_layout: "desktop"
   buttons_layout: "raft"
+  # buttons_layout: "risk"
   #  buttons_layout: "wmd"
   #  buttons_layout: "valheim"
   #  buttons_layout: "satisfactory"

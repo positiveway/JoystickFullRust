@@ -17,7 +17,7 @@ mod utils;
 mod writing_thread;
 
 use crate::configs::MainConfigs;
-use crate::process_event::{process_event, SharedInfo};
+use crate::process_event::{SharedInfo, process_event};
 use crate::utils::{TerminationStatus, ThreadHandle};
 use crate::writing_thread::write_events;
 use color_eyre::eyre::Result;
@@ -27,16 +27,18 @@ use std::{env, thread};
 
 fn init_logger() {
     if env::var("RUST_LOG").is_err() {
-        env::set_var("RUST_LOG", {
-            #[cfg(feature = "debug_mode")]
-            {
-                "debug"
-            }
-            #[cfg(not(feature = "debug_mode"))]
-            {
-                "warn"
-            }
-        })
+        unsafe {
+            env::set_var("RUST_LOG", {
+                #[cfg(feature = "debug_mode")]
+                {
+                    "debug"
+                }
+                #[cfg(not(feature = "debug_mode"))]
+                {
+                    "warn"
+                }
+            })
+        }
     }
     builder()
         .format_module_path(false)
